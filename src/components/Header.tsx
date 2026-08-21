@@ -1,0 +1,207 @@
+import React from 'react';
+import {
+  RefreshCw,
+  Bell,
+  Volume2,
+  VolumeX,
+  Menu,
+  ArrowLeft,
+} from 'lucide-react';
+import { User } from 'firebase/auth';
+
+interface HeaderProps {
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'spreadsheet';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'spreadsheet', path?: string) => void;
+  user: User | null;
+  token: string | null;
+  onLogin: () => void;
+  onLogout: () => void;
+  isLoggingIn: boolean;
+  isSyncing: boolean;
+  onManualSync: () => void;
+  lastSyncedAt: string | null;
+  unreadCount: number;
+  onToggleNotificationDrawer: () => void;
+  soundEnabled: boolean;
+  onToggleSound: () => void;
+  spreadsheetUrl: string;
+  onOpenMobileSidebar?: () => void;
+  onOpenSubmitModal?: () => void;
+}
+
+export const Header: React.FC<HeaderProps> = ({
+  activeTab,
+  onNavigate,
+  user,
+  token,
+  onLogin,
+  onLogout,
+  isLoggingIn,
+  isSyncing,
+  onManualSync,
+  lastSyncedAt,
+  unreadCount,
+  onToggleNotificationDrawer,
+  soundEnabled,
+  onToggleSound,
+  spreadsheetUrl,
+  onOpenMobileSidebar,
+  onOpenSubmitModal,
+}) => {
+  const isMasterMode = activeTab !== 'showcase';
+
+  return (
+    <header
+      id="main-app-header"
+      className="h-14 sm:h-16 bg-[#F2EFEB] border-b-[1.5px] border-[#1a1a1a] flex items-center justify-between px-4 sm:px-6 shrink-0 z-20 select-none"
+    >
+      {/* Top Left Navigation Anchor */}
+      <div className="flex items-center space-x-3 min-w-0">
+        {isMasterMode && (
+          <button
+            id="btn-mobile-menu"
+            onClick={onOpenMobileSidebar}
+            className="md:hidden p-1.5 text-[#1a1a1a] hover:bg-white border border-[#1a1a1a] transition-colors cursor-pointer"
+            title="Buka Menu Master"
+          >
+            <Menu className="h-4 w-4" />
+          </button>
+        )}
+
+        <div
+          onClick={() => onNavigate('showcase', '/')}
+          className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-2"
+        >
+          <span>[ SISWAHUB v2.0 ]</span>
+          {!isMasterMode && (
+            <span className="hidden sm:inline-block text-[11px] font-normal text-slate-500 font-mono-code border-l border-[#1a1a1a] pl-2">
+              SHOWCASE KARYA SISWA
+            </span>
+          )}
+        </div>
+
+        {/* Master View Navigation Tabs (Visible when inside /master) */}
+        {isMasterMode && (
+          <div className="hidden md:flex items-center space-x-1 pl-4 border-l border-[#1a1a1a]">
+            <button
+              onClick={() => onNavigate('showcase', '/')}
+              className="font-mono-code text-xs px-2.5 py-1 border border-transparent hover:border-[#1a1a1a] text-slate-600 hover:text-[#1a1a1a] transition-all flex items-center gap-1 cursor-pointer"
+            >
+              <ArrowLeft className="h-3 w-3" /> KE SHOWCASE (/)
+            </button>
+            <button
+              onClick={() => onNavigate('master', '/master')}
+              className={`font-mono-code text-xs px-2.5 py-1 border transition-all cursor-pointer ${
+                activeTab === 'master'
+                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] font-bold'
+                  : 'text-[#1a1a1a] border-transparent hover:border-[#1a1a1a]'
+              }`}
+            >
+              KONTROL MASTER
+            </button>
+            <button
+              onClick={() => onNavigate('students', '/master/students')}
+              className={`font-mono-code text-xs px-2.5 py-1 border transition-all cursor-pointer ${
+                activeTab === 'students'
+                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] font-bold'
+                  : 'text-[#1a1a1a] border-transparent hover:border-[#1a1a1a]'
+              }`}
+            >
+              DAFTAR SISWA
+            </button>
+            <button
+              onClick={() => onNavigate('tasks', '/master/tasks')}
+              className={`font-mono-code text-xs px-2.5 py-1 border transition-all cursor-pointer ${
+                activeTab === 'tasks'
+                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] font-bold'
+                  : 'text-[#1a1a1a] border-transparent hover:border-[#1a1a1a]'
+              }`}
+            >
+              REKAP TABEL
+            </button>
+            <button
+              onClick={() => onNavigate('spreadsheet', '/master/spreadsheet')}
+              className={`font-mono-code text-xs px-2.5 py-1 border transition-all cursor-pointer ${
+                activeTab === 'spreadsheet'
+                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] font-bold'
+                  : 'text-[#1a1a1a] border-transparent hover:border-[#1a1a1a]'
+              }`}
+            >
+              SPREADSHEET
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Top Right Navigation Anchor */}
+      <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+        
+
+        {/* Sound Toggle */}
+        <button
+          id="btn-toggle-sound"
+          onClick={onToggleSound}
+          title={soundEnabled ? 'Audio Notifikasi: Aktif' : 'Audio Notifikasi: Hening'}
+          className={`p-1.5 border border-[#1a1a1a] transition-all cursor-pointer ${
+            soundEnabled ? 'bg-white text-[#2e59e6]' : 'bg-[#E5E0D8] text-slate-500'
+          }`}
+        >
+          {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+        </button>
+
+        {/* Notification Bell */}
+        <button
+          id="btn-notification-bell"
+          onClick={onToggleNotificationDrawer}
+          className="relative p-1.5 bg-white border border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#E5E0D8] transition-colors cursor-pointer"
+          title="Notifikasi"
+        >
+          <Bell className="h-3.5 w-3.5" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1.5 -right-1.5 bg-[#2e59e6] text-white font-mono-code text-[9px] w-4 h-4 flex items-center justify-center font-bold border border-[#1a1a1a]">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+
+        {/* Manual Sync Button */}
+        <button
+          id="btn-manual-sync"
+          onClick={onManualSync}
+          disabled={isSyncing}
+          className="p-1.5 bg-white border border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#E5E0D8] transition-colors disabled:opacity-50 cursor-pointer"
+          title="Sinkronkan Spreadsheet"
+        >
+          <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin text-[#2e59e6]' : ''}`} />
+        </button>
+
+        {/* Login / User Status Indicator */}
+        {isMasterMode && (
+          user ? (
+            <div className="flex items-center gap-2 font-mono-code text-xs">
+              <span className="hidden lg:inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-[#1a1a1a] text-[11px] font-bold text-[#1a1a1a]">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                {user.email || 'irfannewbie7@gmail.com'}
+              </span>
+              <button
+                onClick={onLogout}
+                className="font-mono-code text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 px-2 py-1 border border-rose-600 bg-white transition-colors cursor-pointer"
+                title="Keluar / Reset Sesi"
+              >
+                LOGOUT
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={onLogin}
+              disabled={isLoggingIn}
+              className="font-mono-code text-xs font-bold text-white bg-[#1a1a1a] hover:bg-[#2e59e6] px-3 py-1 border border-[#1a1a1a] transition-colors cursor-pointer"
+            >
+              {isLoggingIn ? 'LOGIN...' : 'LOGIN (ADMIN)'}
+            </button>
+          )
+        )}
+      </div>
+    </header>
+  );
+};
