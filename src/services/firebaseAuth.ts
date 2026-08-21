@@ -47,9 +47,8 @@ export const DEFAULT_ADMIN_USER: User = {
 
 // Flag to indicate if we are in the middle of a sign-in flow.
 let isSigningIn = false;
-// Cache the access token in memory and local storage
-const TOKEN_KEY = 'tugas_siswa_google_access_token';
-let cachedAccessToken: string | null = localStorage.getItem(TOKEN_KEY);
+// Cache the access token in memory only
+let cachedAccessToken: string | null = null;
 
 // Initialize auth state listener. Call this on app load.
 export const initAuth = (
@@ -58,16 +57,18 @@ export const initAuth = (
 ) => {
   return onAuthStateChanged(auth, async (firebaseUser: User | null) => {
     if (firebaseUser) {
-      const activeToken = cachedAccessToken || localStorage.getItem(TOKEN_KEY);
-      if (onAuthSuccess) onAuthSuccess(firebaseUser, activeToken);
+      if (onAuthSuccess) onAuthSuccess(firebaseUser, cachedAccessToken);
     } else {
-      // Default to persistent administrator session for irfannewbie7@gmail.com
-      const savedToken = localStorage.getItem(TOKEN_KEY);
+      cachedAccessToken = null;
       if (onAuthSuccess) {
-        onAuthSuccess(DEFAULT_ADMIN_USER, savedToken);
+        onAuthSuccess(DEFAULT_ADMIN_USER, null);
       }
     }
   });
+};
+
+export const clearAuthToken = () => {
+  cachedAccessToken = null;
 };
 
 // Must be called from a button click or user interaction
@@ -81,13 +82,14 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     }
 
     cachedAccessToken = credential.accessToken;
-    try {
-      localStorage.setItem(TOKEN_KEY, credential.accessToken);
-    } catch (e) {
-      // ignore
-    }
     return { user: result.user, accessToken: cachedAccessToken };
   } catch (error: any) {
+    if (
+      error?.code === 'auth/popup-closed-by-user' ||
+      error?.code === 'auth/cancelled-popup-request'
+    ) {
+      return null;
+    }
     console.error('Sign in error:', error);
     throw error;
   } finally {
@@ -96,7 +98,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 };
 
 export const getAccessToken = async (): Promise<string | null> => {
-  return cachedAccessToken || localStorage.getItem(TOKEN_KEY);
+  return cachedAccessToken;
 };
 
 export const logout = async () => {
@@ -106,5 +108,6 @@ export const logout = async () => {
     // ignore
   }
   cachedAccessToken = null;
-  localStorage.removeItem(TOKEN_KEY);
 };
+
+

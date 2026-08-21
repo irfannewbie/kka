@@ -1,5 +1,6 @@
 import { Student, TaskSubmission } from '../types';
 import { ALL_255_STUDENTS } from '../data/students255';
+import { clearAuthToken } from './firebaseAuth';
 
 export const DEFAULT_SPREADSHEET_ID = '1JgBhQhZujQp_pTk1jO4oZIY8Er1Y4NcF0CTKFrRVgI4';
 export const DEFAULT_SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${DEFAULT_SPREADSHEET_ID}/edit?usp=sharing`;
@@ -65,6 +66,7 @@ export async function ensureSheetExists(
   sheetTitle: string,
   headers: string[]
 ): Promise<boolean> {
+  if (!accessToken) return false;
   try {
     const metaRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
@@ -72,6 +74,11 @@ export async function ensureSheetExists(
         headers: { Authorization: `Bearer ${accessToken}` },
       }
     );
+
+    if (metaRes.status === 401) {
+      clearAuthToken();
+      return false;
+    }
 
     if (!metaRes.ok) {
       console.warn(`Failed to fetch spreadsheet metadata (status ${metaRes.status})`);
@@ -108,6 +115,11 @@ export async function ensureSheetExists(
           }),
         }
       );
+
+      if (addRes.status === 401) {
+        clearAuthToken();
+        return false;
+      }
 
       if (!addRes.ok) {
         console.warn('Failed to add sheet via batchUpdate:', await addRes.text());
@@ -421,7 +433,15 @@ export async function syncNewTaskToSheet(
   accessToken: string,
   spreadsheetId: string,
   task: TaskSubmission
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; isAuthError?: boolean; message: string }> {
+  if (!accessToken) {
+    return {
+      success: false,
+      isAuthError: true,
+      message: 'Silakan hubungkan akun Google Anda untuk menyimpan data ke Spreadsheet.',
+    };
+  }
+
   try {
     const taskHeaders = [
       'ID Tugas',
@@ -458,6 +478,15 @@ export async function syncNewTaskToSheet(
       }
     );
 
+    if (res.status === 401) {
+      clearAuthToken();
+      return {
+        success: false,
+        isAuthError: true,
+        message: 'Sesi akun Google Anda telah kedaluwarsa. Silakan login kembali dengan akun Google.',
+      };
+    }
+
     if (res.ok) {
       return {
         success: true,
@@ -465,7 +494,6 @@ export async function syncNewTaskToSheet(
       };
     } else {
       const errText = await res.text();
-      console.error('Google Sheets append error:', errText);
       return {
         success: false,
         message: `Gagal menyimpan ke Google Spreadsheet (${res.status}): ${errText}`,
@@ -485,7 +513,16 @@ export async function syncAllTasksToSheet(
   accessToken: string,
   spreadsheetId: string,
   tasks: TaskSubmission[]
-): Promise<{ success: boolean; count: number; message: string }> {
+): Promise<{ success: boolean; isAuthError?: boolean; count: number; message: string }> {
+  if (!accessToken) {
+    return {
+      success: false,
+      isAuthError: true,
+      count: 0,
+      message: 'Silakan hubungkan akun Google Anda untuk menyinkronkan data.',
+    };
+  }
+
   try {
     const headers = [
       'ID Tugas',
@@ -521,6 +558,16 @@ export async function syncAllTasksToSheet(
       }
     );
 
+    if (res.status === 401) {
+      clearAuthToken();
+      return {
+        success: false,
+        isAuthError: true,
+        count: 0,
+        message: 'Sesi akun Google Anda telah kedaluwarsa. Silakan login kembali.',
+      };
+    }
+
     if (res.ok) {
       return {
         success: true,
@@ -529,7 +576,6 @@ export async function syncAllTasksToSheet(
       };
     } else {
       const errText = await res.text();
-      console.error('Sheets batch update error:', errText);
       return {
         success: false,
         count: 0,
@@ -551,7 +597,16 @@ export async function syncAllStudentsToSheet(
   accessToken: string,
   spreadsheetId: string,
   students: Student[]
-): Promise<{ success: boolean; count: number; message: string }> {
+): Promise<{ success: boolean; isAuthError?: boolean; count: number; message: string }> {
+  if (!accessToken) {
+    return {
+      success: false,
+      isAuthError: true,
+      count: 0,
+      message: 'Silakan hubungkan akun Google Anda untuk menyinkronkan daftar siswa.',
+    };
+  }
+
   try {
     const headers = [
       'ID Siswa',
@@ -590,6 +645,16 @@ export async function syncAllStudentsToSheet(
         }),
       }
     );
+
+    if (res.status === 401) {
+      clearAuthToken();
+      return {
+        success: false,
+        isAuthError: true,
+        count: 0,
+        message: 'Sesi akun Google Anda telah kedaluwarsa. Silakan login kembali.',
+      };
+    }
 
     if (res.ok) {
       return {

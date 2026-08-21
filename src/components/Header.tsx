@@ -177,16 +177,16 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Login / User Status Indicator */}
         {isMasterMode && (
-          user ? (
+          token && user ? (
             <div className="flex items-center gap-2 font-mono-code text-xs">
-              <span className="hidden lg:inline-flex items-center gap-1.5 px-2 py-1 bg-white border border-[#1a1a1a] text-[11px] font-bold text-[#1a1a1a]">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#1a1a1a] text-[11px] font-bold text-[#1a1a1a]">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
                 {user.email || 'irfannewbie7@gmail.com'}
               </span>
               <button
                 onClick={onLogout}
-                className="font-mono-code text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 px-2 py-1 border border-rose-600 bg-white transition-colors cursor-pointer"
-                title="Keluar / Reset Sesi"
+                className="font-mono-code text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 px-2.5 py-1 border border-rose-600 bg-white transition-colors cursor-pointer"
+                title="Keluar / Putuskan Sesi Google"
               >
                 LOGOUT
               </button>
@@ -195,9 +195,11 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               onClick={onLogin}
               disabled={isLoggingIn}
-              className="font-mono-code text-xs font-bold text-white bg-[#1a1a1a] hover:bg-[#2e59e6] px-3 py-1 border border-[#1a1a1a] transition-colors cursor-pointer"
+              className="font-mono-code text-xs font-bold text-white bg-[#1a1a1a] hover:bg-[#2e59e6] px-3 py-1 border border-[#1a1a1a] transition-colors cursor-pointer flex items-center gap-1.5"
+              title="Hubungkan akun Google untuk izin menulis ke Google Spreadsheet"
             >
-              {isLoggingIn ? 'LOGIN...' : 'LOGIN (ADMIN)'}
+              <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+              {isLoggingIn ? 'MENGHUBUNGKAN...' : 'LOGIN (GOOGLE)'}
             </button>
           )
         )}

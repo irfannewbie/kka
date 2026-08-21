@@ -30,15 +30,10 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
   onOpenSubmitModal,
   onNavigateTab,
 }) => {
-  // Dynamic list of unique groups from submitted tasks in spreadsheet
-  const submittedGroups = Array.from(
-    new Set(tasks.map((t) => t.group).filter(Boolean))
-  ).sort();
-
-  // Calculate live statistics
+  // Calculate live statistics - in sync with submitted works from spreadsheet
   const totalStudentsCount = students.length;
   const totalTasksCount = tasks.length;
-  const activeGroupsCount = submittedGroups.length;
+  const activeGroupsCount = totalTasksCount;
 
   return (
     <div className="space-y-6">

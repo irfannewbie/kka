@@ -39,24 +39,22 @@ const COMMON_TASKS_SUGGESTIONS = [
 ];
 
 const DEFAULT_CLASSES = [
-  'Kelas 8D',
   'Kelas 8A',
   'Kelas 8B',
   'Kelas 8C',
+  'Kelas 8D',
   'Kelas 8E',
   'Kelas 8F',
-  'Kelas 7A',
-  'Kelas 7B',
-  'Kelas 9A',
-  'Kelas 9B',
+  'Kelas 8G',
+  'Kelas 8H',
 ];
 
 const DEFAULT_GROUPS = [
-  'Kelompok 5',
   'Kelompok 1',
   'Kelompok 2',
   'Kelompok 3',
   'Kelompok 4',
+  'Kelompok 5',
   'Kelompok 6',
   'Kelompok 7',
   'Kelompok 8',
