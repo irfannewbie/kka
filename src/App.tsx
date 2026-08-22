@@ -635,6 +635,7 @@ export default function App() {
             {activeTab === 'tasks' && (
               <TaskListView
                 tasks={tasks}
+                students={students}
                 onUpdateTask={handleUpdateTask}
                 onDeleteTask={handleDeleteTask}
                 onOpenSubmitModal={() => setIsSubmitModalOpen(true)}

@@ -13,6 +13,7 @@ import {
 import { Student, TaskSubmission } from '../types';
 import { ProjectDetailModal } from './ProjectDetailModal';
 import { ShowcaseCard } from './ShowcaseCard';
+import { sortTasksByClassAndGroup } from '../utils/studentResolver';
 
 interface ShowcaseViewProps {
   students: Student[];
@@ -95,21 +96,24 @@ export const ShowcaseView: React.FC<ShowcaseViewProps> = ({
     return tasks.filter((t) => isTaskInClass(t, clsOption)).length;
   };
 
-  // Filter tasks based on selected class and search query
-  const filteredTasks = tasks.filter((task) => {
-    const matchesClass = isTaskInClass(task, selectedClassFilter);
+  // Filter and sort tasks based on selected class, search query, and sequential class/group order
+  const filteredTasks = sortTasksByClassAndGroup(
+    tasks.filter((task) => {
+      const matchesClass = isTaskInClass(task, selectedClassFilter);
 
-    const matchesSearch =
-      !searchQuery ||
-      task.studentName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.taskTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      task.group?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (task.className && task.className.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (task.studentNis && task.studentNis.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      (task.attendanceNo && task.attendanceNo.includes(searchQuery));
+      const matchesSearch =
+        !searchQuery ||
+        task.studentName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.taskTitle?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        task.group?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (task.className && task.className.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (task.studentNis && task.studentNis.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (task.attendanceNo && task.attendanceNo.includes(searchQuery));
 
-    return matchesClass && matchesSearch;
-  });
+      return matchesClass && matchesSearch;
+    }),
+    students
+  );
 
   return (
     <div className="space-y-6">

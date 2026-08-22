@@ -14,10 +14,12 @@ import {
   Globe,
   UploadCloud,
 } from 'lucide-react';
-import { TaskSubmission } from '../types';
+import { TaskSubmission, Student } from '../types';
+import { sortTasksByClassAndGroup, getTaskClassAndGroupRank } from '../utils/studentResolver';
 
 interface TaskListViewProps {
   tasks: TaskSubmission[];
+  students?: Student[];
   onUpdateTask?: (task: TaskSubmission) => Promise<void>;
   onDeleteTask: (taskId: string) => Promise<void>;
   onOpenSubmitModal: () => void;
@@ -29,6 +31,7 @@ interface TaskListViewProps {
 
 export const TaskListView: React.FC<TaskListViewProps> = ({
   tasks,
+  students = [],
   onUpdateTask,
   onDeleteTask,
   onOpenSubmitModal,
@@ -41,7 +44,7 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
   const [typeFilter, setTypeFilter] = useState<'all' | 'individu' | 'kelompok'>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [groupFilter, setGroupFilter] = useState<string>('all');
-  const [sortBy, setSortBy] = useState<'date-desc' | 'date-asc' | 'name-asc'>('date-desc');
+  const [sortBy, setSortBy] = useState<'class-group' | 'date-desc' | 'date-asc' | 'name-asc'>('class-group');
   const [isPushing, setIsPushing] = useState(false);
 
   const handlePushAllTasks = async () => {
@@ -77,6 +80,14 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
       return matchesSearch && matchesType && matchesStatus && matchesGroup;
     })
     .sort((a, b) => {
+      if (sortBy === 'class-group') {
+        const rankA = getTaskClassAndGroupRank(a, students);
+        const rankB = getTaskClassAndGroupRank(b, students);
+        if (rankA.classRank !== rankB.classRank) return rankA.classRank - rankB.classRank;
+        if (rankA.groupRank !== rankB.groupRank) return rankA.groupRank - rankB.groupRank;
+        if (rankA.groupName !== rankB.groupName) return rankA.groupName.localeCompare(rankB.groupName, undefined, { numeric: true });
+        return (a.taskTitle || a.studentName || '').localeCompare(b.taskTitle || b.studentName || '');
+      }
       if (sortBy === 'date-desc') {
         return (b.id || '').localeCompare(a.id || '');
       }
@@ -165,6 +176,7 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
             onChange={(e) => setSortBy(e.target.value as any)}
             className="px-2.5 py-1.5 border border-[#1a1a1a] bg-white font-bold text-[#1a1a1a] focus:outline-hidden"
           >
+            <option value="class-group">URUTAN KELAS & KELOMPOK (8A - 8H)</option>
             <option value="date-desc">TERBARU</option>
             <option value="date-asc">TERLAMA</option>
             <option value="name-asc">NAMA SISWA (A-Z)</option>

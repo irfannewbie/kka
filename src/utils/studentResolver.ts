@@ -95,6 +95,62 @@ export function resolveStudentByAttendance(
 }
 
 // Primary Parser for Task Submissions
+export const ORDERED_CLASSES = ['8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H'];
+
+export function getTaskClassAndGroupRank(task: TaskSubmission, students: Student[] = []) {
+  const parsed = parseSubmissionDetails(task, students);
+  const normCls = normalizeClass(parsed.className);
+
+  let classRank = ORDERED_CLASSES.indexOf(normCls);
+  if (classRank === -1) {
+    const match = normCls.match(/8[A-H]/i);
+    classRank = match ? ORDERED_CLASSES.indexOf(match[0].toUpperCase()) : 999;
+  }
+  if (classRank === -1) classRank = 999;
+
+  // Extract group integer: "Kelompok 1" -> 1, "Kelompok 5" -> 5
+  const groupMatch = parsed.groupName.match(/\d+/);
+  const groupRank = groupMatch ? parseInt(groupMatch[0], 10) : 999;
+
+  return {
+    classRank,
+    groupRank,
+    className: parsed.className,
+    groupName: parsed.groupName,
+    title: parsed.title,
+  };
+}
+
+export function sortTasksByClassAndGroup(
+  tasks: TaskSubmission[],
+  students: Student[] = []
+): TaskSubmission[] {
+  return [...tasks].sort((a, b) => {
+    const rankA = getTaskClassAndGroupRank(a, students);
+    const rankB = getTaskClassAndGroupRank(b, students);
+
+    // 1. Sort by Class (8A, 8B, 8C, 8D, 8E, 8F, 8G, 8H)
+    if (rankA.classRank !== rankB.classRank) {
+      return rankA.classRank - rankB.classRank;
+    }
+
+    // 2. Sort by Group Number (Kelompok 1, Kelompok 2, Kelompok 3, ...)
+    if (rankA.groupRank !== rankB.groupRank) {
+      return rankA.groupRank - rankB.groupRank;
+    }
+
+    // 3. Fallback: Group Name String Comparison
+    if (rankA.groupName !== rankB.groupName) {
+      return rankA.groupName.localeCompare(rankB.groupName, undefined, { numeric: true });
+    }
+
+    // 4. Fallback: Title or Student Name
+    return (a.taskTitle || a.studentName || '').localeCompare(
+      b.taskTitle || b.studentName || ''
+    );
+  });
+}
+
 export function parseSubmissionDetails(
   task: TaskSubmission,
   students: Student[]
@@ -106,18 +162,29 @@ export function parseSubmissionDetails(
   const classMatchInDesc = rawDesc.match(/Kelas\s*[:=\s]*([0-9A-Za-z]+)/i);
   if (classMatchInDesc) {
     resolvedClass = `Kelas ${classMatchInDesc[1].toUpperCase()}`;
+  } else if (rawDesc.match(/\b8[A-Ha-h]\b/i)) {
+    resolvedClass = `Kelas ${rawDesc.match(/\b8[A-Ha-h]\b/i)![0].toUpperCase()}`;
   } else if (task.group && task.group.match(/8[A-Ha-h]/i)) {
     const m = task.group.match(/8[A-Ha-h]/i);
     if (m) resolvedClass = `Kelas ${m[0].toUpperCase()}`;
+  } else if (task.taskTitle && task.taskTitle.match(/8[A-Ha-h]/i)) {
+    const m = task.taskTitle.match(/8[A-Ha-h]/i);
+    if (m) resolvedClass = `Kelas ${m[0].toUpperCase()}`;
   } else if (!resolvedClass && task.studentName) {
-    // Search student in authentic roster by name
-    const rawNames = task.studentName.split(/[,;\n]/).map((n) => n.replace(/\(.*?\)/g, '').trim()).filter(Boolean);
+    // Search student in authentic roster or students props by name
+    const rawNames = task.studentName
+      .split(/[,;\n]/)
+      .map((n) => n.replace(/\(.*?\)/g, '').trim())
+      .filter(Boolean);
+    const combinedList = [...students, ...ALL_255_STUDENTS];
     for (const name of rawNames) {
       if (name.toUpperCase().includes('ASPEK') || name.length < 3) continue;
-      const foundStudent = ALL_255_STUDENTS.find(
-        (s) => s.name.toUpperCase().includes(name.toUpperCase()) || name.toUpperCase().includes(s.name.toUpperCase())
+      const foundStudent = combinedList.find(
+        (s) =>
+          s.name.toUpperCase().includes(name.toUpperCase()) ||
+          name.toUpperCase().includes(s.name.toUpperCase())
       );
-      if (foundStudent) {
+      if (foundStudent && foundStudent.className) {
         resolvedClass = foundStudent.className;
         break;
       }
@@ -125,7 +192,7 @@ export function parseSubmissionDetails(
   }
 
   if (!resolvedClass) {
-    resolvedClass = 'Kelas 8F';
+    resolvedClass = 'Kelas 8A';
   }
   const normalizedCls = normalizeClass(resolvedClass);
 
@@ -134,6 +201,9 @@ export function parseSubmissionDetails(
   const groupMatchInDesc = rawDesc.match(/Kelompok\s*[:=\s]*([0-9A-Za-z]+)/i);
   if (groupMatchInDesc) {
     groupName = `Kelompok ${groupMatchInDesc[1]}`;
+  } else if (task.taskTitle && task.taskTitle.match(/Kelompok\s*[:=\s]*([0-9A-Za-z]+)/i)) {
+    const m = task.taskTitle.match(/Kelompok\s*[:=\s]*([0-9A-Za-z]+)/i);
+    if (m) groupName = `Kelompok ${m[1]}`;
   }
 
   // 3. Extract Links
