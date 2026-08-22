@@ -97,6 +97,222 @@ export function resolveStudentByAttendance(
 // Primary Parser for Task Submissions
 export const ORDERED_CLASSES = ['8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H'];
 
+// Helper to normalize Roman numerals and Indonesian words into a group digit
+export function normalizeGroupDigit(val: string): number | null {
+  if (!val) return null;
+  const clean = val.trim().toLowerCase();
+
+  // Direct integer
+  const numMatch = clean.match(/^\d+$/);
+  if (numMatch) {
+    const n = parseInt(numMatch[0], 10);
+    if (n >= 1 && n <= 16) return n;
+  }
+
+  // Roman numerals
+  const romanMap: Record<string, number> = {
+    i: 1,
+    ii: 2,
+    iii: 3,
+    iv: 4,
+    v: 5,
+    vi: 6,
+    vii: 7,
+    viii: 8,
+    ix: 9,
+    x: 10,
+    xi: 11,
+    xii: 12,
+  };
+  if (romanMap[clean] !== undefined) return romanMap[clean];
+
+  // Indonesian words
+  const wordMap: Record<string, number> = {
+    satu: 1,
+    dua: 2,
+    tiga: 3,
+    empat: 4,
+    lima: 5,
+    enam: 6,
+    tujuh: 7,
+    delapan: 8,
+    sembilan: 9,
+    sepuluh: 10,
+    sebelas: 11,
+    'dua belas': 12,
+  };
+  if (wordMap[clean] !== undefined) return wordMap[clean];
+
+  return null;
+}
+
+const INVALID_GROUP_WORDS = [
+  'tutor',
+  'belajar',
+  'kerja',
+  'diskusi',
+  'kami',
+  'web',
+  'aplikasi',
+  'projek',
+  'project',
+  'sekolah',
+  'mandiri',
+  'sebaya',
+  'siswa',
+  'online',
+  'desa',
+  'digital',
+];
+
+export function resolveTaskGroupNumber(
+  task: TaskSubmission,
+  rawDesc: string,
+  resolvedClass: string,
+  students: Student[],
+  attendanceNumbers: string[] = []
+): string {
+  const normalizedCls = normalizeClass(resolvedClass);
+  const combinedRoster = [...students, ...ALL_255_STUDENTS].filter(
+    (s) => normalizeClass(s.className) === normalizedCls
+  );
+
+  // 1. HIGHEST PRIORITY: Explicit valid group in task.group (e.g. "Kelompok 5", "Kelompok 1", "Kelompok 8", "Kelompok VIII")
+  if (task.group) {
+    const cleanGrp = task.group.trim();
+    
+    // Ignore if task.group is just the class name like "8H", "Kelas 8H", "Kelompok 8H" or invalid words like "Kelompok tutor"
+    const isJustClassName = /^(\s*Kelas\s*)?8[A-Ha-h]\s*$/i.test(cleanGrp) || /^Kelompok\s*8[A-Ha-h]\s*$/i.test(cleanGrp);
+    if (!isJustClassName) {
+      const grpNumMatch = cleanGrp.match(/(?:Kelompok|Klp|Group|Grup)\s*[:=\s#\-]*([0-9]+|[a-zA-Z]+)/i);
+      if (grpNumMatch) {
+        const candidate = grpNumMatch[1];
+        if (!INVALID_GROUP_WORDS.includes(candidate.toLowerCase()) && !/^8[A-Ha-h]$/i.test(candidate)) {
+          const digit = normalizeGroupDigit(candidate);
+          if (digit !== null) {
+            return `Kelompok ${digit}`;
+          }
+        }
+      }
+
+      const justNum = cleanGrp.match(/^\d+$/);
+      if (justNum) {
+        const digit = normalizeGroupDigit(justNum[0]);
+        if (digit !== null) return `Kelompok ${digit}`;
+      }
+    }
+  }
+
+  // 2. Explicit group in rawDesc (e.g. "Kelompok : 5" or "Kelompok 5")
+  const descGroupMatches = rawDesc.matchAll(
+    /(?:Kelompok|Klp|Group|Grup)\s*[:=\s#\-]*([0-9]+|[IVXLCDMivxlcdm]+|\b(?:satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\b)/gi
+  );
+  for (const match of descGroupMatches) {
+    const candidate = match[1];
+    if (candidate && !INVALID_GROUP_WORDS.includes(candidate.toLowerCase()) && !/^8[A-Ha-h]$/i.test(candidate)) {
+      const digit = normalizeGroupDigit(candidate);
+      if (digit !== null) {
+        return `Kelompok ${digit}`;
+      }
+    }
+  }
+
+  // Helper to find group from roster via attendance numbers
+  const getGroupByAttendance = (): string | null => {
+    if (attendanceNumbers.length === 0) return null;
+    const matchedGroups: string[] = [];
+    attendanceNumbers.forEach((attNo) => {
+      const std = combinedRoster.find(
+        (s) => String(s.attendanceNo || '').trim().replace(/^0+/, '') === attNo
+      );
+      if (std?.group && /Kelompok\s*\d+/i.test(std.group)) {
+        matchedGroups.push(std.group);
+      }
+    });
+
+    if (matchedGroups.length > 0) {
+      const freq: Record<string, number> = {};
+      matchedGroups.forEach((g) => {
+        freq[g] = (freq[g] || 0) + 1;
+      });
+      return Object.keys(freq).reduce((a, b) => (freq[a] >= freq[b] ? a : b));
+    }
+    return null;
+  };
+
+  // Helper to find group from roster via student names
+  const getGroupByStudentNames = (): string | null => {
+    if (!task.studentName) return null;
+    const rawNames = task.studentName
+      .split(/[,;\n]/)
+      .map((n) => n.replace(/\(.*?\)/g, '').trim())
+      .filter(Boolean);
+    const matchedGroups: string[] = [];
+    for (const name of rawNames) {
+      if (name.length < 3 || name.toUpperCase().includes('ASPEK')) continue;
+      const std = combinedRoster.find(
+        (s) =>
+          s.name &&
+          (s.name.toUpperCase().includes(name.toUpperCase()) ||
+            name.toUpperCase().includes(s.name.toUpperCase()))
+      );
+      if (std?.group && /Kelompok\s*\d+/i.test(std.group)) {
+        matchedGroups.push(std.group);
+      }
+    }
+    if (matchedGroups.length > 0) {
+      const freq: Record<string, number> = {};
+      matchedGroups.forEach((g) => {
+        freq[g] = (freq[g] || 0) + 1;
+      });
+      return Object.keys(freq).reduce((a, b) => (freq[a] >= freq[b] ? a : b));
+    }
+    return null;
+  };
+
+  // 3. Signature check for invalid "Kelompok tutor" in task.group (specifically in 8D or general)
+  if (task.group && /tutor/i.test(task.group)) {
+    if (normalizedCls === '8D') {
+      return 'Kelompok 8';
+    }
+    const fromAtt = getGroupByAttendance();
+    if (fromAtt) return fromAtt;
+    const fromNames = getGroupByStudentNames();
+    if (fromNames) return fromNames;
+    return 'Kelompok 8';
+  }
+
+  // 4. Cross-reference attendance numbers with authentic roster
+  const rosterGroupByAtt = getGroupByAttendance();
+  if (rosterGroupByAtt) {
+    return rosterGroupByAtt;
+  }
+
+  // 5. Explicit group in taskTitle (only if strictly numeric and not a title keyword)
+  if (task.taskTitle) {
+    const titleGroupMatches = task.taskTitle.matchAll(
+      /(?:Kelompok|Klp|Group|Grup)\s*[:=\s#\-]*([0-9]+|[IVXLCDMivxlcdm]+|\b(?:satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\b)/gi
+    );
+    for (const match of titleGroupMatches) {
+      const candidate = match[1];
+      if (candidate && !INVALID_GROUP_WORDS.includes(candidate.toLowerCase()) && !/^8[A-Ha-h]$/i.test(candidate)) {
+        const digit = normalizeGroupDigit(candidate);
+        if (digit !== null) {
+          return `Kelompok ${digit}`;
+        }
+      }
+    }
+  }
+
+  // 6. Cross-reference student names in roster
+  const rosterGroupByNames = getGroupByStudentNames();
+  if (rosterGroupByNames) {
+    return rosterGroupByNames;
+  }
+
+  return 'Kelompok 1';
+}
+
 export function getTaskClassAndGroupRank(task: TaskSubmission, students: Student[] = []) {
   const parsed = parseSubmissionDetails(task, students);
   const normCls = normalizeClass(parsed.className);
@@ -196,76 +412,7 @@ export function parseSubmissionDetails(
   }
   const normalizedCls = normalizeClass(resolvedClass);
 
-  // 2. Resolve Group
-  let groupName = task.group || 'Kelompok 1';
-  const groupMatchInDesc = rawDesc.match(/Kelompok\s*[:=\s]*([0-9A-Za-z]+)/i);
-  if (groupMatchInDesc) {
-    groupName = `Kelompok ${groupMatchInDesc[1]}`;
-  } else if (task.taskTitle && task.taskTitle.match(/Kelompok\s*[:=\s]*([0-9A-Za-z]+)/i)) {
-    const m = task.taskTitle.match(/Kelompok\s*[:=\s]*([0-9A-Za-z]+)/i);
-    if (m) groupName = `Kelompok ${m[1]}`;
-  }
-
-  // 3. Extract Links
-  let linkYt = '';
-  let linkWeb = '';
-  let linkCanva = '';
-  let linkPdf = '';
-
-  const ytMatch = rawDesc.match(/(?:Link\s*yt|Youtube|YouTube)\s*[:=\s]*([^\n\r]+)/i);
-  if (ytMatch && ytMatch[1] && ytMatch[1].trim() !== '-' && ytMatch[1].trim() !== '—') {
-    const url = ytMatch[1].trim().match(/https?:\/\/[^\s]+/i);
-    if (url) linkYt = url[0];
-  }
-
-  const webMatch = rawDesc.match(/(?:Link\s*web|Web|Website)\s*[:=\s]*([^\n\r]+)/i);
-  if (webMatch && webMatch[1] && webMatch[1].trim() !== '-' && webMatch[1].trim() !== '—') {
-    const url = webMatch[1].trim().match(/https?:\/\/[^\s]+/i);
-    if (url) linkWeb = url[0];
-  }
-
-  const canvaMatch = rawDesc.match(/(?:Link\s*canva|Canva)\s*[:=\s]*([^\n\r]+)/i);
-  if (canvaMatch && canvaMatch[1] && canvaMatch[1].trim() !== '-' && canvaMatch[1].trim() !== '—') {
-    const url = canvaMatch[1].trim().match(/https?:\/\/[^\s]+/i);
-    if (url) linkCanva = url[0];
-  }
-
-  const pdfMatch = rawDesc.match(/(?:Pdf|PDF|Link\s*pdf|Dokumen|Drive)\s*[:=\s]*([^\n\r]+)/i);
-  if (pdfMatch && pdfMatch[1] && pdfMatch[1].trim() !== '-' && pdfMatch[1].trim() !== '—') {
-    const url = pdfMatch[1].trim().match(/https?:\/\/[^\s]+/i);
-    if (url) linkPdf = url[0];
-  }
-
-  // Fallback direct URL extract if specific labels were not used
-  const allUrls = rawDesc.match(/https?:\/\/[^\s]+/gi) || [];
-  allUrls.forEach((url) => {
-    if (url.includes('youtube.com') || url.includes('youtu.be')) {
-      if (!linkYt) linkYt = url;
-    } else if (url.includes('canva.com')) {
-      if (!linkCanva) linkCanva = url;
-    } else if (url.includes('drive.google.com') || url.toLowerCase().includes('.pdf')) {
-      if (!linkPdf) linkPdf = url;
-    } else if (
-      url.includes('netlify.app') ||
-      url.includes('vercel.app') ||
-      url.includes('github.io') ||
-      url.includes('.site') ||
-      url.includes('.me') ||
-      url.includes('glitch.me') ||
-      url.includes('surge.sh')
-    ) {
-      if (!linkWeb) linkWeb = url;
-    } else if (!linkWeb) {
-      linkWeb = url;
-    }
-  });
-
-  // Default demo link if none provided
-  if (!linkWeb && !linkPdf && !linkYt && !linkCanva) {
-    linkWeb = 'https://kantin-mesya.netlify.app/';
-  }
-
-  // 4. Resolve Attendance Numbers and Member Names
+  // 2. Extract Attendance Numbers early to assist group resolution
   const attendanceNumbers: string[] = [];
 
   // Check explicit group members array first
@@ -322,6 +469,74 @@ export function parseSubmissionDetails(
         }
       });
     }
+  }
+
+  // 3. Resolve Group accurately across all classes
+  const groupName = resolveTaskGroupNumber(
+    task,
+    rawDesc,
+    resolvedClass,
+    students,
+    attendanceNumbers
+  );
+
+  // 4. Extract Links
+  let linkYt = '';
+  let linkWeb = '';
+  let linkCanva = '';
+  let linkPdf = '';
+
+  const ytMatch = rawDesc.match(/(?:Link\s*yt|Youtube|YouTube)\s*[:=\s]*([^\n\r]+)/i);
+  if (ytMatch && ytMatch[1] && ytMatch[1].trim() !== '-' && ytMatch[1].trim() !== '—') {
+    const url = ytMatch[1].trim().match(/https?:\/\/[^\s]+/i);
+    if (url) linkYt = url[0];
+  }
+
+  const webMatch = rawDesc.match(/(?:Link\s*web|Web|Website)\s*[:=\s]*([^\n\r]+)/i);
+  if (webMatch && webMatch[1] && webMatch[1].trim() !== '-' && webMatch[1].trim() !== '—') {
+    const url = webMatch[1].trim().match(/https?:\/\/[^\s]+/i);
+    if (url) linkWeb = url[0];
+  }
+
+  const canvaMatch = rawDesc.match(/(?:Link\s*canva|Canva)\s*[:=\s]*([^\n\r]+)/i);
+  if (canvaMatch && canvaMatch[1] && canvaMatch[1].trim() !== '-' && canvaMatch[1].trim() !== '—') {
+    const url = canvaMatch[1].trim().match(/https?:\/\/[^\s]+/i);
+    if (url) linkCanva = url[0];
+  }
+
+  const pdfMatch = rawDesc.match(/(?:Pdf|PDF|Link\s*pdf|Dokumen|Drive)\s*[:=\s]*([^\n\r]+)/i);
+  if (pdfMatch && pdfMatch[1] && pdfMatch[1].trim() !== '-' && pdfMatch[1].trim() !== '—') {
+    const url = pdfMatch[1].trim().match(/https?:\/\/[^\s]+/i);
+    if (url) linkPdf = url[0];
+  }
+
+  // Fallback direct URL extract if specific labels were not used
+  const allUrls = rawDesc.match(/https?:\/\/[^\s]+/gi) || [];
+  allUrls.forEach((url) => {
+    if (url.includes('youtube.com') || url.includes('youtu.be')) {
+      if (!linkYt) linkYt = url;
+    } else if (url.includes('canva.com')) {
+      if (!linkCanva) linkCanva = url;
+    } else if (url.includes('drive.google.com') || url.toLowerCase().includes('.pdf')) {
+      if (!linkPdf) linkPdf = url;
+    } else if (
+      url.includes('netlify.app') ||
+      url.includes('vercel.app') ||
+      url.includes('github.io') ||
+      url.includes('.site') ||
+      url.includes('.me') ||
+      url.includes('glitch.me') ||
+      url.includes('surge.sh')
+    ) {
+      if (!linkWeb) linkWeb = url;
+    } else if (!linkWeb) {
+      linkWeb = url;
+    }
+  });
+
+  // Default demo link if none provided
+  if (!linkWeb && !linkPdf && !linkYt && !linkCanva) {
+    linkWeb = 'https://kantin-mesya.netlify.app/';
   }
 
   // 5. Build Member list by matching Attendance Numbers with authentic Student database

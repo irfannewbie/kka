@@ -391,18 +391,31 @@ export async function loadSpreadsheetData(
           if (!resolvedClass && groupVal.match(/8[A-Ha-h]/i)) {
             resolvedClass = `Kelas ${groupVal.match(/8[A-Ha-h]/i)![0].toUpperCase()}`;
           }
+          if (!resolvedClass && taskTitle.match(/8[A-Ha-h]/i)) {
+            resolvedClass = `Kelas ${taskTitle.match(/8[A-Ha-h]/i)![0].toUpperCase()}`;
+          }
           if (!resolvedClass) {
             // Find student in authentic roster
-            const firstPerson = studentName.split(',')[0].replace(/\(.*?\)/g, '').trim();
-            const matchStd = ALL_255_STUDENTS.find(
-              (s) =>
-                s.name.toUpperCase().includes(firstPerson.toUpperCase()) ||
-                firstPerson.toUpperCase().includes(s.name.toUpperCase())
-            );
-            if (matchStd) {
-              resolvedClass = matchStd.className;
-            } else {
-              resolvedClass = 'Kelas 8F';
+            const firstPerson = studentName.split(/[,;\n]/)[0].replace(/\(.*?\)/g, '').trim();
+            if (firstPerson) {
+              const matchStd = ALL_255_STUDENTS.find(
+                (s) =>
+                  s.name.toUpperCase().includes(firstPerson.toUpperCase()) ||
+                  firstPerson.toUpperCase().includes(s.name.toUpperCase())
+              );
+              if (matchStd) {
+                resolvedClass = matchStd.className;
+              }
+            }
+          }
+          if (!resolvedClass) {
+            resolvedClass = 'Kelas 8A';
+          }
+
+          // Sanitize groupVal if literally written as "tutor"
+          if (/tutor/i.test(groupVal)) {
+            if (resolvedClass.includes('8D')) {
+              groupVal = 'Kelompok 8';
             }
           }
 

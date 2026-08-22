@@ -15,7 +15,7 @@ import {
   UploadCloud,
 } from 'lucide-react';
 import { TaskSubmission, Student } from '../types';
-import { sortTasksByClassAndGroup, getTaskClassAndGroupRank } from '../utils/studentResolver';
+import { sortTasksByClassAndGroup, getTaskClassAndGroupRank, parseSubmissionDetails } from '../utils/studentResolver';
 
 interface TaskListViewProps {
   tasks: TaskSubmission[];
@@ -209,28 +209,30 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
                   </td>
                 </tr>
               ) : (
-                filteredTasks.map((t, idx) => (
-                  <tr key={`task-row-${t.id || ''}-${idx}`} className="hover:bg-[#F2EFEB] transition-colors">
-                    {/* Student */}
-                    <td className="px-4 py-3">
-                      <div className="font-bold text-sm text-[#1a1a1a]">{t.studentName}</div>
-                      <div className="font-mono-code text-[10px] text-[#2e59e6] font-bold">
-                        {t.studentNis ? `#${t.studentNis}` : t.attendanceNo ? `#Absen-${t.attendanceNo}` : '#-'}
-                      </div>
-                    </td>
+                filteredTasks.map((t, idx) => {
+                  const parsed = parseSubmissionDetails(t, students);
+                  return (
+                    <tr key={`task-row-${t.id || ''}-${idx}`} className="hover:bg-[#F2EFEB] transition-colors">
+                      {/* Student */}
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-sm text-[#1a1a1a]">{t.studentName}</div>
+                        <div className="font-mono-code text-[10px] text-[#2e59e6] font-bold">
+                          {t.studentNis ? `#${t.studentNis}` : t.attendanceNo ? `#Absen-${t.attendanceNo}` : '#-'}
+                        </div>
+                      </td>
 
-                    {/* Task Title */}
-                    <td className="px-4 py-3">
-                      <div className="font-bold text-xs text-[#1a1a1a]">{t.taskTitle}</div>
-                      <div className="font-mono-code text-[10px] text-slate-500">{t.submittedAt}</div>
-                    </td>
+                      {/* Task Title */}
+                      <td className="px-4 py-3">
+                        <div className="font-bold text-xs text-[#1a1a1a]">{parsed.title || t.taskTitle}</div>
+                        <div className="font-mono-code text-[10px] text-slate-500">{t.submittedAt}</div>
+                      </td>
 
-                    {/* Group & Class */}
-                    <td className="px-3 py-3 font-mono-code">
-                      <span className="inline-block px-1.5 py-0.5 border border-[#1a1a1a] bg-[#F2EFEB] text-[10px] font-bold">
-                        {t.group} {t.className ? `• ${t.className}` : ''}
-                      </span>
-                    </td>
+                      {/* Group & Class */}
+                      <td className="px-3 py-3 font-mono-code">
+                        <span className="inline-block px-1.5 py-0.5 border border-[#1a1a1a] bg-[#F2EFEB] text-[10px] font-bold">
+                          {parsed.groupName} {parsed.className ? `• ${parsed.className}` : ''}
+                        </span>
+                      </td>
 
                     {/* Link */}
                     <td className="px-3 py-3 font-mono-code">
@@ -272,8 +274,9 @@ export const TaskListView: React.FC<TaskListViewProps> = ({
                       </button>
                     </td>
                   </tr>
-                ))
-              )}
+                );
+              })
+            )}
             </tbody>
           </table>
         </div>
