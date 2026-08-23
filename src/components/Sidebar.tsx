@@ -160,36 +160,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Footer Anchors & User Profile */}
-      <div className="p-4 bg-black/40 border-t border-white/20 space-y-3 font-mono-code">
-        <div className="flex items-center justify-between text-[10px] text-slate-400">
-          <span>DATA: G-SHEET (255 SISWA)</span>
-          <span className="flex items-center gap-1.5 text-emerald-400">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping inline-block" />
-            TERKONEKSI
-          </span>
-        </div>
-
-        <div className="flex items-center justify-between pt-2 border-t border-white/10 gap-2">
-          <div className="min-w-0">
-            <p className="text-xs font-bold text-white uppercase truncate">
-              {user?.displayName || 'Irfan (Guru)'}
-            </p>
-            <p className="text-[10px] text-[#2e59e6] font-bold truncate">
-              {user?.email || 'irfannewbie7@gmail.com'}
-            </p>
-            <p className="text-[9px] text-slate-400 uppercase mt-0.5">ADMINISTRATOR OTOMATIS</p>
-          </div>
-
-          <button
-            onClick={onLogout}
-            className="text-[10px] font-bold text-rose-400 hover:text-rose-300 border border-rose-400/40 px-2 py-1 shrink-0 cursor-pointer"
-            title="Keluar"
-          >
-            LOGOUT
-          </button>
-        </div>
-      </div>
+      {/* Navigation list ends */}
     </div>
   );
 

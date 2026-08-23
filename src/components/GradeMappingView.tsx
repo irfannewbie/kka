@@ -601,21 +601,6 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
               <span>BUKA GOOGLE SHEET</span>
               <ExternalLink className="h-3 w-3 text-slate-400" />
             </a>
-
-            {!token ? (
-              <button
-                onClick={onLogin}
-                className="flex items-center gap-1.5 px-3 py-2 text-xs font-mono-code font-bold bg-[#2e59e6] hover:bg-blue-700 text-white border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer"
-              >
-                <Zap className="h-3.5 w-3.5" />
-                <span>HUBUNGKAN GOOGLE</span>
-              </button>
-            ) : (
-              <div className="flex items-center gap-1.5 px-3 py-2 text-xs font-mono-code font-bold bg-emerald-50 text-emerald-800 border-2 border-emerald-600 shadow-[2px_2px_0px_#1a1a1a]">
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600" />
-                <span>GOOGLE TERHUBUNG</span>
-              </div>
-            )}
           </div>
         </div>
       </div>

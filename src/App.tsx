@@ -703,7 +703,7 @@ export default function App() {
             </a>
           </div>
           <div className="text-slate-600">
-            © 2026 SHOWCASE — REKAYASA PERANGKAT LUNAK
+            © 2026
           </div>
         </footer>
       </div>
