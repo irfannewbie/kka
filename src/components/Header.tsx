@@ -10,8 +10,8 @@ import {
 import { User } from 'firebase/auth';
 
 interface HeaderProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek', path?: string) => void;
   user: User | null;
   token: string | null;
   onLogin: () => void;
@@ -48,7 +48,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMobileSidebar,
   onOpenSubmitModal,
 }) => {
-  const isMasterMode = activeTab !== 'showcase';
+  const isMasterMode = activeTab !== 'showcase' && activeTab !== 'cek';
+  const isCekMode = activeTab === 'cek';
 
   return (
     <header
@@ -73,9 +74,14 @@ export const Header: React.FC<HeaderProps> = ({
           className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-2"
         >
           <span>[ SISWAHUB v2.0 ]</span>
-          {!isMasterMode && (
+          {!isMasterMode && !isCekMode && (
             <span className="hidden sm:inline-block text-[11px] font-normal text-slate-500 font-mono-code border-l border-[#1a1a1a] pl-2">
               SHOWCASE KARYA SISWA
+            </span>
+          )}
+          {isCekMode && (
+            <span className="hidden sm:inline-block text-[11px] font-bold text-[#2e59e6] font-mono-code border-l border-[#1a1a1a] pl-2">
+              CEK STATUS TUGAS SISWA
             </span>
           )}
         </div>
@@ -88,6 +94,12 @@ export const Header: React.FC<HeaderProps> = ({
               className="font-mono-code text-xs px-2.5 py-1 border border-transparent hover:border-[#1a1a1a] text-slate-600 hover:text-[#1a1a1a] transition-all flex items-center gap-1 cursor-pointer"
             >
               <ArrowLeft className="h-3 w-3" /> KE SHOWCASE (/)
+            </button>
+            <button
+              onClick={() => onNavigate('cek', '/cek')}
+              className="font-mono-code text-xs px-2.5 py-1 border border-[#2e59e6] text-[#2e59e6] hover:bg-blue-50 transition-all font-bold cursor-pointer"
+            >
+              PORTAL CEK (/cek)
             </button>
             <button
               onClick={() => onNavigate('master', '/master')}

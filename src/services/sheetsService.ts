@@ -1019,3 +1019,160 @@ function letterToColumn(letter: string): number {
   return Math.max(0, column - 1);
 }
 
+export interface StudentTaskCheckItem {
+  id: string;
+  category: 'Koding / KKA' | 'Informatika' | 'Projek Web';
+  taskName: string;
+  columnLetter?: string;
+  isCompleted: boolean; // true = 'v', false = 'x'
+  score?: number | string | null;
+  submittedAt?: string;
+  linkOrDescription?: string;
+  notes?: string;
+}
+
+// Fetch all task/grade completion status for an individual student directly from Spreadsheet
+export async function fetchStudentAssignmentStatus(
+  spreadsheetId: string,
+  className: string,
+  attendanceNo: string,
+  studentNis: string,
+  studentName?: string
+): Promise<{
+  success: boolean;
+  tasks: StudentTaskCheckItem[];
+  message?: string;
+}> {
+  try {
+    const rawClass = className.replace(/^Kelas\s*/i, '').trim(); // e.g. '8G' or '8A'
+    const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
+
+    // 1. Fetch header rows (A3:Z5) to get actual task titles like "Tugas 1 - KKA - Algoritma"
+    const taskHeaders: { [colIdx: number]: string } = {};
+    try {
+      const headerUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&range=A3:Z5&sheet=${encodeURIComponent(rawClass)}`;
+      const hRes = await fetch(headerUrl);
+      if (hRes.ok) {
+        const hText = await hRes.text();
+        const fb = hText.indexOf('{');
+        const lb = hText.lastIndexOf('}');
+        if (fb !== -1 && lb !== -1) {
+          const hData = JSON.parse(hText.substring(fb, lb + 1));
+          if (hData.status === 'ok' && hData.table && hData.table.rows) {
+            for (const r of hData.table.rows) {
+              if (!r.c) continue;
+              for (let c = 4; c < r.c.length; c++) {
+                const val = r.c[c] ? String(r.c[c].v || '').trim() : '';
+                if (val && val !== '-' && val.toUpperCase() !== 'ASPEK' && !/^\d+$/.test(val)) {
+                  taskHeaders[c] = val;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch header range:', e);
+    }
+
+    // 2. Fetch all student rows via GViz
+    const classRows = await fetchPublicGvizData(targetSpreadsheetId, [rawClass, `Kelas ${rawClass}`, `KELAS ${rawClass}`]);
+    
+    const taskItems: StudentTaskCheckItem[] = [];
+
+    if (classRows && classRows.length > 0) {
+      // Filter student rows (row with first column as number 1..50)
+      const studentRows = classRows.filter((r) => {
+        const n = parseInt(String(r[0] || '').trim(), 10);
+        return !isNaN(n) && n >= 1 && n <= 50;
+      });
+
+      const maxCols = Math.max(...classRows.map((r) => r.length), 0);
+      const detectedTaskColumns: { colIdx: number; colLetter: string; title: string }[] = [];
+
+      for (let c = 4; c < maxCols; c++) {
+        const colLetter = columnToLetter(c);
+        const hasHeader = !!taskHeaders[c];
+        const hasStudentData = studentRows.some((r) => {
+          const v = r[c];
+          return v !== null && v !== undefined && String(v).trim() !== '' && String(v).trim() !== '-';
+        });
+
+        // Only include if there is a real task title or real student data in this column
+        if (hasHeader || hasStudentData) {
+          detectedTaskColumns.push({
+            colIdx: c,
+            colLetter,
+            title: taskHeaders[c] || `Tugas ${detectedTaskColumns.length + 1}`,
+          });
+        }
+      }
+
+      // Find the row for this student (matching attendanceNo or NIPD or Name)
+      const targetAttNum = parseInt(attendanceNo, 10);
+      const studentRow = studentRows.find((r) => {
+        const col0Num = parseInt(String(r[0] || '').trim(), 10);
+        const col1Nis = String(r[1] || '').trim();
+        const col3Name = String(r[3] || '').trim().toLowerCase();
+
+        return (
+          (!isNaN(targetAttNum) && col0Num === targetAttNum) ||
+          (studentNis && col1Nis === studentNis.trim()) ||
+          (studentName && col3Name && (col3Name.includes(studentName.trim().toLowerCase()) || studentName.trim().toLowerCase().includes(col3Name)))
+        );
+      });
+
+      // Populate task items strictly according to detected columns in the spreadsheet
+      for (const taskCol of detectedTaskColumns) {
+        let cellScore: any = null;
+        let isDone = false;
+
+        if (studentRow && studentRow.length > taskCol.colIdx) {
+          const val = studentRow[taskCol.colIdx];
+          if (val !== null && val !== undefined) {
+            const strVal = String(val).trim();
+            if (strVal !== '' && strVal !== '-' && strVal !== '0') {
+              const numVal = Number(strVal);
+              if (!isNaN(numVal) && numVal > 0) {
+                cellScore = numVal;
+                isDone = true;
+              } else if (
+                strVal.toLowerCase() === 'v' ||
+                strVal.toLowerCase() === 'ya' ||
+                strVal.toLowerCase() === 'selesai' ||
+                strVal.toLowerCase() === 'sudah' ||
+                strVal.length > 0
+              ) {
+                cellScore = strVal;
+                isDone = true;
+              }
+            }
+          }
+        }
+
+        taskItems.push({
+          id: `task-col-${taskCol.colLetter.toLowerCase()}`,
+          category: 'Koding / KKA',
+          taskName: taskCol.title,
+          columnLetter: taskCol.colLetter,
+          isCompleted: isDone,
+          score: cellScore,
+          notes: isDone ? 'Sudah Mengerjakan' : 'Belum Mengerjakan',
+        });
+      }
+    }
+
+    return {
+      success: true,
+      tasks: taskItems,
+    };
+  } catch (err: any) {
+    console.error('Error fetching student assignment status:', err);
+    return {
+      success: false,
+      tasks: [],
+      message: err?.message || 'Gagal memuat status tugas dari spreadsheet.',
+    };
+  }
+}
+

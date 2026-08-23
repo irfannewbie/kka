@@ -26,6 +26,7 @@ import { TaskListView } from './components/TaskListView';
 import { StudentManagerView } from './components/StudentManagerView';
 import { GradeMappingView } from './components/GradeMappingView';
 import { SpreadsheetIframeView } from './components/SpreadsheetIframeView';
+import { StudentCheckView } from './components/StudentCheckView';
 import { TaskSubmissionModal } from './components/TaskSubmissionModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
 import { ConfirmationModal } from './components/ConfirmationModal';
@@ -55,8 +56,9 @@ try {
 }
 
 // Helper to determine route tab from pathname
-const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' => {
+const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' => {
   const cleanPath = (path || '/').toLowerCase().replace(/\/$/, '') || '/';
+  if (cleanPath === '/cek' || cleanPath === '/check' || cleanPath === '/login-siswa') return 'cek';
   if (cleanPath === '/master') return 'master';
   if (cleanPath === '/master/students' || cleanPath === '/students') return 'students';
   if (cleanPath === '/master/grades' || cleanPath === '/grades') return 'grades';
@@ -67,7 +69,7 @@ const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'studen
 
 export default function App() {
   // Navigation state initialized based on current URL pathname
-  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet'>(() => {
+  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek'>(() => {
     return getTabFromPath(window.location.pathname);
   });
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
@@ -84,10 +86,14 @@ export default function App() {
   }, []);
 
   // Programmatic navigation that updates the browser URL
-  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet', targetPath?: string) => {
+  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek', targetPath?: string) => {
     setActiveTab(tab);
-    const resolvedPath =
-      targetPath || (tab === 'showcase' ? '/' : `/master${tab === 'master' ? '' : `/${tab}`}`);
+    let resolvedPath = targetPath;
+    if (!resolvedPath) {
+      if (tab === 'showcase') resolvedPath = '/';
+      else if (tab === 'cek') resolvedPath = '/cek';
+      else resolvedPath = `/master${tab === 'master' ? '' : `/${tab}`}`;
+    }
     if (window.location.pathname !== resolvedPath) {
       window.history.pushState({}, '', resolvedPath);
     }
@@ -538,8 +544,8 @@ export default function App() {
 
   return (
     <div className="flex h-screen w-full bg-[#F2EFEB] font-sans overflow-hidden text-[#1a1a1a]">
-      {/* High Density Left Sidebar (Mounted ONLY for Master Views) */}
-      {activeTab !== 'showcase' && (
+      {/* High Density Left Sidebar (Mounted ONLY for Master Admin Views) */}
+      {activeTab !== 'showcase' && activeTab !== 'cek' && (
         <Sidebar
           activeTab={activeTab}
           onNavigate={handleNavigate}
@@ -579,7 +585,7 @@ export default function App() {
         />
 
         {/* Real-time Toast Floating Alert (Only in Master Mode) */}
-        {toastAlert && activeTab !== 'showcase' && (
+        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && (
           <div className="fixed top-16 right-4 z-50 max-w-sm bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-3 font-mono-code animate-in slide-in-from-top-4 duration-200">
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
@@ -619,6 +625,15 @@ export default function App() {
                 students={students}
                 tasks={tasks}
                 spreadsheetUrl={spreadsheetUrl}
+              />
+            )}
+
+            {activeTab === 'cek' && (
+              <StudentCheckView
+                students={students}
+                spreadsheetId={spreadsheetId}
+                spreadsheetUrl={spreadsheetUrl}
+                onNavigateHome={() => handleNavigate('showcase', '/')}
               />
             )}
 
