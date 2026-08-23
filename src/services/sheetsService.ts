@@ -830,44 +830,51 @@ export async function syncGradesToClassSheet(
 
     const normalizedTarget = (targetColumn || 'AUTO').toUpperCase().trim();
     if (normalizedTarget !== 'AUTO' && /^[A-Z]{1,2}$/.test(normalizedTarget)) {
-      // User specified an explicit column letter (e.g. 'E', 'F', 'G')
+      // User or UI specified an explicit column letter (e.g. 'E', 'F', 'G', 'H')
       targetColIdx = letterToColumn(normalizedTarget);
     } else {
       // AUTO detection:
-      // First, check if taskTitle is already written in Row 5 (E5..R5) or Row 4
+      // Locate Row 5 (index 4) and Row 4 (index 3)
       const row5 = existingRows[4] || [];
       const row4 = existingRows[3] || [];
-      let foundCol = -1;
+      let foundExactCol = -1;
 
-      for (let c = 4; c < 20; c++) {
+      const cleanTitle = (taskTitle || '').trim().toLowerCase();
+      // Only match if the title is EXACTLY identical (case-insensitive) to prevent accidental overwrites
+      for (let c = 4; c <= 17; c++) {
         const val5 = String(row5[c] || '').trim().toLowerCase();
-        const val4 = String(row4[c] || '').trim().toLowerCase();
-        const cleanTitle = taskTitle.trim().toLowerCase();
-        if (val5 === cleanTitle || (val5 && cleanTitle.includes(val5)) || (cleanTitle && val5.includes(cleanTitle))) {
-          foundCol = c;
+        if (cleanTitle && val5 && val5 === cleanTitle) {
+          foundExactCol = c;
           break;
         }
       }
 
-      if (foundCol !== -1) {
-        targetColIdx = foundCol;
+      if (foundExactCol !== -1) {
+        targetColIdx = foundExactCol;
       } else {
-        // Find the first aspect column starting from Column E (index 4) to R (index 17)
-        // that is empty for student rows (Row 6 to 37, index 5 to 36)
+        // Find the first unoccupied column starting from Column E (idx 4) to R (idx 17)
+        // A column is occupied if it has a non-empty header in Row 5 (not ASPEK or class code) OR has student scores
         let firstAvailableCol = -1;
         for (let c = 4; c <= 17; c++) {
-          // Check if there are scores in student rows 6..37 for column c
+          const headerVal = String(row5[c] || '').trim();
+          const hasHeader =
+            headerVal !== '' &&
+            headerVal !== '-' &&
+            headerVal.toUpperCase() !== 'ASPEK' &&
+            headerVal.toUpperCase() !== rawClass.toUpperCase() &&
+            !/^\d+$/.test(headerVal);
+
           let hasScores = false;
           for (let r = 5; r < Math.min(existingRows.length, 38); r++) {
             const rowData = existingRows[r] || [];
             const cellVal = String(rowData[c] || '').trim();
-            if (cellVal !== '' && !isNaN(Number(cellVal))) {
+            if (cellVal !== '' && cellVal !== '-' && cellVal !== '0') {
               hasScores = true;
               break;
             }
           }
 
-          if (!hasScores) {
+          if (!hasHeader && !hasScores) {
             firstAvailableCol = c;
             break;
           }
@@ -876,7 +883,7 @@ export async function syncGradesToClassSheet(
         if (firstAvailableCol !== -1) {
           targetColIdx = firstAvailableCol;
         } else {
-          // If all E..R are occupied, use Column S or next
+          // If all E..R are occupied, use Column S (idx 18)
           targetColIdx = 18;
         }
       }
@@ -1175,4 +1182,139 @@ export async function fetchStudentAssignmentStatus(
     };
   }
 }
+
+export interface DetectedColumnDetail {
+  colIdx: number;
+  colLetter: string;
+  headerTitle: string;
+  hasScores: boolean;
+  isOccupied: boolean;
+  scoreCount: number;
+}
+
+export interface ClassColumnDetectionResult {
+  success: boolean;
+  className: string;
+  columns: DetectedColumnDetail[];
+  occupiedColumns: DetectedColumnDetail[];
+  nextAvailableColumn: string; // e.g. 'F'
+  nextTaskNumber: number; // e.g. 2
+  lastTaskTitle?: string;
+  message?: string;
+}
+
+// Detect existing task columns and find the next available column for a class sheet
+export async function detectClassTaskColumns(
+  spreadsheetId: string,
+  className: string
+): Promise<ClassColumnDetectionResult> {
+  const rawClass = className.replace(/^Kelas\s*/i, '').trim();
+  const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
+
+  try {
+    // 1. Fetch header rows (A3:Z5) to get actual task titles like "Tugas 1 - KKA - Algoritma"
+    const taskHeaders: { [colIdx: number]: string } = {};
+    try {
+      const headerUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&range=A3:Z5&sheet=${encodeURIComponent(rawClass)}`;
+      const hRes = await fetch(headerUrl);
+      if (hRes.ok) {
+        const hText = await hRes.text();
+        const fb = hText.indexOf('{');
+        const lb = hText.lastIndexOf('}');
+        if (fb !== -1 && lb !== -1) {
+          const hData = JSON.parse(hText.substring(fb, lb + 1));
+          if (hData.status === 'ok' && hData.table && hData.table.rows) {
+            for (const r of hData.table.rows) {
+              if (!r.c) continue;
+              for (let c = 4; c < r.c.length; c++) {
+                const val = r.c[c] ? String(r.c[c].v || '').trim() : '';
+                if (val && val !== '-' && val.toUpperCase() !== 'ASPEK' && !/^\d+$/.test(val)) {
+                  taskHeaders[c] = val;
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to fetch header range in detectClassTaskColumns:', e);
+    }
+
+    // 2. Fetch full sheet rows via GViz
+    const classRows = await fetchPublicGvizData(targetSpreadsheetId, [rawClass, `Kelas ${rawClass}`, `KELAS ${rawClass}`]);
+    const studentRows = classRows.filter((r) => {
+      const n = parseInt(String(r[0] || '').trim(), 10);
+      return !isNaN(n) && n >= 1 && n <= 50;
+    });
+
+    const columns: DetectedColumnDetail[] = [];
+
+    // Scan aspect task columns E (idx 4) through R (idx 17)
+    for (let c = 4; c <= 17; c++) {
+      const colLetter = columnToLetter(c);
+      let headerTitle = taskHeaders[c] || '';
+      if (
+        headerTitle.toUpperCase() === 'ASPEK' ||
+        headerTitle.toUpperCase() === rawClass.toUpperCase() ||
+        /^\d+$/.test(headerTitle)
+      ) {
+        headerTitle = '';
+      }
+
+      let scoreCount = 0;
+
+      for (const r of studentRows) {
+        const v = r[c];
+        if (v !== null && v !== undefined && String(v).trim() !== '' && String(v).trim() !== '-' && String(v).trim() !== '0') {
+          scoreCount++;
+        }
+      }
+
+      const hasScores = scoreCount > 0;
+      const isOccupied = !!headerTitle || hasScores;
+
+      columns.push({
+        colIdx: c,
+        colLetter,
+        headerTitle,
+        hasScores,
+        isOccupied,
+        scoreCount,
+      });
+    }
+
+    const occupiedColumns = columns.filter((c) => c.isOccupied);
+    const nextCol = columns.find((c) => !c.isOccupied) || {
+      colIdx: 18,
+      colLetter: 'S',
+      headerTitle: '',
+      hasScores: false,
+      isOccupied: false,
+      scoreCount: 0,
+    };
+    const lastOccupied = occupiedColumns[occupiedColumns.length - 1];
+
+    return {
+      success: true,
+      className: rawClass,
+      columns,
+      occupiedColumns,
+      nextAvailableColumn: nextCol.colLetter,
+      nextTaskNumber: occupiedColumns.length + 1,
+      lastTaskTitle: lastOccupied?.headerTitle || (lastOccupied ? `Tugas Kolom ${lastOccupied.colLetter}` : undefined),
+    };
+  } catch (err: any) {
+    console.error('Error detecting class task columns:', err);
+    return {
+      success: false,
+      className: rawClass,
+      columns: [],
+      occupiedColumns: [],
+      nextAvailableColumn: 'E',
+      nextTaskNumber: 1,
+      message: err?.message || 'Gagal mendeteksi kolom spreadsheet.',
+    };
+  }
+}
+
 

@@ -38,7 +38,13 @@ import {
   ALL_CLASSES,
   getStudentsByClass,
 } from '../data/studentsAll';
-import { syncGradesToClassSheet, clearColumnInClassSheet, StudentGradeItem } from '../services/sheetsService';
+import {
+  syncGradesToClassSheet,
+  clearColumnInClassSheet,
+  StudentGradeItem,
+  detectClassTaskColumns,
+  ClassColumnDetectionResult,
+} from '../services/sheetsService';
 
 interface GradeMappingViewProps {
   spreadsheetId: string;
@@ -58,12 +64,41 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
   // 1. Grade & Class State
   const [selectedGrade, setSelectedGrade] = useState<'7' | '8'>('8');
   const [selectedClass, setSelectedClass] = useState<string>('Kelas 8G');
-  const [taskTitle, setTaskTitle] = useState<string>('Tugas 1');
-  const [targetColumn, setTargetColumn] = useState<string>('E');
+  const [taskTitle, setTaskTitle] = useState<string>('Tugas 1 - Informatika - Analisis Data');
+  const [targetColumn, setTargetColumn] = useState<string>('AUTO');
   const [kkm, setKkm] = useState<number>(75);
   const [assessmentDate, setAssessmentDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
+
+  // Column auto-detection state from Google Sheets
+  const [columnDetection, setColumnDetection] = useState<ClassColumnDetectionResult | null>(null);
+  const [isDetectingCols, setIsDetectingCols] = useState<boolean>(false);
+
+  // Fetch / detect occupied columns and next available column for selected class
+  const loadClassColumns = async (className: string) => {
+    setIsDetectingCols(true);
+    try {
+      const res = await detectClassTaskColumns(spreadsheetId, className);
+      setColumnDetection(res);
+    } catch (err) {
+      console.warn('Failed to detect columns:', err);
+    } finally {
+      setIsDetectingCols(false);
+    }
+  };
+
+  useEffect(() => {
+    loadClassColumns(selectedClass);
+  }, [selectedClass, spreadsheetId]);
+
+  // Determine effective column letter
+  const effectiveColLetter = useMemo(() => {
+    if (targetColumn === 'AUTO') {
+      return columnDetection?.nextAvailableColumn || 'E';
+    }
+    return targetColumn;
+  }, [targetColumn, columnDetection]);
 
   // 2. Parser Input State (starts clean/empty)
   const [rawInputText, setRawInputText] = useState<string>('');
@@ -498,8 +533,9 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
       return;
     }
 
+    const colToUse = targetColumn === 'AUTO' ? effectiveColLetter : targetColumn;
     setIsSyncingToSheet(true);
-    setSyncStatusMsg(`Menyinkronkan ke sheet '${selectedClass.replace(/^Kelas\s*/i, '')}' (Kolom ${targetColumn})...`);
+    setSyncStatusMsg(`Menyinkronkan "${taskTitle}" ke sheet '${selectedClass.replace(/^Kelas\s*/i, '')}' (Kolom ${colToUse})...`);
 
     try {
       const items: StudentGradeItem[] = classStudents.map((s) => ({
@@ -516,7 +552,7 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
         selectedClass,
         taskTitle,
         items,
-        targetColumn
+        colToUse
       );
 
       if (res.success) {
@@ -524,6 +560,9 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
         // Kosongkan kolom penulisan nilai setelah berhasil tersinkronisasi
         setRawInputText('');
         onShowAlert?.('Sinkronisasi Google Sheets Berhasil', res.message);
+        
+        // Refresh deteksi kolom agar penambahan tugas berikutnya langsung otomatis bergeser ke kolom di sebelahnya
+        loadClassColumns(selectedClass);
       } else {
         setSyncStatusMsg(`Gagal: ${res.message}`);
         onShowAlert?.('Sinkronisasi Gagal', res.message);
@@ -689,28 +728,34 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
             <div className="md:col-span-3 space-y-1">
               <label className="block font-mono-code text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
                 <span>KOLOM TARGET SPREADSHEET:</span>
-                <span className="text-[#2e59e6] font-black">SEL {targetColumn === 'AUTO' ? 'E6' : `${targetColumn}6`}</span>
+                <span className="text-[#2e59e6] font-black">SEL {effectiveColLetter}6</span>
               </label>
               <select
                 value={targetColumn}
                 onChange={(e) => setTargetColumn(e.target.value)}
                 className="w-full bg-white border-2 border-[#1a1a1a] px-3 py-2 text-xs font-mono-code font-bold text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] focus:outline-hidden focus:ring-2 focus:ring-[#2e59e6] cursor-pointer"
               >
-                <option value="E">Kolom E (Tugas 1 / Aspek 1) [Mulai E6]</option>
-                <option value="F">Kolom F (Tugas 2 / Aspek 2) [Mulai F6]</option>
-                <option value="G">Kolom G (Tugas 3 / Aspek 3) [Mulai G6]</option>
-                <option value="H">Kolom H (Tugas 4 / Aspek 4) [Mulai H6]</option>
-                <option value="I">Kolom I (Tugas 5 / Aspek 5) [Mulai I6]</option>
-                <option value="J">Kolom J (Tugas 6 / Aspek 6) [Mulai J6]</option>
-                <option value="K">Kolom K (Tugas 7 / Aspek 7) [Mulai K6]</option>
-                <option value="L">Kolom L (Tugas 8 / Aspek 8) [Mulai L6]</option>
-                <option value="M">Kolom M (Tugas 9 / Aspek 9) [Mulai M6]</option>
-                <option value="N">Kolom N (Tugas 10 / Aspek 10) [Mulai N6]</option>
-                <option value="O">Kolom O (Tugas 11 / Aspek 11) [Mulai O6]</option>
-                <option value="P">Kolom P (Tugas 12 / Aspek 12) [Mulai P6]</option>
-                <option value="Q">Kolom Q (Tugas 13 / Aspek 13) [Mulai Q6]</option>
-                <option value="R">Kolom R (Tugas 14 / Aspek 14) [Mulai R6]</option>
-                <option value="AUTO">Otomatis (Cari Kolom Kosong Pertama E..R)</option>
+                <option value="AUTO">
+                  🎯 Otomatis: Bergeser ke Kolom {columnDetection?.nextAvailableColumn || 'E'} {columnDetection?.occupiedColumns && columnDetection.occupiedColumns.length > 0 ? `(Kolom sebelumnya terisi)` : '(Kolom awal)'}
+                </option>
+                {['E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R'].map((letter) => {
+                  const colInfo = columnDetection?.columns?.find((c) => c.colLetter === letter);
+                  const isNext = columnDetection?.nextAvailableColumn === letter;
+                  const isOccupied = colInfo?.isOccupied;
+                  let label = `Kolom ${letter}`;
+                  if (isOccupied) {
+                    label += ` • Terisi: "${colInfo?.headerTitle || 'Tugas Sebelumnya'}"`;
+                  } else if (isNext) {
+                    label += ` • KOSONG (Sasaran Tugas Baru Otomatis) ⭐`;
+                  } else {
+                    label += ` • Kosong [Mulai ${letter}6]`;
+                  }
+                  return (
+                    <option key={letter} value={letter}>
+                      {label}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -751,19 +796,61 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
             </div>
           </div>
 
-          {/* Coordinate Target Visual Indicator */}
-          <div className="mt-3 bg-blue-50 border-2 border-[#2e59e6] p-3 text-xs font-mono-code text-[#1a1a1a] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-[2px_2px_0px_#1a1a1a]">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="bg-[#2e59e6] text-white px-2 py-0.5 font-bold text-[10px] tracking-wider uppercase">
-                TARGET CELL SHEET
-              </span>
-              <span>
-                Tab Sheet: <strong>'{selectedClass.replace(/^Kelas\s*/i, '')}'</strong> | Kolom: <strong>{targetColumn === 'AUTO' ? 'Otomatis' : `Kolom ${targetColumn}`}</strong>
-              </span>
+          {/* Coordinate Target Visual Indicator & Auto-Shift Feedback */}
+          <div className="mt-3 bg-blue-50 border-2 border-[#2e59e6] p-3 text-xs font-mono-code text-[#1a1a1a] flex flex-col gap-2.5 shadow-[2px_2px_0px_#1a1a1a]">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="bg-[#2e59e6] text-white px-2 py-0.5 font-bold text-[10px] tracking-wider uppercase">
+                  TARGET CELL SHEET
+                </span>
+                <span>
+                  Tab Sheet: <strong>'{selectedClass.replace(/^Kelas\s*/i, '')}'</strong> | Kolom:{' '}
+                  <strong>
+                    Kolom {effectiveColLetter}{' '}
+                    {targetColumn === 'AUTO' ? '(Otomatis Bergeser)' : '(Pilihan Manual)'}
+                  </strong>
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="text-[11px] text-slate-700 bg-white/90 px-2.5 py-1 border border-blue-200 font-bold">
+                  🎯 Judul di <strong>{effectiveColLetter}5</strong> • Absen 1 di <strong>{effectiveColLetter}6</strong> s.d. Absen{' '}
+                  {classStudents.length} di <strong>{effectiveColLetter}{5 + classStudents.length}</strong>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadClassColumns(selectedClass)}
+                  disabled={isDetectingCols}
+                  className="px-2 py-1 text-[10px] font-mono-code font-bold bg-white hover:bg-slate-100 border border-[#1a1a1a] shadow-[1px_1px_0px_#1a1a1a] flex items-center gap-1 cursor-pointer"
+                  title="Deteksi ulang kolom spreadsheet"
+                >
+                  <RefreshCw className={`h-3 w-3 ${isDetectingCols ? 'animate-spin' : ''}`} />
+                  <span>{isDetectingCols ? 'Mengecek...' : 'Cek Kolom'}</span>
+                </button>
+              </div>
             </div>
-            <div className="text-[11px] text-slate-700 bg-white/90 px-2.5 py-1 border border-blue-200 font-bold">
-              🎯 Judul di <strong>{targetColumn === 'AUTO' ? 'E5' : `${targetColumn}5`}</strong> • Absen 1 di <strong>{targetColumn === 'AUTO' ? 'E6' : `${targetColumn}6`}</strong> s.d. Absen {classStudents.length} di <strong>{targetColumn === 'AUTO' ? `E${5 + classStudents.length}` : `${targetColumn}${5 + classStudents.length}`}</strong>
-            </div>
+
+            {/* Auto-shift explanatory detail badge */}
+            {columnDetection?.occupiedColumns && columnDetection.occupiedColumns.length > 0 && (
+              <div className="bg-white/80 border border-blue-200 p-2 text-[11px] flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-1.5 py-0.5 border border-emerald-300">
+                    AUTO-SHIFT AKTIF
+                  </span>
+                  <span className="text-slate-700">
+                    Tugas sebelumnya di{' '}
+                    <strong>
+                      Kolom {columnDetection.occupiedColumns[columnDetection.occupiedColumns.length - 1].colLetter} (
+                      {columnDetection.occupiedColumns[columnDetection.occupiedColumns.length - 1].headerTitle || 'Tugas Terisi'})
+                    </strong>{' '}
+                    ➜ Penambahan tugas baru otomatis bergeser ke{' '}
+                    <strong className="text-[#2e59e6]">Kolom {columnDetection.nextAvailableColumn}</strong>.
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-bold shrink-0">
+                  Total {columnDetection.occupiedColumns.length} Tugas di Sheet
+                </span>
+              </div>
+            )}
           </div>
         </div>
       </div>
