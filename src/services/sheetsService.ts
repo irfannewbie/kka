@@ -721,8 +721,9 @@ export async function syncGradesToClassSheet(
   spreadsheetId: string,
   className: string,
   taskTitle: string,
-  studentGrades: StudentGradeItem[]
-): Promise<{ success: boolean; isAuthError?: boolean; columnLetter?: string; message: string }> {
+  studentGrades: StudentGradeItem[],
+  targetColumn: string = 'AUTO' // 'AUTO', 'E', 'F', 'G', 'H', ...
+): Promise<{ success: boolean; isAuthError?: boolean; columnLetter?: string; startCell?: string; message: string }> {
   if (!accessToken) {
     return {
       success: false,
@@ -732,7 +733,7 @@ export async function syncGradesToClassSheet(
   }
 
   try {
-    const rawClass = className.replace(/^Kelas\s*/i, '').trim(); // e.g. '8A' or '7B'
+    const rawClass = className.replace(/^Kelas\s*/i, '').trim(); // e.g. '8A' or '8G'
     
     // 1. Fetch metadata to find matching sheet tab name & sheetId
     const metaRes = await fetch(
@@ -761,11 +762,11 @@ export async function syncGradesToClassSheet(
     const meta = await metaRes.json();
     const sheetsList = meta.sheets || [];
     
-    // Look for sheet matching '8A', 'Kelas 8A', or '8a'
+    // Look for sheet matching '8G', 'Kelas 8G', '8A', etc.
     let targetSheet = sheetsList.find(
       (s: any) =>
-        s.properties?.title?.toLowerCase() === rawClass.toLowerCase() ||
-        s.properties?.title?.toLowerCase() === `kelas ${rawClass.toLowerCase()}`
+        s.properties?.title?.toLowerCase().trim() === rawClass.toLowerCase().trim() ||
+        s.properties?.title?.toLowerCase().trim() === `kelas ${rawClass.toLowerCase().trim()}`
     );
 
     let sheetTitle = targetSheet ? targetSheet.properties.title : rawClass;
@@ -802,8 +803,8 @@ export async function syncGradesToClassSheet(
       }
     }
 
-    // 2. Fetch existing rows to determine header row and columns
-    const fetchRange = `${encodeURIComponent(sheetTitle)}!A1:Z50`;
+    // 2. Fetch existing rows to determine structure (inspect A1 to Z45)
+    const fetchRange = `${encodeURIComponent(sheetTitle)}!A1:Z45`;
     const dataRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${fetchRange}`,
       {
@@ -817,54 +818,106 @@ export async function syncGradesToClassSheet(
       existingRows = dataJson.values || [];
     }
 
-    // Determine header row index (default Row 5 / 0-indexed 4)
-    let headerRowIndex = 4; // Row 5
-    if (existingRows.length > 0) {
-      // Find row containing 'NO' / 'NAMA' / 'NIPD' / 'ASPEK'
-      const foundIdx = existingRows.findIndex((r) =>
-        r.some((c: any) => /NAMA|NIPD|NIS|ASPEK|NILAI/i.test(String(c)))
-      );
-      if (foundIdx !== -1) {
-        headerRowIndex = foundIdx;
+    // Standard school template structure:
+    // Row 4 (index 3): NO | NIPD | L/P | NAMA SISWA | ASPEK (merged E4:R4)
+    // Row 5 (index 4): Aspect headers (E5: Tugas 1, F5: Tugas 2, G5: Tugas 3, ...)
+    // Row 6 (index 5): Student Absen 1 (Adelia Rahma, etc.) -> Cell E6 is Absen 1's score
+    // Row 7 (index 6): Student Absen 2 -> Cell E7
+    // ...
+    // Row 37 (index 36): Student Absen 32 -> Cell E37
+
+    let targetColIdx = 4; // Default to Column E (index 4)
+
+    const normalizedTarget = (targetColumn || 'AUTO').toUpperCase().trim();
+    if (normalizedTarget !== 'AUTO' && /^[A-Z]{1,2}$/.test(normalizedTarget)) {
+      // User specified an explicit column letter (e.g. 'E', 'F', 'G')
+      targetColIdx = letterToColumn(normalizedTarget);
+    } else {
+      // AUTO detection:
+      // First, check if taskTitle is already written in Row 5 (E5..R5) or Row 4
+      const row5 = existingRows[4] || [];
+      const row4 = existingRows[3] || [];
+      let foundCol = -1;
+
+      for (let c = 4; c < 20; c++) {
+        const val5 = String(row5[c] || '').trim().toLowerCase();
+        const val4 = String(row4[c] || '').trim().toLowerCase();
+        const cleanTitle = taskTitle.trim().toLowerCase();
+        if (val5 === cleanTitle || (val5 && cleanTitle.includes(val5)) || (cleanTitle && val5.includes(cleanTitle))) {
+          foundCol = c;
+          break;
+        }
+      }
+
+      if (foundCol !== -1) {
+        targetColIdx = foundCol;
+      } else {
+        // Find the first aspect column starting from Column E (index 4) to R (index 17)
+        // that is empty for student rows (Row 6 to 37, index 5 to 36)
+        let firstAvailableCol = -1;
+        for (let c = 4; c <= 17; c++) {
+          // Check if there are scores in student rows 6..37 for column c
+          let hasScores = false;
+          for (let r = 5; r < Math.min(existingRows.length, 38); r++) {
+            const rowData = existingRows[r] || [];
+            const cellVal = String(rowData[c] || '').trim();
+            if (cellVal !== '' && !isNaN(Number(cellVal))) {
+              hasScores = true;
+              break;
+            }
+          }
+
+          if (!hasScores) {
+            firstAvailableCol = c;
+            break;
+          }
+        }
+
+        if (firstAvailableCol !== -1) {
+          targetColIdx = firstAvailableCol;
+        } else {
+          // If all E..R are occupied, use Column S or next
+          targetColIdx = 18;
+        }
       }
     }
 
-    const headerRow = existingRows[headerRowIndex] || [];
+    const targetColLetter = columnToLetter(targetColIdx);
     
-    // Check if taskTitle already exists in header row (from col E / index 4 onwards)
-    let targetColIdx = -1;
-    for (let c = 4; c < headerRow.length; c++) {
-      if (String(headerRow[c] || '').trim().toLowerCase() === taskTitle.trim().toLowerCase()) {
-        targetColIdx = c;
+    // Determine start row for students:
+    // Standard template has student 1 at Row 6, with header at Row 5
+    let headerRowNumber = 5;
+    let studentStartRowNumber = 6;
+
+    // Check if we can locate Absen 1 in Column A (index 0)
+    for (let r = 0; r < existingRows.length; r++) {
+      const colA = String(existingRows[r]?.[0] || '').trim();
+      if (colA === '1') {
+        studentStartRowNumber = r + 1; // 1-indexed row number
+        headerRowNumber = Math.max(1, studentStartRowNumber - 1);
         break;
       }
     }
 
-    // If not found, place in first empty column after standard columns (at least Col E / index 4)
-    if (targetColIdx === -1) {
-      targetColIdx = Math.max(4, headerRow.length);
-    }
-
-    const targetColLetter = columnToLetter(targetColIdx);
-    const startRowNumber = headerRowIndex + 1; // 1-indexed header row
-
-    // Prepare values to write:
-    // Header at header row
-    // Student scores starting from startRowNumber + 1 (e.g. Row 6 for Absen 1, Row 7 for Absen 2, etc.)
+    // Sort student grades by attendance number
     const sortedGrades = [...studentGrades].sort((a, b) => {
       const na = parseInt(a.attendanceNo || '0', 10);
       const nb = parseInt(b.attendanceNo || '0', 10);
       return na - nb;
     });
 
-    const columnValues: (string | number)[][] = [[taskTitle]];
+    // Build the column values array starting with Header at Row 5, then student 1 at Row 6, etc.
+    const columnValues: (string | number)[][] = [
+      [taskTitle || 'Tugas'] // Row 5 (Header)
+    ];
+
     for (const sg of sortedGrades) {
       columnValues.push([sg.score !== null && sg.score !== undefined ? sg.score : '']);
     }
 
-    // Write column values
-    const endRowNumber = startRowNumber + columnValues.length - 1;
-    const writeRange = `${encodeURIComponent(sheetTitle)}!${targetColLetter}${startRowNumber}:${targetColLetter}${endRowNumber}`;
+    // Write range: e.g. '8G'!E5:E37
+    const endRowNumber = headerRowNumber + columnValues.length - 1;
+    const writeRange = `${encodeURIComponent(sheetTitle)}!${targetColLetter}${headerRowNumber}:${targetColLetter}${endRowNumber}`;
 
     const updateRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${writeRange}?valueInputOption=USER_ENTERED`,
@@ -888,42 +941,13 @@ export async function syncGradesToClassSheet(
       };
     }
 
-    // Auto-resize column width if sheetId is known
-    if (sheetId !== null && sheetId !== undefined) {
-      try {
-        await fetch(
-          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-          {
-            method: 'POST',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              requests: [
-                {
-                  autoResizeDimensions: {
-                    dimensions: {
-                      sheetId: sheetId,
-                      dimension: 'COLUMNS',
-                      startIndex: targetColIdx,
-                      endIndex: targetColIdx + 1,
-                    },
-                  },
-                },
-              ],
-            }),
-          }
-        );
-      } catch (resizeErr) {
-        // Auto-resize is optional enhancement, non-blocking
-      }
-    }
+    const startStudentCell = `${targetColLetter}${studentStartRowNumber}`;
 
     return {
       success: true,
       columnLetter: targetColLetter,
-      message: `Berhasil menyinkronkan nilai "${taskTitle}" ke sheet '${sheetTitle}' pada Kolom ${targetColLetter}!`,
+      startCell: startStudentCell,
+      message: `Sukses! Nilai "${taskTitle}" tersinkronisasi ke sheet '${sheetTitle}' pada Kolom ${targetColLetter} (Header di ${targetColLetter}${headerRowNumber}, Nilai Absen 1 di ${startStudentCell} s.d. Absen ${sortedGrades.length} di ${targetColLetter}${endRowNumber}).`,
     };
   } catch (err: any) {
     console.error('Error syncing grades to class sheet:', err);
@@ -932,5 +956,66 @@ export async function syncGradesToClassSheet(
       message: `Error koneksi Google Sheets: ${err.message || err}`,
     };
   }
+}
+
+// Clear a specific column in a class sheet (e.g. to clean up column R)
+export async function clearColumnInClassSheet(
+  accessToken: string,
+  spreadsheetId: string,
+  className: string,
+  columnLetter: string
+): Promise<{ success: boolean; message: string }> {
+  if (!accessToken) {
+    return { success: false, message: 'Autentikasi Google diperlukan.' };
+  }
+
+  try {
+    const rawClass = className.replace(/^Kelas\s*/i, '').trim();
+    const metaRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
+      { headers: { Authorization: `Bearer ${accessToken}` } }
+    );
+    if (!metaRes.ok) return { success: false, message: 'Gagal mengakses spreadsheet' };
+
+    const meta = await metaRes.json();
+    const sheetsList = meta.sheets || [];
+    const targetSheet = sheetsList.find(
+      (s: any) =>
+        s.properties?.title?.toLowerCase().trim() === rawClass.toLowerCase().trim() ||
+        s.properties?.title?.toLowerCase().trim() === `kelas ${rawClass.toLowerCase().trim()}`
+    );
+    const sheetTitle = targetSheet ? targetSheet.properties.title : rawClass;
+
+    const clearRange = `${encodeURIComponent(sheetTitle)}!${columnLetter}5:${columnLetter}45`;
+    const clearRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${clearRange}:clear`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    if (clearRes.ok) {
+      return { success: true, message: `Kolom ${columnLetter} pada sheet '${sheetTitle}' berhasil dibersihkan.` };
+    } else {
+      const errText = await clearRes.text();
+      return { success: false, message: `Gagal membersihkan Kolom ${columnLetter}: ${errText}` };
+    }
+  } catch (err: any) {
+    return { success: false, message: `Error: ${err.message || err}` };
+  }
+}
+
+// Helper to convert letter like 'A' -> 0, 'E' -> 4, 'R' -> 17
+function letterToColumn(letter: string): number {
+  let column = 0;
+  const str = letter.toUpperCase();
+  for (let i = 0; i < str.length; i++) {
+    column = column * 26 + (str.charCodeAt(i) - 64);
+  }
+  return Math.max(0, column - 1);
 }
 

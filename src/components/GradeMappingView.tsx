@@ -27,6 +27,7 @@ import {
   Award,
   BarChart3,
   SlidersHorizontal,
+  Trash2,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { Student } from '../types';
@@ -37,7 +38,7 @@ import {
   ALL_CLASSES,
   getStudentsByClass,
 } from '../data/studentsAll';
-import { syncGradesToClassSheet, StudentGradeItem } from '../services/sheetsService';
+import { syncGradesToClassSheet, clearColumnInClassSheet, StudentGradeItem } from '../services/sheetsService';
 
 interface GradeMappingViewProps {
   spreadsheetId: string;
@@ -56,17 +57,16 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
 }) => {
   // 1. Grade & Class State
   const [selectedGrade, setSelectedGrade] = useState<'7' | '8'>('8');
-  const [selectedClass, setSelectedClass] = useState<string>('Kelas 8A');
-  const [taskTitle, setTaskTitle] = useState<string>('Tugas 1: Pemrograman Web & Showcase');
+  const [selectedClass, setSelectedClass] = useState<string>('Kelas 8G');
+  const [taskTitle, setTaskTitle] = useState<string>('Tugas 1');
+  const [targetColumn, setTargetColumn] = useState<string>('E');
   const [kkm, setKkm] = useState<number>(75);
   const [assessmentDate, setAssessmentDate] = useState<string>(
     new Date().toISOString().split('T')[0]
   );
 
-  // 2. Parser Input State
-  const [rawInputText, setRawInputText] = useState<string>(
-    `1 = 88\n2. 92\n3: 78\n4 - 85\n5 90\n6 = 74\n7. 82\n8: 95\n9 - 68\n10 85\n11 = 90\n12. 75\n13: 88\n14 - 94\n15 80`
-  );
+  // 2. Parser Input State (starts clean/empty)
+  const [rawInputText, setRawInputText] = useState<string>('');
 
   // 3. Parsed / Active Grades Map: { [attendanceNo: string]: number | null }
   const [gradesMap, setGradesMap] = useState<{ [attendanceNo: string]: number | null }>({});
@@ -76,6 +76,7 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
   const [statusFilter, setStatusFilter] = useState<'all' | 'tuntas' | 'remidi' | 'pending'>('all');
   const [genderFilter, setGenderFilter] = useState<'all' | 'L' | 'P'>('all');
   const [isSyncingToSheet, setIsSyncingToSheet] = useState<boolean>(false);
+  const [isClearingColR, setIsClearingColR] = useState<boolean>(false);
   const [syncStatusMsg, setSyncStatusMsg] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
 
@@ -127,34 +128,50 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
   // Initial load / Apply parser to current class
   const handleApplyParser = () => {
     const parsed = parseRawInput(rawInputText);
-    const newMap: { [attNo: string]: number | null } = {};
+    const parsedCount = Object.keys(parsed).length;
 
-    // Initialize all students with null or parsed score
+    if (parsedCount === 0) {
+      onShowAlert?.(
+        'Input Kosong',
+        'Silakan ketik atau tempelkan daftar nilai terlebih dahulu di kolom penulisan sebelum menerapkan.'
+      );
+      return;
+    }
+
+    const newMap: { [attNo: string]: number | null } = { ...gradesMap };
+
+    // Update students with parsed score
+    let appliedCount = 0;
     classStudents.forEach((s) => {
       const att = s.attendanceNo || '0';
       if (parsed[att] !== undefined) {
         newMap[att] = parsed[att];
-      } else {
-        newMap[att] = null;
+        appliedCount++;
       }
     });
 
     setGradesMap(newMap);
+    
+    // Otomatis kosongkan kolom penulisan nilai setelah diterapkan ke tabel
+    setRawInputText('');
+
     onShowAlert?.(
-      'Nilai Diterapkan',
-      `Berhasil memetakan nilai untuk ${Object.keys(parsed).length} siswa di ${selectedClass}.`
+      'Nilai Berhasil Diterapkan',
+      `Berhasil menerapkan nilai untuk ${appliedCount} siswa (${selectedClass}). Kolom penulisan nilai telah dikosongkan.`
     );
   };
 
-  // Auto-apply initial default mock parse on component mount or class switch
+  // Reset or apply when class switches
   useEffect(() => {
-    const parsed = parseRawInput(rawInputText);
-    const newMap: { [attNo: string]: number | null } = {};
-    classStudents.forEach((s) => {
-      const att = s.attendanceNo || '0';
-      newMap[att] = parsed[att] !== undefined ? parsed[att] : null;
-    });
-    setGradesMap(newMap);
+    if (rawInputText.trim()) {
+      const parsed = parseRawInput(rawInputText);
+      const newMap: { [attNo: string]: number | null } = {};
+      classStudents.forEach((s) => {
+        const att = s.attendanceNo || '0';
+        newMap[att] = parsed[att] !== undefined ? parsed[att] : null;
+      });
+      setGradesMap(newMap);
+    }
   }, [selectedClass]);
 
   // Manual inline score update for an individual student
@@ -482,7 +499,7 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
     }
 
     setIsSyncingToSheet(true);
-    setSyncStatusMsg('Menyinkronkan ke sheet kelas di Google Spreadsheet...');
+    setSyncStatusMsg(`Menyinkronkan ke sheet '${selectedClass.replace(/^Kelas\s*/i, '')}' (Kolom ${targetColumn})...`);
 
     try {
       const items: StudentGradeItem[] = classStudents.map((s) => ({
@@ -498,11 +515,14 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
         spreadsheetId,
         selectedClass,
         taskTitle,
-        items
+        items,
+        targetColumn
       );
 
       if (res.success) {
-        setSyncStatusMsg(`Sukses! Nilai tertulis pada Kolom ${res.columnLetter || ''}.`);
+        setSyncStatusMsg(`Sukses! Nilai tertulis pada Kolom ${res.columnLetter || ''} (Mulai ${res.startCell || 'E6'}).`);
+        // Kosongkan kolom penulisan nilai setelah berhasil tersinkronisasi
+        setRawInputText('');
         onShowAlert?.('Sinkronisasi Google Sheets Berhasil', res.message);
       } else {
         setSyncStatusMsg(`Gagal: ${res.message}`);
@@ -513,6 +533,34 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
       onShowAlert?.('Error Koneksi', 'Gagal menghubungi Google Sheets API.');
     } finally {
       setIsSyncingToSheet(false);
+    }
+  };
+
+  // 10. Clean up stray Column R
+  const handleClearMisplacedColumnR = async () => {
+    if (!token) {
+      onShowAlert?.('Autentikasi Diperlukan', 'Silakan hubungkan akun Google Anda terlebih dahulu.');
+      onLogin();
+      return;
+    }
+
+    if (!window.confirm(`Bersihkan semua nilai di Kolom R pada sheet '${selectedClass.replace(/^Kelas\s*/i, '')}'?`)) {
+      return;
+    }
+
+    setIsClearingColR(true);
+    try {
+      const res = await clearColumnInClassSheet(token, spreadsheetId, selectedClass, 'R');
+      if (res.success) {
+        onShowAlert?.('Kolom R Dibersihkan', res.message);
+        setSyncStatusMsg('Kolom R berhasil dibersihkan.');
+      } else {
+        onShowAlert?.('Gagal Membersihkan', res.message);
+      }
+    } catch (err: any) {
+      onShowAlert?.('Error', `Gagal membersihkan Kolom R: ${err.message || err}`);
+    } finally {
+      setIsClearingColR(false);
     }
   };
 
@@ -638,24 +686,52 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
             })}
           </div>
 
-          {/* Task Title & KKM Settings Row */}
+          {/* Task Title, Target Column & KKM Settings Row */}
           <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 pt-2">
-            <div className="md:col-span-6 space-y-1">
+            <div className="md:col-span-4 space-y-1">
               <label className="block font-mono-code text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                NAMA TUGAS / ASPEK PENILAIAN (HEADER KOLOM SHEET):
+                NAMA TUGAS / ASPEK PENILAIAN:
               </label>
               <input
                 type="text"
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
-                placeholder="Contoh: Tugas 1: Projek Web Aplikasi"
+                placeholder="Contoh: Tugas 1"
                 className="w-full bg-white border-2 border-[#1a1a1a] px-3.5 py-2 text-xs font-mono-code font-bold text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] focus:outline-hidden focus:ring-2 focus:ring-[#2e59e6]"
               />
             </div>
 
             <div className="md:col-span-3 space-y-1">
+              <label className="block font-mono-code text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                <span>KOLOM TARGET SPREADSHEET:</span>
+                <span className="text-[#2e59e6] font-black">SEL {targetColumn === 'AUTO' ? 'E6' : `${targetColumn}6`}</span>
+              </label>
+              <select
+                value={targetColumn}
+                onChange={(e) => setTargetColumn(e.target.value)}
+                className="w-full bg-white border-2 border-[#1a1a1a] px-3 py-2 text-xs font-mono-code font-bold text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] focus:outline-hidden focus:ring-2 focus:ring-[#2e59e6] cursor-pointer"
+              >
+                <option value="E">Kolom E (Tugas 1 / Aspek 1) [Mulai E6]</option>
+                <option value="F">Kolom F (Tugas 2 / Aspek 2) [Mulai F6]</option>
+                <option value="G">Kolom G (Tugas 3 / Aspek 3) [Mulai G6]</option>
+                <option value="H">Kolom H (Tugas 4 / Aspek 4) [Mulai H6]</option>
+                <option value="I">Kolom I (Tugas 5 / Aspek 5) [Mulai I6]</option>
+                <option value="J">Kolom J (Tugas 6 / Aspek 6) [Mulai J6]</option>
+                <option value="K">Kolom K (Tugas 7 / Aspek 7) [Mulai K6]</option>
+                <option value="L">Kolom L (Tugas 8 / Aspek 8) [Mulai L6]</option>
+                <option value="M">Kolom M (Tugas 9 / Aspek 9) [Mulai M6]</option>
+                <option value="N">Kolom N (Tugas 10 / Aspek 10) [Mulai N6]</option>
+                <option value="O">Kolom O (Tugas 11 / Aspek 11) [Mulai O6]</option>
+                <option value="P">Kolom P (Tugas 12 / Aspek 12) [Mulai P6]</option>
+                <option value="Q">Kolom Q (Tugas 13 / Aspek 13) [Mulai Q6]</option>
+                <option value="R">Kolom R (Tugas 14 / Aspek 14) [Mulai R6]</option>
+                <option value="AUTO">Otomatis (Cari Kolom Kosong Pertama E..R)</option>
+              </select>
+            </div>
+
+            <div className="md:col-span-3 space-y-1">
               <label className="block font-mono-code text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                BATAS KKM (STANDAR KETUNTASAN):
+                BATAS KKM (KETUNTASAN):
               </label>
               <div className="flex items-center gap-1.5">
                 <input
@@ -664,29 +740,44 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
                   max="100"
                   value={kkm}
                   onChange={(e) => setKkm(Math.max(50, Math.min(100, parseInt(e.target.value || '75', 10))))}
-                  className="w-full bg-white border-2 border-[#1a1a1a] px-3.5 py-2 text-xs font-mono-code font-bold text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] focus:outline-hidden"
+                  className="w-full bg-white border-2 border-[#1a1a1a] px-3 py-2 text-xs font-mono-code font-bold text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] focus:outline-hidden"
                 />
                 <button
                   type="button"
                   onClick={() => setKkm(75)}
-                  className="px-2.5 py-2 text-[10px] font-mono-code font-bold bg-white hover:bg-slate-100 border-2 border-[#1a1a1a] shrink-0"
+                  className="px-2 py-2 text-[10px] font-mono-code font-bold bg-white hover:bg-slate-100 border-2 border-[#1a1a1a] shrink-0"
                   title="Reset ke KKM Standar 75"
                 >
-                  KKM 75
+                  75
                 </button>
               </div>
             </div>
 
-            <div className="md:col-span-3 space-y-1">
+            <div className="md:col-span-2 space-y-1">
               <label className="block font-mono-code text-[11px] font-bold text-slate-700 uppercase tracking-wider">
-                TANGGAL PENILAIAN:
+                TANGGAL:
               </label>
               <input
                 type="date"
                 value={assessmentDate}
                 onChange={(e) => setAssessmentDate(e.target.value)}
-                className="w-full bg-white border-2 border-[#1a1a1a] px-3 py-2 text-xs font-mono-code font-bold text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] focus:outline-hidden"
+                className="w-full bg-white border-2 border-[#1a1a1a] px-2.5 py-2 text-xs font-mono-code font-bold text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] focus:outline-hidden"
               />
+            </div>
+          </div>
+
+          {/* Coordinate Target Visual Indicator */}
+          <div className="mt-3 bg-blue-50 border-2 border-[#2e59e6] p-3 text-xs font-mono-code text-[#1a1a1a] flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-[2px_2px_0px_#1a1a1a]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="bg-[#2e59e6] text-white px-2 py-0.5 font-bold text-[10px] tracking-wider uppercase">
+                TARGET CELL SHEET
+              </span>
+              <span>
+                Tab Sheet: <strong>'{selectedClass.replace(/^Kelas\s*/i, '')}'</strong> | Kolom: <strong>{targetColumn === 'AUTO' ? 'Otomatis' : `Kolom ${targetColumn}`}</strong>
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-700 bg-white/90 px-2.5 py-1 border border-blue-200 font-bold">
+              🎯 Judul di <strong>{targetColumn === 'AUTO' ? 'E5' : `${targetColumn}5`}</strong> • Absen 1 di <strong>{targetColumn === 'AUTO' ? 'E6' : `${targetColumn}6`}</strong> s.d. Absen {classStudents.length} di <strong>{targetColumn === 'AUTO' ? `E${5 + classStudents.length}` : `${targetColumn}${5 + classStudents.length}`}</strong>
             </div>
           </div>
         </div>
@@ -966,18 +1057,30 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
                 {isSyncingToSheet ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin text-[#2e59e6]" />
-                    <span>MENYINKRONKAN KE SHEET '{selectedClass.replace(/^Kelas\s*/i, '')}'...</span>
+                    <span>MENYINKRONKAN KE SHEET '{selectedClass.replace(/^Kelas\s*/i, '')}' (KOLOM {targetColumn})...</span>
                   </>
                 ) : (
                   <>
                     <UploadCloud className="h-4 w-4 text-emerald-400" />
-                    <span>SINKRONKAN LANGSUNG KE GOOGLE SHEETS API</span>
+                    <span>SINKRONKAN KE SHEET '{selectedClass.replace(/^Kelas\s*/i, '')}' [KOLOM {targetColumn === 'AUTO' ? 'E (MULAI E6)' : `${targetColumn} (MULAI ${targetColumn}6)`}]</span>
                   </>
                 )}
               </button>
 
+              {/* Auxiliary Cleaner: Clear stray Column R if needed */}
+              <button
+                type="button"
+                onClick={handleClearMisplacedColumnR}
+                disabled={isClearingColR}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 font-mono-code text-[11px] font-bold border border-rose-300 transition-all cursor-pointer disabled:opacity-50"
+                title="Hapus nilai nyasar di Kolom R jika sebelumnya salah kolom"
+              >
+                <Trash2 className="h-3 w-3 text-rose-600" />
+                <span>{isClearingColR ? 'Membersihkan Kolom R...' : `🧹 Bersihkan Nilai di Kolom R pada Sheet '${selectedClass.replace(/^Kelas\s*/i, '')}'`}</span>
+              </button>
+
               {syncStatusMsg && (
-                <div className="font-mono-code text-[11px] text-center text-slate-700 bg-slate-100 border border-slate-300 p-1.5">
+                <div className="font-mono-code text-[11px] text-center text-slate-700 bg-slate-100 border border-slate-300 p-1.5 font-bold">
                   {syncStatusMsg}
                 </div>
               )}
