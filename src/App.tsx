@@ -24,6 +24,7 @@ import { ShowcaseView } from './components/ShowcaseView';
 import { MasterDataView } from './components/MasterDataView';
 import { TaskListView } from './components/TaskListView';
 import { StudentManagerView } from './components/StudentManagerView';
+import { GradeMappingView } from './components/GradeMappingView';
 import { SpreadsheetIframeView } from './components/SpreadsheetIframeView';
 import { TaskSubmissionModal } from './components/TaskSubmissionModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
@@ -54,10 +55,11 @@ try {
 }
 
 // Helper to determine route tab from pathname
-const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'spreadsheet' => {
+const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' => {
   const cleanPath = (path || '/').toLowerCase().replace(/\/$/, '') || '/';
   if (cleanPath === '/master') return 'master';
   if (cleanPath === '/master/students' || cleanPath === '/students') return 'students';
+  if (cleanPath === '/master/grades' || cleanPath === '/grades') return 'grades';
   if (cleanPath === '/master/tasks' || cleanPath === '/tasks') return 'tasks';
   if (cleanPath === '/master/spreadsheet' || cleanPath === '/spreadsheet') return 'spreadsheet';
   return 'showcase';
@@ -65,7 +67,7 @@ const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'studen
 
 export default function App() {
   // Navigation state initialized based on current URL pathname
-  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'spreadsheet'>(() => {
+  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet'>(() => {
     return getTabFromPath(window.location.pathname);
   });
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
@@ -82,7 +84,7 @@ export default function App() {
   }, []);
 
   // Programmatic navigation that updates the browser URL
-  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'spreadsheet', targetPath?: string) => {
+  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet', targetPath?: string) => {
     setActiveTab(tab);
     const resolvedPath =
       targetPath || (tab === 'showcase' ? '/' : `/master${tab === 'master' ? '' : `/${tab}`}`);
@@ -658,6 +660,16 @@ export default function App() {
                 onSyncStudentsToSheet={handleSyncStudentsToSheet}
                 isSyncing={isSyncing}
                 isConnectedToSheet={!!token}
+              />
+            )}
+
+            {activeTab === 'grades' && (
+              <GradeMappingView
+                spreadsheetId={spreadsheetId}
+                spreadsheetUrl={spreadsheetUrl}
+                token={token}
+                onLogin={handleGoogleLogin}
+                onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
               />
             )}
 

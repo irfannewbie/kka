@@ -10,8 +10,8 @@ import {
 import { User } from 'firebase/auth';
 
 interface HeaderProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'spreadsheet';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'spreadsheet', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet', path?: string) => void;
   user: User | null;
   token: string | null;
   onLogin: () => void;
@@ -108,6 +108,16 @@ export const Header: React.FC<HeaderProps> = ({
               }`}
             >
               DAFTAR SISWA
+            </button>
+            <button
+              onClick={() => onNavigate('grades', '/master/grades')}
+              className={`font-mono-code text-xs px-2.5 py-1 border transition-all cursor-pointer ${
+                activeTab === 'grades'
+                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] font-bold'
+                  : 'text-[#1a1a1a] border-transparent hover:border-[#1a1a1a]'
+              }`}
+            >
+              PEMETAAN NILAI
             </button>
             <button
               onClick={() => onNavigate('tasks', '/master/tasks')}

@@ -18,8 +18,8 @@ import {
 import { User } from 'firebase/auth';
 
 interface SidebarProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'spreadsheet';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'spreadsheet', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet', path?: string) => void;
   onOpenSubmitModal: () => void;
   user: User | null;
   token: string | null;
@@ -45,7 +45,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   spreadsheetUrl,
 }) => {
   interface NavItem {
-    id: 'master' | 'students' | 'tasks' | 'spreadsheet';
+    id: 'master' | 'students' | 'grades' | 'tasks' | 'spreadsheet';
     label: string;
     code: string;
     path: string;
@@ -65,15 +65,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: '/master/students',
     },
     {
+      id: 'grades',
+      label: 'PEMETAAN & REKAP NILAI',
+      code: '03',
+      path: '/master/grades',
+    },
+    {
       id: 'tasks',
       label: 'REKAPITULASI TABEL',
-      code: '03',
+      code: '04',
       path: '/master/tasks',
     },
     {
       id: 'spreadsheet',
       label: 'SPREADSHEET VIEWER',
-      code: '04',
+      code: '05',
       path: '/master/spreadsheet',
     },
   ];

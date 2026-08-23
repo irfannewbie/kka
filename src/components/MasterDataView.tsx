@@ -5,6 +5,7 @@ import {
   UserPlus,
   FileSpreadsheet,
   Database,
+  Calculator,
 } from 'lucide-react';
 import { Student, TaskSubmission, AppNotification } from '../types';
 
@@ -18,7 +19,7 @@ interface MasterDataViewProps {
   onManualSync: () => void;
   onQuickAddStudent?: (student: Omit<Student, 'id'>) => Promise<void>;
   onOpenSubmitModal: () => void;
-  onNavigateTab: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'spreadsheet') => void;
+  onNavigateTab: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet') => void;
 }
 
 export const MasterDataView: React.FC<MasterDataViewProps> = ({
@@ -72,6 +73,13 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
             className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white hover:text-[#1a1a1a] text-white px-3 py-1.5 text-xs font-bold border border-white/20 transition-all cursor-pointer"
           >
             <UserPlus className="h-3.5 w-3.5" /> KELOLA DAFTAR SISWA
+          </button>
+
+          <button
+            onClick={() => onNavigateTab('grades')}
+            className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-[#1a1a1a] px-3 py-1.5 text-xs font-bold border border-white/40 transition-all cursor-pointer"
+          >
+            <Calculator className="h-3.5 w-3.5" /> PEMETAAN NILAI
           </button>
 
           <button

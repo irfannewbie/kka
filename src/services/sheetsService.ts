@@ -692,3 +692,245 @@ export async function syncAllStudentsToSheet(
     };
   }
 }
+
+// Convert column index (0-based) to Sheets A1 notation (e.g. 0 -> A, 4 -> E, 26 -> AA)
+export function columnToLetter(column: number): string {
+  let temp: number;
+  let letter = '';
+  let col = column + 1;
+  while (col > 0) {
+    temp = (col - 1) % 26;
+    letter = String.fromCharCode(temp + 65) + letter;
+    col = (col - temp - 1) / 26;
+  }
+  return letter;
+}
+
+// Interface for grade item mapping
+export interface StudentGradeItem {
+  attendanceNo: string;
+  nis: string;
+  name: string;
+  gender?: string;
+  score: number | null; // null if not graded / pending
+}
+
+// Direct Sync of Grades to Specific Class Sheet Tab (e.g. '8A', '7A') without creating new duplicate tabs
+export async function syncGradesToClassSheet(
+  accessToken: string,
+  spreadsheetId: string,
+  className: string,
+  taskTitle: string,
+  studentGrades: StudentGradeItem[]
+): Promise<{ success: boolean; isAuthError?: boolean; columnLetter?: string; message: string }> {
+  if (!accessToken) {
+    return {
+      success: false,
+      isAuthError: true,
+      message: 'Silakan hubungkan akun Google Anda untuk menyinkronkan data nilai.',
+    };
+  }
+
+  try {
+    const rawClass = className.replace(/^Kelas\s*/i, '').trim(); // e.g. '8A' or '7B'
+    
+    // 1. Fetch metadata to find matching sheet tab name & sheetId
+    const metaRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    if (metaRes.status === 401) {
+      clearAuthToken();
+      return {
+        success: false,
+        isAuthError: true,
+        message: 'Sesi Google Anda kedaluwarsa. Silakan login kembali.',
+      };
+    }
+
+    if (!metaRes.ok) {
+      return {
+        success: false,
+        message: `Gagal membaca spreadsheet: status ${metaRes.status}`,
+      };
+    }
+
+    const meta = await metaRes.json();
+    const sheetsList = meta.sheets || [];
+    
+    // Look for sheet matching '8A', 'Kelas 8A', or '8a'
+    let targetSheet = sheetsList.find(
+      (s: any) =>
+        s.properties?.title?.toLowerCase() === rawClass.toLowerCase() ||
+        s.properties?.title?.toLowerCase() === `kelas ${rawClass.toLowerCase()}`
+    );
+
+    let sheetTitle = targetSheet ? targetSheet.properties.title : rawClass;
+    let sheetId = targetSheet ? targetSheet.properties.sheetId : null;
+
+    // If sheet doesn't exist, create it with standard school layout
+    if (!targetSheet) {
+      const addRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            requests: [
+              {
+                addSheet: {
+                  properties: {
+                    title: sheetTitle,
+                    gridProperties: { rowCount: 100, columnCount: 30 },
+                  },
+                },
+              },
+            ],
+          }),
+        }
+      );
+
+      if (addRes.ok) {
+        const addData = await addRes.json();
+        sheetId = addData.replies?.[0]?.addSheet?.properties?.sheetId ?? null;
+      }
+    }
+
+    // 2. Fetch existing rows to determine header row and columns
+    const fetchRange = `${encodeURIComponent(sheetTitle)}!A1:Z50`;
+    const dataRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${fetchRange}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    let existingRows: any[][] = [];
+    if (dataRes.ok) {
+      const dataJson = await dataRes.json();
+      existingRows = dataJson.values || [];
+    }
+
+    // Determine header row index (default Row 5 / 0-indexed 4)
+    let headerRowIndex = 4; // Row 5
+    if (existingRows.length > 0) {
+      // Find row containing 'NO' / 'NAMA' / 'NIPD' / 'ASPEK'
+      const foundIdx = existingRows.findIndex((r) =>
+        r.some((c: any) => /NAMA|NIPD|NIS|ASPEK|NILAI/i.test(String(c)))
+      );
+      if (foundIdx !== -1) {
+        headerRowIndex = foundIdx;
+      }
+    }
+
+    const headerRow = existingRows[headerRowIndex] || [];
+    
+    // Check if taskTitle already exists in header row (from col E / index 4 onwards)
+    let targetColIdx = -1;
+    for (let c = 4; c < headerRow.length; c++) {
+      if (String(headerRow[c] || '').trim().toLowerCase() === taskTitle.trim().toLowerCase()) {
+        targetColIdx = c;
+        break;
+      }
+    }
+
+    // If not found, place in first empty column after standard columns (at least Col E / index 4)
+    if (targetColIdx === -1) {
+      targetColIdx = Math.max(4, headerRow.length);
+    }
+
+    const targetColLetter = columnToLetter(targetColIdx);
+    const startRowNumber = headerRowIndex + 1; // 1-indexed header row
+
+    // Prepare values to write:
+    // Header at header row
+    // Student scores starting from startRowNumber + 1 (e.g. Row 6 for Absen 1, Row 7 for Absen 2, etc.)
+    const sortedGrades = [...studentGrades].sort((a, b) => {
+      const na = parseInt(a.attendanceNo || '0', 10);
+      const nb = parseInt(b.attendanceNo || '0', 10);
+      return na - nb;
+    });
+
+    const columnValues: (string | number)[][] = [[taskTitle]];
+    for (const sg of sortedGrades) {
+      columnValues.push([sg.score !== null && sg.score !== undefined ? sg.score : '']);
+    }
+
+    // Write column values
+    const endRowNumber = startRowNumber + columnValues.length - 1;
+    const writeRange = `${encodeURIComponent(sheetTitle)}!${targetColLetter}${startRowNumber}:${targetColLetter}${endRowNumber}`;
+
+    const updateRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${writeRange}?valueInputOption=USER_ENTERED`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          values: columnValues,
+        }),
+      }
+    );
+
+    if (!updateRes.ok) {
+      const errText = await updateRes.text();
+      return {
+        success: false,
+        message: `Gagal memperbarui sel nilai (${updateRes.status}): ${errText}`,
+      };
+    }
+
+    // Auto-resize column width if sheetId is known
+    if (sheetId !== null && sheetId !== undefined) {
+      try {
+        await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              requests: [
+                {
+                  autoResizeDimensions: {
+                    dimensions: {
+                      sheetId: sheetId,
+                      dimension: 'COLUMNS',
+                      startIndex: targetColIdx,
+                      endIndex: targetColIdx + 1,
+                    },
+                  },
+                },
+              ],
+            }),
+          }
+        );
+      } catch (resizeErr) {
+        // Auto-resize is optional enhancement, non-blocking
+      }
+    }
+
+    return {
+      success: true,
+      columnLetter: targetColLetter,
+      message: `Berhasil menyinkronkan nilai "${taskTitle}" ke sheet '${sheetTitle}' pada Kolom ${targetColLetter}!`,
+    };
+  } catch (err: any) {
+    console.error('Error syncing grades to class sheet:', err);
+    return {
+      success: false,
+      message: `Error koneksi Google Sheets: ${err.message || err}`,
+    };
+  }
+}
+
