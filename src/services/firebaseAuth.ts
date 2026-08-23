@@ -1,6 +1,13 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import {
   getAuth,
+  initializeAuth,
+  browserLocalPersistence,
+  browserSessionPersistence,
+  indexedDBLocalPersistence,
+  inMemoryPersistence,
+  browserPopupRedirectResolver,
+  setPersistence,
   signInWithPopup,
   GoogleAuthProvider,
   onAuthStateChanged,
@@ -10,7 +17,26 @@ import {
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-export const auth = getAuth(app);
+
+// In iframe, sandboxed, or tab-switch environments, IndexedDB can report "Database is closing/hidden".
+// We initialize Firebase Auth with multi-tier persistence fallbacks.
+function getOrCreateAuth() {
+  try {
+    return initializeAuth(app, {
+      persistence: [
+        browserLocalPersistence,
+        indexedDBLocalPersistence,
+        browserSessionPersistence,
+        inMemoryPersistence,
+      ],
+      popupRedirectResolver: browserPopupRedirectResolver,
+    });
+  } catch (e) {
+    return getAuth(app);
+  }
+}
+
+export const auth = getOrCreateAuth();
 
 export const SCOPES = [
   'https://www.googleapis.com/auth/spreadsheets',
@@ -75,7 +101,32 @@ export const clearAuthToken = () => {
 export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
   try {
     isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
+    let result;
+
+    try {
+      result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
+    } catch (popupErr: any) {
+      const errMsg = String(popupErr?.message || popupErr || '').toLowerCase();
+      // If IndexedDB or database closing error occurs in iframe / hidden tab, recover with inMemory / local persistence
+      if (
+        errMsg.includes('closing') ||
+        errMsg.includes('database') ||
+        errMsg.includes('hidden') ||
+        errMsg.includes('indexeddb') ||
+        popupErr?.code === 'auth/internal-error'
+      ) {
+        console.warn('Storage connection closing or restricted. Recovering with inMemoryPersistence...', popupErr);
+        try {
+          await setPersistence(auth, inMemoryPersistence);
+          result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
+        } catch (retryErr) {
+          throw retryErr;
+        }
+      } else {
+        throw popupErr;
+      }
+    }
+
     const credential = GoogleAuthProvider.credentialFromResult(result);
     if (!credential?.accessToken) {
       throw new Error('Gagal memperoleh token akses dari Google.');
@@ -109,5 +160,6 @@ export const logout = async () => {
   }
   cachedAccessToken = null;
 };
+
 
 
