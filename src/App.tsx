@@ -302,9 +302,9 @@ export default function App() {
     await performSyncWithSheet(token, false);
   };
 
-  // Trigger sound & notification
+  // Trigger sound & notification (Only active when in Master Mode)
   const triggerNewTaskAlert = (title: string, message: string, taskId?: string) => {
-    if (soundEnabled) {
+    if (soundEnabled && activeTab !== 'showcase') {
       playNotificationChime();
     }
 
@@ -319,11 +319,14 @@ export default function App() {
     };
 
     setNotifications((prev) => [newNotif, ...prev]);
-    setToastAlert({ title, message, taskId });
 
-    setTimeout(() => {
-      setToastAlert(null);
-    }, 6000);
+    if (activeTab !== 'showcase') {
+      setToastAlert({ title, message, taskId });
+
+      setTimeout(() => {
+        setToastAlert(null);
+      }, 6000);
+    }
   };
 
   // Submit new Task
@@ -573,8 +576,8 @@ export default function App() {
           onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
         />
 
-        {/* Real-time Toast Floating Alert */}
-        {toastAlert && (
+        {/* Real-time Toast Floating Alert (Only in Master Mode) */}
+        {toastAlert && activeTab !== 'showcase' && (
           <div className="fixed top-16 right-4 z-50 max-w-sm bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-3 font-mono-code animate-in slide-in-from-top-4 duration-200">
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
@@ -704,9 +707,9 @@ export default function App() {
         onLogin={handleGoogleLogin}
       />
 
-      {/* Real-time Notification Drawer */}
+      {/* Real-time Notification Drawer (Only in Master Mode) */}
       <NotificationDrawer
-        isOpen={isNotifDrawerOpen}
+        isOpen={isNotifDrawerOpen && activeTab !== 'showcase'}
         onClose={() => setIsNotifDrawerOpen(false)}
         notifications={notifications}
         onMarkAllAsRead={handleMarkAllNotifsAsRead}

@@ -135,34 +135,37 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Top Right Navigation Anchor */}
       <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
-        
+        {/* Sound Toggle & Notification Bell (Visible only in Master Mode) */}
+        {isMasterMode && (
+          <>
+            {/* Sound Toggle */}
+            <button
+              id="btn-toggle-sound"
+              onClick={onToggleSound}
+              title={soundEnabled ? 'Audio Notifikasi: Aktif' : 'Audio Notifikasi: Hening'}
+              className={`p-1.5 border border-[#1a1a1a] transition-all cursor-pointer ${
+                soundEnabled ? 'bg-white text-[#2e59e6]' : 'bg-[#E5E0D8] text-slate-500'
+              }`}
+            >
+              {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+            </button>
 
-        {/* Sound Toggle */}
-        <button
-          id="btn-toggle-sound"
-          onClick={onToggleSound}
-          title={soundEnabled ? 'Audio Notifikasi: Aktif' : 'Audio Notifikasi: Hening'}
-          className={`p-1.5 border border-[#1a1a1a] transition-all cursor-pointer ${
-            soundEnabled ? 'bg-white text-[#2e59e6]' : 'bg-[#E5E0D8] text-slate-500'
-          }`}
-        >
-          {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
-        </button>
-
-        {/* Notification Bell */}
-        <button
-          id="btn-notification-bell"
-          onClick={onToggleNotificationDrawer}
-          className="relative p-1.5 bg-white border border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#E5E0D8] transition-colors cursor-pointer"
-          title="Notifikasi"
-        >
-          <Bell className="h-3.5 w-3.5" />
-          {unreadCount > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 bg-[#2e59e6] text-white font-mono-code text-[9px] w-4 h-4 flex items-center justify-center font-bold border border-[#1a1a1a]">
-              {unreadCount}
-            </span>
-          )}
-        </button>
+            {/* Notification Bell */}
+            <button
+              id="btn-notification-bell"
+              onClick={onToggleNotificationDrawer}
+              className="relative p-1.5 bg-white border border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#E5E0D8] transition-colors cursor-pointer"
+              title="Notifikasi"
+            >
+              <Bell className="h-3.5 w-3.5" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-[#2e59e6] text-white font-mono-code text-[9px] w-4 h-4 flex items-center justify-center font-bold border border-[#1a1a1a]">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </>
+        )}
 
         {/* Manual Sync Button */}
         <button
