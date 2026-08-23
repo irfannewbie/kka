@@ -428,7 +428,7 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
             </div>
 
             {/* Student Metadata Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-4 font-mono-code text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 font-mono-code text-xs">
               <div className="p-3 bg-[#F2EFEB] border border-[#1a1a1a]">
                 <span className="text-[10px] text-slate-500 uppercase block">NIPD / NIS:</span>
                 <span className="text-sm font-bold text-[#1a1a1a]">{activeStudent.nis || '-'}</span>
@@ -441,12 +441,6 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                 <span className="text-[10px] text-slate-500 uppercase block">NO. ABSEN:</span>
                 <span className="text-sm font-bold text-[#1a1a1a]">
                   Absen {activeStudent.attendanceNo || '-'}
-                </span>
-              </div>
-              <div className="p-3 bg-[#F2EFEB] border border-[#1a1a1a]">
-                <span className="text-[10px] text-slate-500 uppercase block">KELOMPOK / GENDER:</span>
-                <span className="text-sm font-bold text-[#1a1a1a]">
-                  {activeStudent.group || 'Kelompok 1'} ({activeStudent.gender || 'L'})
                 </span>
               </div>
             </div>
