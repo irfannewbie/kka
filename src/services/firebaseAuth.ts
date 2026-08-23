@@ -49,11 +49,21 @@ provider.setCustomParameters({
   prompt: 'select_account',
 });
 
+export const ADMIN_EMAILS: string[] = [
+  'irfannewbie7@gmail.com',
+  'irfandwi.hs@gmail.com',
+];
+
 export const ADMIN_EMAIL = 'irfannewbie7@gmail.com';
 
+export const isAuthorizedAdmin = (email?: string | null): boolean => {
+  if (!email) return false;
+  return ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === email.toLowerCase());
+};
+
 export const DEFAULT_ADMIN_USER: User = {
-  uid: 'admin-irfannewbie7',
-  email: ADMIN_EMAIL,
+  uid: 'admin-irfan',
+  email: 'irfannewbie7@gmail.com',
   displayName: 'Irfan (Guru Informatika)',
   photoURL: 'https://api.dicebear.com/7.x/bottts/svg?seed=irfannewbie7',
   emailVerified: true,

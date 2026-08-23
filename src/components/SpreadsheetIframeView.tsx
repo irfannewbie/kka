@@ -182,7 +182,7 @@ export const SpreadsheetIframeView: React.FC<SpreadsheetIframeViewProps> = ({
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
             <span className="text-amber-900">
-              <strong>Info Akses Tulis:</strong> Google OAuth diperlukan agar aplikasi web dapat menulis dan membuat baris baru di Google Spreadsheet akun <code>irfannewbie7@gmail.com</code>.
+              <strong>Info Akses Tulis:</strong> Google OAuth diperlukan agar aplikasi web dapat menulis dan membuat baris baru di Google Spreadsheet akun <code>irfannewbie7@gmail.com</code> / <code>irfandwi.hs@gmail.com</code>.
             </span>
           </div>
           {onLogin && (

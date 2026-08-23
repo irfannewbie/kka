@@ -206,7 +206,7 @@ export const Header: React.FC<HeaderProps> = ({
             <div className="flex items-center gap-2 font-mono-code text-xs">
               <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#1a1a1a] text-[11px] font-bold text-[#1a1a1a]">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-                {user.email || 'irfannewbie7@gmail.com'}
+                {user.email || 'Admin'}
               </span>
               <button
                 onClick={onLogout}
