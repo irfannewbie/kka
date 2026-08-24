@@ -277,7 +277,7 @@ export const KELAS_7_STUDENTS: Student[] = [
   { id: 'std-7h-32', nis: '12056', name: 'FELICYA ANGELISTA', className: 'Kelas 7H', group: 'Kelompok 8', attendanceNo: '32', gender: 'P', status: 'Aktif' },
 ];
 
-// Gabungan database lengkap seluruh siswa Kelas 7 & 8 SMP Negeri 1 Wedi (Total 511 Siswa)
+// Gabungan database lengkap seluruh siswa Kelas 7 & 8 SMP Negeri 1 Wedi (Total 512 Siswa: 256 Siswa Kelas 7 & 256 Siswa Kelas 8)
 export const ALL_STUDENTS_DATABASE: Student[] = [
   ...KELAS_7_STUDENTS,
   ...ALL_255_STUDENTS,

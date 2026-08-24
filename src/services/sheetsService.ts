@@ -1190,6 +1190,7 @@ export interface DetectedColumnDetail {
   hasScores: boolean;
   isOccupied: boolean;
   scoreCount: number;
+  gradesMap: { [attendanceNo: string]: number | null };
 }
 
 export interface ClassColumnDetectionResult {
@@ -1212,10 +1213,10 @@ export async function detectClassTaskColumns(
   const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
 
   try {
-    // 1. Fetch header rows (A3:Z5) to get actual task titles like "Tugas 1 - KKA - Algoritma"
+    // 1. Fetch header rows (A1:Z6) to get actual task titles like "Tugas 1 - KKA - Algoritma"
     const taskHeaders: { [colIdx: number]: string } = {};
     try {
-      const headerUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&range=A3:Z5&sheet=${encodeURIComponent(rawClass)}`;
+      const headerUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&range=A1:Z6&sheet=${encodeURIComponent(rawClass)}`;
       const hRes = await fetch(headerUrl);
       if (hRes.ok) {
         const hText = await hRes.text();
@@ -1228,8 +1229,17 @@ export async function detectClassTaskColumns(
               if (!r.c) continue;
               for (let c = 4; c < r.c.length; c++) {
                 const val = r.c[c] ? String(r.c[c].v || '').trim() : '';
-                if (val && val !== '-' && val.toUpperCase() !== 'ASPEK' && !/^\d+$/.test(val)) {
-                  taskHeaders[c] = val;
+                if (
+                  val &&
+                  val !== '-' &&
+                  val.toUpperCase() !== 'ASPEK' &&
+                  val.toUpperCase() !== rawClass.toUpperCase() &&
+                  !/^\d+$/.test(val)
+                ) {
+                  // Prefer longer/more descriptive title if already set
+                  if (!taskHeaders[c] || val.length > taskHeaders[c].length) {
+                    taskHeaders[c] = val;
+                  }
                 }
               }
             }
@@ -1262,11 +1272,21 @@ export async function detectClassTaskColumns(
       }
 
       let scoreCount = 0;
+      const colGradesMap: { [attendanceNo: string]: number | null } = {};
 
       for (const r of studentRows) {
+        const attNo = String(parseInt(String(r[0] || '').trim(), 10));
         const v = r[c];
         if (v !== null && v !== undefined && String(v).trim() !== '' && String(v).trim() !== '-' && String(v).trim() !== '0') {
-          scoreCount++;
+          const num = parseFloat(String(v).replace(',', '.'));
+          if (!isNaN(num)) {
+            colGradesMap[attNo] = num;
+            scoreCount++;
+          } else {
+            colGradesMap[attNo] = null;
+          }
+        } else {
+          colGradesMap[attNo] = null;
         }
       }
 
@@ -1280,6 +1300,7 @@ export async function detectClassTaskColumns(
         hasScores,
         isOccupied,
         scoreCount,
+        gradesMap: colGradesMap,
       });
     }
 
@@ -1291,6 +1312,7 @@ export async function detectClassTaskColumns(
       hasScores: false,
       isOccupied: false,
       scoreCount: 0,
+      gradesMap: {},
     };
     const lastOccupied = occupiedColumns[occupiedColumns.length - 1];
 

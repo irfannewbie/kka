@@ -110,7 +110,7 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
             {totalStudentsCount}
           </div>
           <div className="font-mono-code text-[10px] text-[#2e59e6] mt-0.5 font-bold">
-            255 SISWA TERHUBUNG
+            {totalStudentsCount} SISWA TERHUBUNG
           </div>
         </div>
 

@@ -63,9 +63,10 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
 }) => {
   // 1. Grade & Class State
   const [selectedGrade, setSelectedGrade] = useState<'7' | '8'>('8');
-  const [selectedClass, setSelectedClass] = useState<string>('Kelas 8G');
-  const [taskTitle, setTaskTitle] = useState<string>('Tugas 1 - Informatika - Analisis Data');
+  const [selectedClass, setSelectedClass] = useState<string>('Kelas 8B');
+  const [taskTitle, setTaskTitle] = useState<string>('Tugas 1 - KKA - Algoritma');
   const [targetColumn, setTargetColumn] = useState<string>('AUTO');
+  const [selectedTaskId, setSelectedTaskId] = useState<string>('AUTO');
   const [kkm, setKkm] = useState<number>(75);
   const [assessmentDate, setAssessmentDate] = useState<string>(
     new Date().toISOString().split('T')[0]
@@ -76,11 +77,25 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
   const [isDetectingCols, setIsDetectingCols] = useState<boolean>(false);
 
   // Fetch / detect occupied columns and next available column for selected class
-  const loadClassColumns = async (className: string) => {
+  const loadClassColumns = async (className: string, autoSelectLatest = true) => {
     setIsDetectingCols(true);
     try {
       const res = await detectClassTaskColumns(spreadsheetId, className);
       setColumnDetection(res);
+
+      if (autoSelectLatest && res.occupiedColumns && res.occupiedColumns.length > 0) {
+        // Find currently selected task or default to first / latest occupied task
+        let activeTask = res.occupiedColumns.find((c) => c.colLetter === selectedTaskId);
+        if (!activeTask) {
+          activeTask = res.occupiedColumns[0]; // Start with first task or latest
+        }
+        if (activeTask && selectedTaskId !== 'NEW') {
+          setSelectedTaskId(activeTask.colLetter);
+          setTargetColumn(activeTask.colLetter);
+          setTaskTitle(activeTask.headerTitle || `Tugas Kolom ${activeTask.colLetter}`);
+          setGradesMap(activeTask.gradesMap || {});
+        }
+      }
     } catch (err) {
       console.warn('Failed to detect columns:', err);
     } finally {
@@ -89,8 +104,28 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
   };
 
   useEffect(() => {
-    loadClassColumns(selectedClass);
+    loadClassColumns(selectedClass, true);
   }, [selectedClass, spreadsheetId]);
+
+  // Handler when user chooses a task from the spreadsheet task dropdown
+  const handleSelectTaskFromSpreadsheet = (taskKey: string) => {
+    setSelectedTaskId(taskKey);
+    if (taskKey === 'NEW') {
+      setTargetColumn('AUTO');
+      const nextNum = (columnDetection?.occupiedColumns.length || 0) + 1;
+      setTaskTitle(`Tugas ${nextNum} - Informatika`);
+      setGradesMap({});
+      setRawInputText('');
+    } else {
+      const found = columnDetection?.columns?.find((c) => c.colLetter === taskKey);
+      if (found) {
+        setTargetColumn(found.colLetter);
+        setTaskTitle(found.headerTitle || `Tugas Kolom ${found.colLetter}`);
+        setGradesMap(found.gradesMap || {});
+        setRawInputText('');
+      }
+    }
+  };
 
   // Determine effective column letter
   const effectiveColLetter = useMemo(() => {
@@ -108,7 +143,7 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
 
   // 4. UI & Filtering State
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'tuntas' | 'remidi' | 'pending'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'sudah' | 'belum' | 'tuntas' | 'remidi' | 'pending'>('all');
   const [genderFilter, setGenderFilter] = useState<'all' | 'L' | 'P'>('all');
   const [isSyncingToSheet, setIsSyncingToSheet] = useState<boolean>(false);
   const [isClearingColR, setIsClearingColR] = useState<boolean>(false);
@@ -389,14 +424,20 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
     return classStudents.filter((s) => {
       const att = s.attendanceNo || '0';
       const score = gradesMap[att];
+      const hasScore = score !== null && score !== undefined;
 
       // Status check
       let status: 'tuntas' | 'remidi' | 'pending' = 'pending';
-      if (score !== null && score !== undefined) {
+      if (hasScore) {
         status = score >= kkm ? 'tuntas' : 'remidi';
       }
 
-      if (statusFilter !== 'all' && status !== statusFilter) return false;
+      if (statusFilter === 'sudah' && !hasScore) return false;
+      if (statusFilter === 'belum' && hasScore) return false;
+      if (statusFilter === 'pending' && hasScore) return false;
+      if (statusFilter === 'tuntas' && status !== 'tuntas') return false;
+      if (statusFilter === 'remidi' && status !== 'remidi') return false;
+
       if (genderFilter !== 'all' && s.gender !== genderFilter) return false;
 
       if (searchTerm.trim()) {
@@ -412,6 +453,40 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
   }, [classStudents, gradesMap, kkm, statusFilter, genderFilter, searchTerm]);
 
   // 7. Clipboard Exporters
+  const handleCopyUnfinishedStudents = () => {
+    const unfinished = classStudents.filter((s) => {
+      const att = s.attendanceNo || '0';
+      const score = gradesMap[att];
+      return score === null || score === undefined;
+    });
+
+    if (unfinished.length === 0) {
+      onShowAlert?.(
+        'Semua Siswa Sudah Mengerjakan',
+        `Luar biasa! Seluruh ${classStudents.length} siswa di ${selectedClass} sudah menyelesaikan tugas "${taskTitle}".`
+      );
+      return;
+    }
+
+    const lines = [
+      `📢 DAFTAR SISWA BELUM MENGERJAKAN TUGAS`,
+      `====================================`,
+      `📚 Tugas  : ${taskTitle}`,
+      `🏫 Kelas  : ${selectedClass}`,
+      `📅 Tanggal: ${assessmentDate}`,
+      `👥 Total Belum : ${unfinished.length} dari ${classStudents.length} Siswa`,
+      `------------------------------------`,
+      ...unfinished.map((s, idx) => `${idx + 1}. Absen ${s.attendanceNo} - ${s.name} (${s.nis})`),
+      `====================================`,
+      `Mohon segera menyelesaikan tugas tersebut. Terima kasih! 🙏`,
+    ];
+
+    navigator.clipboard.writeText(lines.join('\n'));
+    setCopyFeedback(`Daftar ${unfinished.length} siswa belum mengerjakan berhasil disalin!`);
+    setTimeout(() => setCopyFeedback(null), 4000);
+    onShowAlert?.('Disalin ke Clipboard', `Daftar ${unfinished.length} siswa yang belum mengerjakan berhasil disalin.`);
+  };
+
   const handleCopyScoresOnly = () => {
     // Copy only the scores in ascending order of attendanceNo (TSV)
     const sorted = [...classStudents].sort((a, b) => {
@@ -710,8 +785,69 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
             })}
           </div>
 
+          {/* Spreadsheet Task Selector Dropdown Banner */}
+          <div className="bg-amber-50/80 border-2 border-[#1a1a1a] p-3 shadow-[2px_2px_0px_#1a1a1a] flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex-1 space-y-1">
+              <label className="block font-mono-code text-xs font-black text-[#1a1a1a] uppercase tracking-wider flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <FileSpreadsheet className="h-4 w-4 text-[#2e59e6]" />
+                  <span>DAFTAR TUGAS DI SPREADSHEET ({selectedClass}):</span>
+                </div>
+                {isDetectingCols && (
+                  <span className="text-[10px] text-[#2e59e6] font-normal animate-pulse">Memeriksa spreadsheet...</span>
+                )}
+              </label>
+              <select
+                value={selectedTaskId}
+                onChange={(e) => handleSelectTaskFromSpreadsheet(e.target.value)}
+                className="w-full bg-white border-2 border-[#1a1a1a] px-3 py-2 text-xs font-mono-code font-bold text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] focus:outline-hidden focus:ring-2 focus:ring-[#2e59e6] cursor-pointer"
+              >
+                {columnDetection?.occupiedColumns && columnDetection.occupiedColumns.length > 0 ? (
+                  <>
+                    <optgroup label="📋 Tugas yang Ada di Spreadsheet:">
+                      {columnDetection.occupiedColumns.map((col) => {
+                        const count = col.scoreCount;
+                        const pct = classStudents.length > 0 ? Math.round((count / classStudents.length) * 100) : 0;
+                        return (
+                          <option key={col.colLetter} value={col.colLetter}>
+                            📌 Kolom {col.colLetter}: {col.headerTitle || `Tugas Kolom ${col.colLetter}`} ({count}/{classStudents.length} Siswa Mengerjakan - {pct}%)
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                    <optgroup label="➕ Penambahan Tugas Baru:">
+                      <option value="NEW">
+                        ➕ Buat Tugas Baru (Otomatis ke Kolom Kosong {columnDetection.nextAvailableColumn})
+                      </option>
+                    </optgroup>
+                  </>
+                ) : (
+                  <option value="NEW">
+                    ➕ Belum ada tugas di sheet (Mulai dari Kolom {columnDetection?.nextAvailableColumn || 'E'})
+                  </option>
+                )}
+              </select>
+            </div>
+
+            {/* Quick Summary Pill for Selected Task */}
+            <div className="flex items-center gap-2 shrink-0 pt-1 md:pt-0">
+              <div className="bg-white border border-[#1a1a1a] px-3 py-1.5 font-mono-code text-xs shadow-[1px_1px_0px_#1a1a1a]">
+                <div className="text-[10px] text-slate-500 font-bold uppercase">Status Pengerjaan Siswa:</div>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-emerald-700 font-black">
+                    ✓ {stats.gradedCount} Sudah
+                  </span>
+                  <span className="text-slate-300">|</span>
+                  <span className="text-amber-700 font-black">
+                    ⏳ {stats.pendingCount} Belum
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Task Title, Target Column & KKM Settings Row */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 pt-2">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-3.5 pt-1">
             <div className="md:col-span-4 space-y-1">
               <label className="block font-mono-code text-[11px] font-bold text-slate-700 uppercase tracking-wider">
                 NAMA TUGAS / ASPEK PENILAIAN:
@@ -855,310 +991,175 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
         </div>
       </div>
 
-      {/* Grid Layout: Smart Parser (Left) & Real-time Analytics (Right) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Left Column: Smart Multi-Format Parser Box */}
-        <div className="lg:col-span-6 space-y-4">
-          <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-5 flex flex-col justify-between h-full">
-            <div>
-              <div className="flex items-center justify-between border-b-2 border-[#1a1a1a] pb-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <Calculator className="h-5 w-5 text-[#2e59e6]" />
-                  <h2 className="font-serif-display font-bold text-lg text-[#1a1a1a]">
-                    Smart Parser Input Nilai
-                  </h2>
-                </div>
-                <span className="font-mono-code text-[11px] font-bold bg-blue-50 text-[#2e59e6] px-2.5 py-1 border border-blue-200">
-                  {parsedPreviewCount} Baris Terdeteksi
-                </span>
-              </div>
-
-              <p className="font-mono-code text-xs text-slate-600 mb-2.5">
-                Masukkan nilai per nomor absen dalam jumlah banyak sekaligus. Parser otomatis mendukung berbagai format penulisan:
-              </p>
-
-              {/* Supported Format Chips */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 mb-3 font-mono-code text-[10px]">
-                <div className="bg-slate-50 border border-slate-300 p-1.5">
-                  <span className="text-slate-500 font-bold block">Sama Dengan</span>
-                  <code className="text-[#2e59e6] font-bold">1 = 85</code>
-                </div>
-                <div className="bg-slate-50 border border-slate-300 p-1.5">
-                  <span className="text-slate-500 font-bold block">Titik</span>
-                  <code className="text-[#2e59e6] font-bold">1. 90</code>
-                </div>
-                <div className="bg-slate-50 border border-slate-300 p-1.5">
-                  <span className="text-slate-500 font-bold block">Titik Dua / Strip</span>
-                  <code className="text-[#2e59e6] font-bold">1: 78 | 1 - 80</code>
-                </div>
-                <div className="bg-slate-50 border border-slate-300 p-1.5">
-                  <span className="text-slate-500 font-bold block">Spasi / Tab</span>
-                  <code className="text-[#2e59e6] font-bold">1 88 | 1&#9;95</code>
-                </div>
-              </div>
-
-              {/* Multi-line Textarea */}
-              <div className="relative">
-                <textarea
-                  rows={9}
-                  value={rawInputText}
-                  onChange={(e) => setRawInputText(e.target.value)}
-                  placeholder="Contoh penulisan:&#10;1 = 88&#10;2. 92&#10;3: 78&#10;4 - 85&#10;5 90&#10;..."
-                  className="w-full bg-[#faf9f6] border-2 border-[#1a1a1a] p-3 font-mono-code text-xs font-semibold text-[#1a1a1a] shadow-inner focus:outline-hidden focus:ring-2 focus:ring-[#2e59e6] leading-relaxed resize-y"
-                />
-              </div>
+      {/* Full-width Smart Multi-Format Parser Box with Integrated Sync & Export Buttons */}
+      <div className="w-full">
+        <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-5 sm:p-6">
+          <div className="flex items-center justify-between border-b-2 border-[#1a1a1a] pb-3 mb-3.5">
+            <div className="flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-[#2e59e6]" />
+              <h2 className="font-serif-display font-bold text-lg sm:text-xl text-[#1a1a1a]">
+                Smart Parser Input Nilai
+              </h2>
             </div>
+            <span className="font-mono-code text-[11px] font-bold bg-blue-50 text-[#2e59e6] px-2.5 py-1 border border-blue-200 shadow-[1px_1px_0px_#1a1a1a]">
+              {parsedPreviewCount} Baris Terdeteksi
+            </span>
+          </div>
 
-            {/* Parser Action Buttons */}
-            <div className="space-y-2 pt-3 border-t-2 border-[#1a1a1a] mt-4">
-              <button
-                onClick={handleApplyParser}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-[#2e59e6] hover:bg-blue-700 text-white font-mono-code text-xs font-bold border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] transition-all cursor-pointer"
-              >
-                <Sparkles className="h-4 w-4" />
-                <span>TERAPKAN NILAI KE TABEL SISWA ({selectedClass})</span>
-              </button>
+          <p className="font-mono-code text-xs text-slate-600 mb-2.5">
+            Masukkan nilai per nomor absen dalam jumlah banyak sekaligus. Parser otomatis mendukung berbagai format penulisan:
+          </p>
 
-              <div className="flex flex-wrap items-center justify-between gap-2 font-mono-code text-[11px]">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={handleLoadSampleFormat}
-                    className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-[#1a1a1a] font-bold cursor-pointer"
-                    title="Muat contoh format"
-                  >
-                    Format Contoh
-                  </button>
-                  <button
-                    onClick={handleSimulateRandomGrades}
-                    className="px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-400 font-bold cursor-pointer"
-                    title="Isi nilai acak untuk demo"
-                  >
-                    Simulasi Acak
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={handleSetAllKKM}
-                    className="px-2.5 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-[#1a1a1a] font-bold cursor-pointer"
-                    title="Beri semua nilai KKM"
-                  >
-                    Set Semua KKM ({kkm})
-                  </button>
-                  <button
-                    onClick={() => {
-                      setRawInputText('');
-                      handleClearAllGrades();
-                    }}
-                    className="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold cursor-pointer"
-                    title="Kosongkan nilai"
-                  >
-                    Kosongkan
-                  </button>
-                </div>
-              </div>
+          {/* Supported Format Chips */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3.5 font-mono-code text-[11px]">
+            <div className="bg-slate-50 border border-slate-300 p-2 shadow-[1px_1px_0px_#1a1a1a]">
+              <span className="text-slate-500 font-bold block text-[10px]">Sama Dengan</span>
+              <code className="text-[#2e59e6] font-bold text-xs">1 = 85</code>
+            </div>
+            <div className="bg-slate-50 border border-slate-300 p-2 shadow-[1px_1px_0px_#1a1a1a]">
+              <span className="text-slate-500 font-bold block text-[10px]">Titik</span>
+              <code className="text-[#2e59e6] font-bold text-xs">1. 90</code>
+            </div>
+            <div className="bg-slate-50 border border-slate-300 p-2 shadow-[1px_1px_0px_#1a1a1a]">
+              <span className="text-slate-500 font-bold block text-[10px]">Titik Dua / Strip</span>
+              <code className="text-[#2e59e6] font-bold text-xs">1: 78 | 1 - 80</code>
+            </div>
+            <div className="bg-slate-50 border border-slate-300 p-2 shadow-[1px_1px_0px_#1a1a1a]">
+              <span className="text-slate-500 font-bold block text-[10px]">Spasi / Tab</span>
+              <code className="text-[#2e59e6] font-bold text-xs">1 88 | 1&#9;95</code>
             </div>
           </div>
-        </div>
 
-        {/* Right Column: Real-time Analytics & Statistical Summary */}
-        <div className="lg:col-span-6 space-y-4">
-          <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-5 flex flex-col justify-between h-full">
-            <div>
-              <div className="flex items-center justify-between border-b-2 border-[#1a1a1a] pb-3 mb-3">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="h-5 w-5 text-[#2e59e6]" />
-                  <h2 className="font-serif-display font-bold text-lg text-[#1a1a1a]">
-                    Statistik & Analisis Kelas
-                  </h2>
-                </div>
-                <span className="font-mono-code text-[11px] font-bold bg-slate-100 text-slate-800 px-2.5 py-1 border border-slate-300">
-                  {selectedClass} ({stats.totalStudents} Siswa)
-                </span>
+          {/* Multi-line Textarea */}
+          <div className="relative mb-4">
+            <textarea
+              rows={7}
+              value={rawInputText}
+              onChange={(e) => setRawInputText(e.target.value)}
+              placeholder="Contoh penulisan:&#10;1 = 88&#10;2. 92&#10;3: 78&#10;4 - 85&#10;5 90&#10;..."
+              className="w-full bg-[#faf9f6] border-2 border-[#1a1a1a] p-3.5 font-mono-code text-xs font-semibold text-[#1a1a1a] shadow-inner focus:outline-hidden focus:ring-2 focus:ring-[#2e59e6] leading-relaxed resize-y"
+            />
+          </div>
+
+          {/* Parser Control Actions */}
+          <div className="space-y-3 pt-3 border-t-2 border-[#1a1a1a]">
+            {/* Primary Apply Button */}
+            <button
+              onClick={handleApplyParser}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-[#2e59e6] hover:bg-blue-700 text-white font-mono-code text-xs sm:text-sm font-bold border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] transition-all cursor-pointer"
+            >
+              <Sparkles className="h-4 w-4" />
+              <span>TERAPKAN NILAI KE TABEL SISWA ({selectedClass})</span>
+            </button>
+
+            {/* Helper Quick Fill Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-2 font-mono-code text-[11px] pb-1">
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleLoadSampleFormat}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-[#1a1a1a] font-bold shadow-[1px_1px_0px_#1a1a1a] cursor-pointer"
+                  title="Muat contoh format"
+                >
+                  Format Contoh
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSimulateRandomGrades}
+                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-400 font-bold shadow-[1px_1px_0px_#1a1a1a] cursor-pointer"
+                  title="Isi nilai acak untuk demo"
+                >
+                  Simulasi Acak
+                </button>
               </div>
 
-              {/* 4 Core Metric Cards */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                {/* Rata-Rata */}
-                <div className="bg-slate-50 border-2 border-[#1a1a1a] p-3 shadow-[2px_2px_0px_#1a1a1a]">
-                  <span className="font-mono-code text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                    RATA-RATA KELAS
-                  </span>
-                  <div className="flex items-baseline justify-between mt-1">
-                    <span className="font-mono-code text-2xl font-black text-[#1a1a1a]">
-                      {stats.average > 0 ? stats.average : '-'}
-                    </span>
-                    <span
-                      className={`font-mono-code text-[10px] font-bold px-1.5 py-0.5 border ${
-                        stats.average >= kkm
-                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                          : stats.average > 0
-                          ? 'bg-rose-100 text-rose-800 border-rose-300'
-                          : 'bg-slate-200 text-slate-700 border-slate-300'
-                      }`}
-                    >
-                      {stats.average >= kkm ? '≥ KKM' : stats.average > 0 ? '< KKM' : 'N/A'}
-                    </span>
-                  </div>
-                  <div className="font-mono-code text-[9px] text-slate-500 mt-1">
-                    Dari {stats.gradedCount} siswa telah dinilai
-                  </div>
-                </div>
-
-                {/* Tertinggi & Terendah */}
-                <div className="bg-slate-50 border-2 border-[#1a1a1a] p-3 shadow-[2px_2px_0px_#1a1a1a]">
-                  <span className="font-mono-code text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                    TERTINGGI / TERENDAH
-                  </span>
-                  <div className="flex items-baseline justify-between mt-1">
-                    <span className="font-mono-code text-2xl font-black text-[#2e59e6]">
-                      {stats.maxScore !== null ? stats.maxScore : '-'}
-                    </span>
-                    <span className="font-mono-code text-sm font-bold text-slate-500">
-                      / Min: {stats.minScore !== null ? stats.minScore : '-'}
-                    </span>
-                  </div>
-                  <div className="font-mono-code text-[9px] text-slate-600 truncate mt-1" title={stats.maxStudent?.name}>
-                    Top: {stats.maxStudent ? `${stats.maxStudent.name.split(' ')[0]} (Absen ${stats.maxStudent.attendanceNo})` : '-'}
-                  </div>
-                </div>
-
-                {/* Tuntas */}
-                <div className="bg-emerald-50 border-2 border-emerald-800 p-3 shadow-[2px_2px_0px_#1a1a1a]">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono-code text-[10px] font-bold text-emerald-900 uppercase tracking-wider">
-                      SISWA TUNTAS (≥{kkm})
-                    </span>
-                    <span className="font-mono-code text-xs font-bold text-emerald-700 bg-emerald-200/80 px-1.5 py-0.2 border border-emerald-400">
-                      {stats.tuntasPercent}%
-                    </span>
-                  </div>
-                  <div className="font-mono-code text-2xl font-black text-emerald-900 mt-1">
-                    {stats.tuntasCount}{' '}
-                    <span className="text-xs font-normal text-emerald-700">/ {stats.totalStudents} Siswa</span>
-                  </div>
-                  <div className="w-full bg-emerald-200 h-1.5 mt-1.5 rounded-xs overflow-hidden">
-                    <div
-                      className="bg-emerald-600 h-full transition-all duration-300"
-                      style={{ width: `${stats.tuntasPercent}%` }}
-                    />
-                  </div>
-                </div>
-
-                {/* Remidi & Pending */}
-                <div className="bg-rose-50 border-2 border-rose-800 p-3 shadow-[2px_2px_0px_#1a1a1a]">
-                  <div className="flex items-center justify-between">
-                    <span className="font-mono-code text-[10px] font-bold text-rose-900 uppercase tracking-wider">
-                      REMIDI (&lt;{kkm}) / PENDING
-                    </span>
-                    <span className="font-mono-code text-xs font-bold text-rose-700 bg-rose-200/80 px-1.5 py-0.2 border border-rose-400">
-                      {stats.remidiPercent}%
-                    </span>
-                  </div>
-                  <div className="font-mono-code text-2xl font-black text-rose-900 mt-1 flex items-baseline justify-between">
-                    <span>
-                      {stats.remidiCount}{' '}
-                      <span className="text-xs font-normal text-rose-700">Remidi</span>
-                    </span>
-                    <span className="text-xs font-mono-code font-bold text-slate-500">
-                      {stats.pendingCount} Pending
-                    </span>
-                  </div>
-                  <div className="w-full bg-rose-200 h-1.5 mt-1.5 rounded-xs overflow-hidden">
-                    <div
-                      className="bg-rose-600 h-full transition-all duration-300"
-                      style={{ width: `${stats.remidiPercent}%` }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Distribution Breakdown Bar */}
-              <div className="bg-[#faf9f6] border border-[#1a1a1a] p-3 mb-2 font-mono-code text-xs">
-                <div className="flex items-center justify-between text-[10px] font-bold text-slate-600 uppercase mb-2">
-                  <span>SEBARAN RENTANG NILAI:</span>
-                  <span>KKM: {kkm}</span>
-                </div>
-                <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] font-bold">
-                  <div className="bg-emerald-100 text-emerald-900 border border-emerald-300 p-1.5">
-                    <span className="block text-[9px] text-emerald-700">A (90-100)</span>
-                    <span className="text-sm font-black">{stats.gradeRanges.A} Siswa</span>
-                  </div>
-                  <div className="bg-blue-100 text-blue-900 border border-blue-300 p-1.5">
-                    <span className="block text-[9px] text-blue-700">B (80-89)</span>
-                    <span className="text-sm font-black">{stats.gradeRanges.B} Siswa</span>
-                  </div>
-                  <div className="bg-amber-100 text-amber-900 border border-amber-300 p-1.5">
-                    <span className="block text-[9px] text-amber-700">C ({kkm}-79)</span>
-                    <span className="text-sm font-black">{stats.gradeRanges.C} Siswa</span>
-                  </div>
-                  <div className="bg-rose-100 text-rose-900 border border-rose-300 p-1.5">
-                    <span className="block text-[9px] text-rose-700">D (&lt;{kkm})</span>
-                    <span className="text-sm font-black">{stats.gradeRanges.D} Siswa</span>
-                  </div>
-                </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={handleSetAllKKM}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-[#1a1a1a] font-bold shadow-[1px_1px_0px_#1a1a1a] cursor-pointer"
+                  title="Beri semua nilai KKM"
+                >
+                  Set Semua KKM ({kkm})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRawInputText('');
+                    handleClearAllGrades();
+                  }}
+                  className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold shadow-[1px_1px_0px_#1a1a1a] cursor-pointer"
+                  title="Kosongkan nilai"
+                >
+                  Kosongkan
+                </button>
               </div>
             </div>
 
-            {/* Quick Export & Sync Action Row */}
-            <div className="pt-3 border-t-2 border-[#1a1a1a] space-y-2">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {/* INTEGRATED EXPORT & SPREADSHEET SYNC BUTTONS (Matches exact requested buttons) */}
+            <div className="pt-3 border-t-2 border-[#1a1a1a] space-y-2.5">
+              {/* Row 1: Copy TSV & Download Excel */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <button
+                  type="button"
                   onClick={handleCopyScoresOnly}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-white hover:bg-slate-100 text-[#1a1a1a] font-mono-code text-xs font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer"
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-white hover:bg-slate-100 text-[#1a1a1a] font-mono-code text-xs font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer"
                 >
-                  <Copy className="h-3.5 w-3.5 text-[#2e59e6]" />
-                  <span>SALIN NILAI (TSV)</span>
+                  <Copy className="h-4 w-4 text-[#2e59e6]" />
+                  <span>SALIN TSV</span>
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleExportExcel}
-                  className="flex items-center justify-center gap-1.5 px-3 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-mono-code text-xs font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer"
+                  className="flex items-center justify-center gap-2 py-2.5 px-4 bg-[#059669] hover:bg-[#047857] text-white font-mono-code text-xs font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer"
                 >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>UNDUH EXCEL (.XLSX)</span>
+                  <Download className="h-4 w-4" />
+                  <span>UNDUH EXCEL</span>
                 </button>
               </div>
 
-              {/* Direct Sync to Google Sheets Button */}
+              {/* Row 2: Sync to Sheet (Black button with emerald cloud icon and blue shadow) */}
               <button
+                type="button"
                 onClick={handleDirectSyncToGoogleSheets}
                 disabled={isSyncingToSheet}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-[#1a1a1a] hover:bg-black text-white font-mono-code text-xs font-bold border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#2e59e6] transition-all cursor-pointer disabled:opacity-60"
+                className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-[#1a1a1a] hover:bg-black text-white font-mono-code text-xs sm:text-sm font-bold border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#2e59e6] transition-all cursor-pointer disabled:opacity-60"
               >
                 {isSyncingToSheet ? (
                   <>
                     <RefreshCw className="h-4 w-4 animate-spin text-[#2e59e6]" />
-                    <span>MENYINKRONKAN KE SHEET '{selectedClass.replace(/^Kelas\s*/i, '')}' (KOLOM {targetColumn})...</span>
+                    <span>MENYINKRONKAN KE SHEET '{selectedClass.replace(/^Kelas\s*/i, '')}' (KOLOM {effectiveColLetter})...</span>
                   </>
                 ) : (
                   <>
                     <UploadCloud className="h-4 w-4 text-emerald-400" />
-                    <span>SINKRONKAN KE SHEET '{selectedClass.replace(/^Kelas\s*/i, '')}' [KOLOM {targetColumn === 'AUTO' ? 'E (MULAI E6)' : `${targetColumn} (MULAI ${targetColumn}6)`}]</span>
+                    <span>SINKRONKAN KE SHEET '{selectedClass.replace(/^Kelas\s*/i, '')}' [KOLOM {effectiveColLetter} (MULAI {effectiveColLetter}6)]</span>
                   </>
                 )}
               </button>
 
-              {/* Auxiliary Cleaner: Clear stray Column R if needed */}
+              {/* Row 3: Clear stray Column R button */}
               <button
                 type="button"
                 onClick={handleClearMisplacedColumnR}
                 disabled={isClearingColR}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 font-mono-code text-[11px] font-bold border border-rose-300 transition-all cursor-pointer disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-2 bg-[#fff1f2] hover:bg-[#ffe4e6] text-[#9f1239] font-mono-code text-xs font-bold border border-[#fecdd3] transition-all cursor-pointer disabled:opacity-50"
                 title="Hapus nilai nyasar di Kolom R jika sebelumnya salah kolom"
               >
-                <Trash2 className="h-3 w-3 text-rose-600" />
+                <Trash2 className="h-3.5 w-3.5 text-rose-600" />
                 <span>{isClearingColR ? 'Membersihkan Kolom R...' : `🧹 Bersihkan Nilai di Kolom R pada Sheet '${selectedClass.replace(/^Kelas\s*/i, '')}'`}</span>
               </button>
 
+              {/* Feedback Notifications */}
               {syncStatusMsg && (
-                <div className="font-mono-code text-[11px] text-center text-slate-700 bg-slate-100 border border-slate-300 p-1.5 font-bold">
+                <div className="font-mono-code text-xs text-center text-slate-700 bg-slate-100 border border-slate-300 p-2 font-bold shadow-[1px_1px_0px_#1a1a1a]">
                   {syncStatusMsg}
                 </div>
               )}
 
               {copyFeedback && (
-                <div className="font-mono-code text-[11px] text-center text-emerald-800 bg-emerald-50 border border-emerald-300 p-1.5 animate-in fade-in">
+                <div className="font-mono-code text-xs text-center text-emerald-800 bg-emerald-50 border border-emerald-300 p-2 font-bold shadow-[1px_1px_0px_#1a1a1a] animate-in fade-in">
                   ✓ {copyFeedback}
                 </div>
               )}
@@ -1167,25 +1168,226 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
         </div>
       </div>
 
-      {/* Interactive Table Section: Rekapitulasi & Pemetaan Nilai Siswa */}
+      {/* Interactive Table Section: Rekapitulasi, Analisis Statistik & Pemetaan Nilai Siswa */}
       <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a]">
         {/* Table Header Controls */}
         <div className="p-4 sm:p-5 border-b-2 border-[#1a1a1a] bg-[#faf9f6]">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-5 w-5 text-[#2e59e6]" />
-                <h3 className="font-serif-display font-bold text-xl text-[#1a1a1a]">
-                  Tabel Hasil Pemetaan Nilai Siswa: {selectedClass}
-                </h3>
+          <div className="flex flex-col gap-4">
+            {/* Top Bar: Title & In-Place Spreadsheet Task Selector */}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b border-slate-200 pb-3.5">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <BookOpen className="h-5 w-5 text-[#2e59e6]" />
+                  <h3 className="font-serif-display font-bold text-xl text-[#1a1a1a]">
+                    Tabel Pemetaan Nilai & Status Pengerjaan: {selectedClass}
+                  </h3>
+                  <span className="bg-[#2e59e6] text-white text-[10px] font-mono-code font-bold px-2 py-0.5 shadow-[1px_1px_0px_#1a1a1a]">
+                    KOLOM {effectiveColLetter}
+                  </span>
+                </div>
+                <p className="font-mono-code text-xs text-slate-600 mt-0.5">
+                  Tugas Aktif: <strong>"{taskTitle}"</strong> • KKM: <strong>{kkm}</strong> • Total Siswa: <strong>{classStudents.length}</strong>
+                </p>
               </div>
-              <p className="font-mono-code text-xs text-slate-600 mt-0.5">
-                Edit nilai langsung pada sel tabel untuk penyesuaian cepat per siswa.
-              </p>
+
+              {/* In-table Spreadsheet Task Dropdown */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-1.5 font-mono-code text-xs font-bold text-slate-700">
+                  <FileSpreadsheet className="h-4 w-4 text-[#2e59e6]" />
+                  <span className="hidden sm:inline">PILIH TUGAS:</span>
+                </div>
+                <select
+                  value={selectedTaskId}
+                  onChange={(e) => handleSelectTaskFromSpreadsheet(e.target.value)}
+                  className="bg-white border-2 border-[#1a1a1a] px-3 py-1.5 text-xs font-mono-code font-bold text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] focus:outline-hidden focus:ring-2 focus:ring-[#2e59e6] cursor-pointer max-w-xs sm:max-w-md"
+                >
+                  {columnDetection?.occupiedColumns && columnDetection.occupiedColumns.length > 0 ? (
+                    <>
+                      <optgroup label="📋 Tugas Terdaftar di Spreadsheet:">
+                        {columnDetection.occupiedColumns.map((col) => {
+                          const count = col.scoreCount;
+                          const pct = classStudents.length > 0 ? Math.round((count / classStudents.length) * 100) : 0;
+                          return (
+                            <option key={col.colLetter} value={col.colLetter}>
+                              📌 Kolom {col.colLetter}: {col.headerTitle || `Tugas Kolom ${col.colLetter}`} ({count}/{classStudents.length} Siswa Mengerjakan - {pct}%)
+                            </option>
+                          );
+                        })}
+                      </optgroup>
+                      <optgroup label="➕ Tugas Baru:">
+                        <option value="NEW">
+                          ➕ Input Tugas Baru (Kolom {columnDetection.nextAvailableColumn})
+                        </option>
+                      </optgroup>
+                    </>
+                  ) : (
+                    <option value="NEW">
+                      ➕ Input Tugas Baru (Kolom {columnDetection?.nextAvailableColumn || 'E'})
+                    </option>
+                  )}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => loadClassColumns(selectedClass, false)}
+                  disabled={isDetectingCols}
+                  className="p-1.5 bg-white hover:bg-slate-100 border-2 border-[#1a1a1a] text-slate-700 shadow-[1px_1px_0px_#1a1a1a] cursor-pointer"
+                  title="Segarkan daftar tugas dari Google Sheets"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 ${isDetectingCols ? 'animate-spin' : ''}`} />
+                </button>
+              </div>
             </div>
 
-            {/* Quick Filter Buttons & Search */}
-            <div className="flex flex-wrap items-center gap-2">
+            {/* INTEGRATED STATISTIK & ANALISIS KELAS PANEL (Matches exact requested visual card design) */}
+            <div className="bg-white border-2 border-[#1a1a1a] p-4 sm:p-5 shadow-[3px_3px_0px_#1a1a1a]">
+              <div className="flex items-center justify-between border-b-2 border-[#1a1a1a] pb-2.5 mb-3.5">
+                <div className="flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-[#2e59e6]" />
+                  <h4 className="font-serif-display font-bold text-lg text-[#1a1a1a]">
+                    Statistik & Analisis Kelas
+                  </h4>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-mono-code text-[11px] font-bold bg-[#edf2f7] text-[#1a1a1a] px-2.5 py-1 border border-[#1a1a1a]">
+                    {selectedClass} ({stats.totalStudents} Siswa)
+                  </span>
+                </div>
+              </div>
+
+              {/* 4 Core Metric Cards (2x2 Grid) */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mb-3.5">
+                {/* 1. Rata-Rata Kelas */}
+                <div className="bg-white border-2 border-[#1a1a1a] p-3.5 shadow-[2px_2px_0px_#1a1a1a] flex flex-col justify-between">
+                  <div>
+                    <span className="font-mono-code text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                      RATA-RATA KELAS
+                    </span>
+                    <div className="flex items-baseline justify-between mt-1">
+                      <span className="font-mono-code text-3xl font-black text-[#1a1a1a]">
+                        {stats.average > 0 ? stats.average : '-'}
+                      </span>
+                      <span
+                        className={`font-mono-code text-[11px] font-bold px-2 py-0.5 border ${
+                          stats.average >= kkm
+                            ? 'bg-emerald-100 text-emerald-900 border-emerald-400'
+                            : stats.average > 0
+                            ? 'bg-rose-100 text-rose-900 border-rose-400'
+                            : 'bg-slate-100 text-slate-700 border-slate-300'
+                        }`}
+                      >
+                        {stats.average >= kkm ? '≥ KKM' : stats.average > 0 ? '< KKM' : 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="font-mono-code text-[10px] text-slate-600 mt-1.5">
+                    Dari {stats.gradedCount} siswa telah dinilai
+                  </div>
+                </div>
+
+                {/* 2. Tertinggi / Terendah */}
+                <div className="bg-white border-2 border-[#1a1a1a] p-3.5 shadow-[2px_2px_0px_#1a1a1a] flex flex-col justify-between">
+                  <div>
+                    <span className="font-mono-code text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
+                      TERTINGGI / TERENDAH
+                    </span>
+                    <div className="flex items-baseline gap-2 mt-1">
+                      <span className="font-mono-code text-3xl font-black text-[#2e59e6]">
+                        {stats.maxScore !== null ? stats.maxScore : '-'}
+                      </span>
+                      <span className="font-mono-code text-base font-bold text-slate-600">
+                        / Min: {stats.minScore !== null ? stats.minScore : '-'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="font-mono-code text-[10px] text-slate-600 truncate mt-1.5" title={stats.maxStudent?.name}>
+                    Top: {stats.maxStudent ? `${stats.maxStudent.name.split(' ')[0]} (Absen ${stats.maxStudent.attendanceNo})` : '-'}
+                  </div>
+                </div>
+
+                {/* 3. Siswa Tuntas */}
+                <div className="bg-[#f0fdf4] border-2 border-[#047857] p-3.5 shadow-[2px_2px_0px_#1a1a1a] flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono-code text-[11px] font-bold text-[#065f46] uppercase tracking-wider">
+                        SISWA TUNTAS (≥{kkm})
+                      </span>
+                      <span className="font-mono-code text-[11px] font-bold text-[#065f46] bg-[#a7f3d0] px-2 py-0.5 border border-[#059669]">
+                        {stats.tuntasPercent}%
+                      </span>
+                    </div>
+                    <div className="font-mono-code text-3xl font-black text-[#065f46] mt-1">
+                      {stats.tuntasCount}{' '}
+                      <span className="text-sm font-semibold text-[#047857]">/ {stats.totalStudents} Siswa</span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-[#a7f3d0] h-2 mt-2 rounded-xs overflow-hidden border border-[#059669]/30">
+                    <div
+                      className="bg-[#059669] h-full transition-all duration-300"
+                      style={{ width: `${stats.tuntasPercent}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* 4. Remidi / Pending */}
+                <div className="bg-[#fff1f2] border-2 border-[#be123c] p-3.5 shadow-[2px_2px_0px_#1a1a1a] flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between">
+                      <span className="font-mono-code text-[11px] font-bold text-[#9f1239] uppercase tracking-wider">
+                        REMIDI (&lt;{kkm}) / PENDING
+                      </span>
+                      <span className="font-mono-code text-[11px] font-bold text-[#9f1239] bg-[#fecdd3] px-2 py-0.5 border border-[#e11d48]">
+                        {stats.remidiPercent}%
+                      </span>
+                    </div>
+                    <div className="font-mono-code text-3xl font-black text-[#9f1239] mt-1 flex items-baseline justify-between">
+                      <span>
+                        {stats.remidiCount}{' '}
+                        <span className="text-sm font-semibold text-[#be123c]">Remidi</span>
+                      </span>
+                      <span className="text-sm font-mono-code font-bold text-slate-600">
+                        {stats.pendingCount} Pending
+                      </span>
+                    </div>
+                  </div>
+                  <div className="w-full bg-[#fecdd3] h-2 mt-2 rounded-xs overflow-hidden border border-[#e11d48]/30">
+                    <div
+                      className="bg-[#e11d48] h-full transition-all duration-300"
+                      style={{ width: `${stats.remidiPercent}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 5. Distribution Breakdown Bar */}
+              <div className="bg-white border-2 border-[#1a1a1a] p-3 font-mono-code text-xs">
+                <div className="flex items-center justify-between text-[11px] font-bold text-slate-700 uppercase mb-2">
+                  <span>SEBARAN RENTANG NILAI:</span>
+                  <span>KKM: {kkm}</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-bold">
+                  <div className="bg-[#dcfce7] text-[#14532d] border-2 border-[#15803d] p-2">
+                    <span className="block text-[10px] text-[#166534] font-semibold">A (90-100)</span>
+                    <span className="text-base font-black">{stats.gradeRanges.A} Siswa</span>
+                  </div>
+                  <div className="bg-[#dbeafe] text-[#1e3a8a] border-2 border-[#1d4ed8] p-2">
+                    <span className="block text-[10px] text-[#1e40af] font-semibold">B (80-89)</span>
+                    <span className="text-base font-black">{stats.gradeRanges.B} Siswa</span>
+                  </div>
+                  <div className="bg-[#fef3c7] text-[#78350f] border-2 border-[#d97706] p-2">
+                    <span className="block text-[10px] text-[#92400e] font-semibold">C ({kkm}-79)</span>
+                    <span className="text-base font-black">{stats.gradeRanges.C} Siswa</span>
+                  </div>
+                  <div className="bg-[#ffe4e6] text-[#881337] border-2 border-[#e11d48] p-2">
+                    <span className="block text-[10px] text-[#9f1239] font-semibold">D (&lt;{kkm})</span>
+                    <span className="text-base font-black">{stats.gradeRanges.D} Siswa</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Bar: Search, Completion Status Filters & Quick Action Buttons */}
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              {/* Search input */}
               <div className="relative">
                 <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -1193,55 +1395,83 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
                   placeholder="Cari nama / NIS / absen..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-8 pr-3 py-1.5 bg-white border-2 border-[#1a1a1a] text-xs font-mono-code text-[#1a1a1a] focus:outline-hidden w-48 sm:w-56"
+                  className="pl-8 pr-3 py-1.5 bg-white border-2 border-[#1a1a1a] text-xs font-mono-code text-[#1a1a1a] focus:outline-hidden w-48 sm:w-56 shadow-[1px_1px_0px_#1a1a1a]"
                 />
               </div>
 
               {/* Status Filter Tabs */}
-              <div className="flex items-center border-2 border-[#1a1a1a] bg-white font-mono-code text-xs font-bold divide-x divide-[#1a1a1a]">
+              <div className="flex items-center flex-wrap border-2 border-[#1a1a1a] bg-white font-mono-code text-xs font-bold divide-x divide-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]">
                 <button
                   onClick={() => setStatusFilter('all')}
-                  className={`px-2.5 py-1.5 cursor-pointer ${
+                  className={`px-2.5 py-1.5 cursor-pointer transition-colors ${
                     statusFilter === 'all' ? 'bg-[#1a1a1a] text-white' : 'hover:bg-slate-100 text-slate-700'
                   }`}
+                  title="Lihat seluruh siswa di kelas"
                 >
                   Semua ({classStudents.length})
                 </button>
                 <button
-                  onClick={() => setStatusFilter('tuntas')}
-                  className={`px-2.5 py-1.5 cursor-pointer ${
-                    statusFilter === 'tuntas' ? 'bg-emerald-600 text-white' : 'hover:bg-slate-100 text-emerald-800'
+                  onClick={() => setStatusFilter('sudah')}
+                  className={`px-2.5 py-1.5 cursor-pointer transition-colors ${
+                    statusFilter === 'sudah' ? 'bg-emerald-700 text-white' : 'hover:bg-slate-100 text-emerald-800'
                   }`}
+                  title="Siswa yang sudah memiliki nilai pada tugas ini"
+                >
+                  ✓ Sudah ({stats.gradedCount})
+                </button>
+                <button
+                  onClick={() => setStatusFilter('belum')}
+                  className={`px-2.5 py-1.5 cursor-pointer transition-colors ${
+                    statusFilter === 'belum' || statusFilter === 'pending' ? 'bg-amber-600 text-white' : 'hover:bg-slate-100 text-amber-800'
+                  }`}
+                  title="Siswa yang belum mengumpulkan / belum dinilai"
+                >
+                  ⏳ Belum ({stats.pendingCount})
+                </button>
+                <button
+                  onClick={() => setStatusFilter('tuntas')}
+                  className={`px-2.5 py-1.5 cursor-pointer transition-colors ${
+                    statusFilter === 'tuntas' ? 'bg-blue-600 text-white' : 'hover:bg-slate-100 text-blue-800'
+                  }`}
+                  title={`Nilai >= KKM (${kkm})`}
                 >
                   Tuntas ({stats.tuntasCount})
                 </button>
                 <button
                   onClick={() => setStatusFilter('remidi')}
-                  className={`px-2.5 py-1.5 cursor-pointer ${
+                  className={`px-2.5 py-1.5 cursor-pointer transition-colors ${
                     statusFilter === 'remidi' ? 'bg-rose-600 text-white' : 'hover:bg-slate-100 text-rose-800'
                   }`}
+                  title={`Nilai < KKM (${kkm})`}
                 >
                   Remidi ({stats.remidiCount})
                 </button>
-                <button
-                  onClick={() => setStatusFilter('pending')}
-                  className={`px-2.5 py-1.5 cursor-pointer ${
-                    statusFilter === 'pending' ? 'bg-slate-700 text-white' : 'hover:bg-slate-100 text-slate-600'
-                  }`}
-                >
-                  Pending ({stats.pendingCount})
-                </button>
               </div>
 
-              {/* Copy Full Table button */}
-              <button
-                onClick={handleCopyFullTable}
-                className="px-3 py-1.5 bg-white hover:bg-slate-100 text-[#1a1a1a] border-2 border-[#1a1a1a] font-mono-code text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-                title="Salin seluruh tabel ke clipboard"
-              >
-                <Copy className="h-3 w-3" />
-                <span>Salin Tabel</span>
-              </button>
+              {/* Action Buttons */}
+              <div className="flex items-center gap-2">
+                {/* Copy Unfinished Students Button for WA/Telegram */}
+                <button
+                  type="button"
+                  onClick={handleCopyUnfinishedStudents}
+                  className="px-3 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-900 border-2 border-[#1a1a1a] font-mono-code text-xs font-bold flex items-center gap-1.5 shadow-[2px_2px_0px_#1a1a1a] cursor-pointer"
+                  title="Salin daftar siswa yang belum mengerjakan untuk dibagikan ke WhatsApp"
+                >
+                  <Clock className="h-3.5 w-3.5 text-amber-700" />
+                  <span>Salin Siswa Belum ({stats.pendingCount})</span>
+                </button>
+
+                {/* Copy Full Table button */}
+                <button
+                  type="button"
+                  onClick={handleCopyFullTable}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 text-[#1a1a1a] border-2 border-[#1a1a1a] font-mono-code text-xs font-bold flex items-center gap-1.5 shadow-[2px_2px_0px_#1a1a1a] cursor-pointer"
+                  title="Salin seluruh tabel ke clipboard"
+                >
+                  <Copy className="h-3 w-3" />
+                  <span>Salin Tabel</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -1255,19 +1485,18 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
                 <th className="py-3 px-3 w-24 border-r border-white/20">NIPD / NIS</th>
                 <th className="py-3 px-4 border-r border-white/20">NAMA LENGKAP SISWA</th>
                 <th className="py-3 px-3 text-center w-14 border-r border-white/20">L/P</th>
-                <th className="py-3 px-3 w-28 border-r border-white/20">KELOMPOK</th>
                 <th className="py-3 px-4 w-40 text-center border-r border-white/20 bg-[#2e59e6]">
                   NILAI SISWA
                 </th>
-                <th className="py-3 px-4 w-32 text-center border-r border-white/20">STATUS</th>
+                <th className="py-3 px-4 w-48 text-center border-r border-white/20">STATUS PENGERJAAN</th>
                 <th className="py-3 px-3 w-28 text-center">AKSI CEPAT</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filteredStudents.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-12 text-center text-slate-500 font-mono-code">
-                    Tidak ada data siswa yang cocok dengan filter.
+                  <td colSpan={7} className="py-12 text-center text-slate-500 font-mono-code">
+                    Tidak ada data siswa yang cocok dengan filter ({statusFilter.toUpperCase()}).
                   </td>
                 </tr>
               ) : (
@@ -1320,11 +1549,6 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
                         </span>
                       </td>
 
-                      {/* Group */}
-                      <td className="py-2.5 px-3 text-slate-600 border-r border-slate-200 text-[11px]">
-                        {student.group || '-'}
-                      </td>
-
                       {/* Inline Editable Score Cell */}
                       <td className="py-2 px-3 text-center border-r border-slate-200 bg-blue-50/30">
                         <div className="flex items-center justify-center gap-1">
@@ -1350,16 +1574,20 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
                       {/* Status Badge */}
                       <td className="py-2.5 px-4 text-center border-r border-slate-200">
                         {!hasScore ? (
-                          <span className="inline-flex items-center gap-1 font-bold text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 border border-slate-300">
-                            <Clock className="h-3 w-3" /> PENDING
+                          <span className="inline-flex items-center gap-1 font-bold text-[10px] bg-amber-50 text-amber-900 px-2 py-1 border border-amber-300">
+                            <Clock className="h-3 w-3 text-amber-600" /> BELUM MENGERJAKAN
                           </span>
                         ) : isTuntas ? (
-                          <span className="inline-flex items-center gap-1 font-bold text-[10px] bg-emerald-100 text-emerald-900 px-2.5 py-0.5 border border-emerald-400">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-600" /> TUNTAS
+                          <span className="inline-flex items-center gap-1.5 font-bold text-[10px] bg-emerald-50 text-emerald-900 px-2 py-1 border border-emerald-400">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                            <span>SUDAH ({score})</span>
+                            <span className="bg-emerald-600 text-white text-[9px] px-1 py-0.2 rounded-xs font-mono-code">TUNTAS</span>
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 font-bold text-[10px] bg-rose-100 text-rose-900 px-2.5 py-0.5 border border-rose-400">
-                            <AlertTriangle className="h-3 w-3 text-rose-600" /> REMIDI
+                          <span className="inline-flex items-center gap-1.5 font-bold text-[10px] bg-rose-50 text-rose-900 px-2 py-1 border border-rose-400">
+                            <AlertTriangle className="h-3 w-3 text-rose-600" />
+                            <span>SUDAH ({score})</span>
+                            <span className="bg-rose-600 text-white text-[9px] px-1 py-0.2 rounded-xs font-mono-code">REMIDI</span>
                           </span>
                         )}
                       </td>
