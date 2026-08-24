@@ -61,24 +61,70 @@ export const isAuthorizedAdmin = (email?: string | null): boolean => {
   return ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === email.toLowerCase());
 };
 
-export const DEFAULT_ADMIN_USER: User = {
-  uid: 'admin-irfan',
-  email: 'irfannewbie7@gmail.com',
-  displayName: 'Irfan (Guru Informatika)',
-  photoURL: 'https://api.dicebear.com/7.x/bottts/svg?seed=irfannewbie7',
-  emailVerified: true,
-  isAnonymous: false,
-  metadata: {} as any,
-  providerData: [],
-  refreshToken: '',
-  tenantId: null,
-  delete: async () => {},
-  getIdToken: async () => 'active-admin-token',
-  getIdTokenResult: async () => ({} as any),
-  reload: async () => {},
-  toJSON: () => ({}),
-  phoneNumber: null,
-  providerId: 'google.com',
+export const ADMIN_PROFILES: Record<string, User> = {
+  'irfannewbie7@gmail.com': {
+    uid: 'admin-irfan-1',
+    email: 'irfannewbie7@gmail.com',
+    displayName: 'Irfan (Guru Informatika)',
+    photoURL: 'https://api.dicebear.com/7.x/bottts/svg?seed=irfannewbie7',
+    emailVerified: true,
+    isAnonymous: false,
+    metadata: {} as any,
+    providerData: [],
+    refreshToken: '',
+    tenantId: null,
+    delete: async () => {},
+    getIdToken: async () => 'active-admin-token',
+    getIdTokenResult: async () => ({} as any),
+    reload: async () => {},
+    toJSON: () => ({}),
+    phoneNumber: null,
+    providerId: 'google.com',
+  },
+  'irfandwi.hs@gmail.com': {
+    uid: 'admin-irfan-2',
+    email: 'irfandwi.hs@gmail.com',
+    displayName: 'Irfan Dwi (Admin Master)',
+    photoURL: 'https://api.dicebear.com/7.x/bottts/svg?seed=irfandwihs',
+    emailVerified: true,
+    isAnonymous: false,
+    metadata: {} as any,
+    providerData: [],
+    refreshToken: '',
+    tenantId: null,
+    delete: async () => {},
+    getIdToken: async () => 'active-admin-token',
+    getIdTokenResult: async () => ({} as any),
+    reload: async () => {},
+    toJSON: () => ({}),
+    phoneNumber: null,
+    providerId: 'google.com',
+  },
+};
+
+export const DEFAULT_ADMIN_USER: User = ADMIN_PROFILES['irfandwi.hs@gmail.com'] || ADMIN_PROFILES['irfannewbie7@gmail.com'];
+
+// Helper to get friendly error descriptions
+export const getAuthErrorMessage = (error: any): string => {
+  const code = error?.code || '';
+  const message = error?.message || '';
+
+  if (code === 'auth/unauthorized-domain' || message.includes('unauthorized-domain')) {
+    return 'Domain web ini belum ditambahkan ke "Authorized Domains" di Firebase Console (Authentication > Settings > Authorized Domains). Namun Anda tetap dapat mengakses dan mengelola seluruh menu /master menggunakan profil admin offline.';
+  }
+  if (code === 'auth/popup-blocked' || message.includes('popup-blocked')) {
+    return 'Jendela popup Google diblokir oleh browser. Silakan izinkan pop-up pada bilah URL browser Anda atau buka aplikasi di tab baru.';
+  }
+  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+    return 'Login dibatalkan karena jendela pop-up ditutup.';
+  }
+  if (code === 'auth/network-request-failed') {
+    return 'Gagal menghubungi server autentikasi. Periksa koneksi internet atau ekstensi pemblokir skrip.';
+  }
+  if (code === 'auth/operation-not-allowed') {
+    return 'Metode Google Sign-In belum diaktifkan di Firebase Console > Authentication > Sign-in method.';
+  }
+  return error?.message || 'Terjadi kendala saat proses autentikasi Firebase.';
 };
 
 // Flag to indicate if we are in the middle of a sign-in flow.

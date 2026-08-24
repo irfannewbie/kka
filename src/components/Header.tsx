@@ -8,6 +8,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
+import { ADMIN_EMAILS } from '../services/firebaseAuth';
 
 interface HeaderProps {
   activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek';
@@ -16,6 +17,7 @@ interface HeaderProps {
   token: string | null;
   onLogin: () => void;
   onLogout: () => void;
+  onSwitchAdminProfile?: (email: string) => void;
   isLoggingIn: boolean;
   isSyncing: boolean;
   onManualSync: () => void;
@@ -36,6 +38,7 @@ export const Header: React.FC<HeaderProps> = ({
   token,
   onLogin,
   onLogout,
+  onSwitchAdminProfile,
   isLoggingIn,
   isSyncing,
   onManualSync,
@@ -202,12 +205,26 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Login / User Status Indicator */}
         {isMasterMode && (
-          token && user ? (
-            <div className="flex items-center gap-2 font-mono-code text-xs">
-              <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-[#1a1a1a] text-[11px] font-bold text-[#1a1a1a]">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
-                {user.email || 'Admin'}
-              </span>
+          <div className="flex items-center gap-2 font-mono-code text-xs">
+            {/* Active Admin Profile Switcher */}
+            <div className="hidden sm:flex items-center bg-white border border-[#1a1a1a] px-2 py-1 gap-1.5">
+              <span className={`w-2 h-2 rounded-full inline-block ${token ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`}></span>
+              <select
+                value={user?.email || ADMIN_EMAILS[0]}
+                onChange={(e) => onSwitchAdminProfile && onSwitchAdminProfile(e.target.value)}
+                className="bg-transparent text-[11px] font-bold text-[#1a1a1a] border-none focus:outline-hidden cursor-pointer"
+                title="Pilih akun admin aktif"
+              >
+                {ADMIN_EMAILS.map((adminEmail) => (
+                  <option key={adminEmail} value={adminEmail}>
+                    {adminEmail} {adminEmail === user?.email ? '(Aktif)' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Google OAuth Connect / Logout Button */}
+            {token ? (
               <button
                 onClick={onLogout}
                 className="font-mono-code text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 px-2.5 py-1 border border-rose-600 bg-white transition-colors cursor-pointer"
@@ -215,18 +232,18 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 LOGOUT
               </button>
-            </div>
-          ) : (
-            <button
-              onClick={onLogin}
-              disabled={isLoggingIn}
-              className="font-mono-code text-xs font-bold text-white bg-[#1a1a1a] hover:bg-[#2e59e6] px-3 py-1 border border-[#1a1a1a] transition-colors cursor-pointer flex items-center gap-1.5"
-              title="Hubungkan akun Google untuk izin menulis ke Google Spreadsheet"
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
-              {isLoggingIn ? 'MENGHUBUNGKAN...' : 'LOGIN (GOOGLE)'}
-            </button>
-          )
+            ) : (
+              <button
+                onClick={onLogin}
+                disabled={isLoggingIn}
+                className="font-mono-code text-xs font-bold text-white bg-[#1a1a1a] hover:bg-[#2e59e6] px-3 py-1 border border-[#1a1a1a] transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Hubungkan akun Google langsung untuk sinkronisasi menulis ke Google Spreadsheet"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>
+                {isLoggingIn ? 'MENGHUBUNGKAN...' : 'LOGIN GOOGLE'}
+              </button>
+            )}
+          </div>
         )}
       </div>
     </header>

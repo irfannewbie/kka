@@ -5,6 +5,9 @@ import {
   googleSignIn,
   logout,
   DEFAULT_ADMIN_USER,
+  ADMIN_PROFILES,
+  ADMIN_EMAILS,
+  getAuthErrorMessage,
 } from './services/firebaseAuth';
 import {
   DEFAULT_SPREADSHEET_ID,
@@ -40,6 +43,7 @@ const STORAGE_KEYS = {
   STUDENTS: 'tugas_siswa_students_v3',
   NOTIFICATIONS: 'tugas_siswa_notifs_v3',
   SOUND: 'tugas_siswa_sound_enabled',
+  ACTIVE_ADMIN: 'tugas_siswa_active_admin_email_v3',
 };
 
 // Clear any stale cached data
@@ -99,14 +103,32 @@ export default function App() {
     }
   };
 
-  // Auth & Google Sheets State - Default logged in as irfannewbie7@gmail.com
-  const [user, setUser] = useState<User | null>(DEFAULT_ADMIN_USER);
+  // Auth & Google Sheets State - Default logged in as irfandwi.hs@gmail.com / irfannewbie7@gmail.com
+  const [user, setUser] = useState<User | null>(() => {
+    const savedEmail = localStorage.getItem(STORAGE_KEYS.ACTIVE_ADMIN);
+    if (savedEmail && ADMIN_PROFILES[savedEmail]) {
+      return ADMIN_PROFILES[savedEmail];
+    }
+    return ADMIN_PROFILES['irfandwi.hs@gmail.com'] || DEFAULT_ADMIN_USER;
+  });
   const [token, setToken] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
   const [spreadsheetId] = useState<string>(DEFAULT_SPREADSHEET_ID);
   const [spreadsheetUrl] = useState<string>(DEFAULT_SPREADSHEET_URL);
+
+  // Switch between authorized admin profiles
+  const handleSwitchAdminProfile = (email: string) => {
+    const profile = ADMIN_PROFILES[email] || {
+      ...DEFAULT_ADMIN_USER,
+      email: email,
+      displayName: email.split('@')[0],
+    };
+    setUser(profile);
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_ADMIN, email);
+    triggerNewTaskAlert('Profil Admin Aktif', `Akun admin beralih ke: ${email}`);
+  };
 
   // Sound preference
   const [soundEnabled, setSoundEnabled] = useState<boolean>(() => {
@@ -257,23 +279,26 @@ export default function App() {
       if (result) {
         setUser(result.user);
         setToken(result.accessToken);
+        if (result.user.email) {
+          localStorage.setItem(STORAGE_KEYS.ACTIVE_ADMIN, result.user.email);
+        }
         await performSyncWithSheet(result.accessToken, false);
       }
     } catch (err: any) {
       console.warn('Google Sign In:', err?.message || err);
-      triggerNewTaskAlert(
-        'Login Google',
-        err?.message || 'Tidak dapat menyelesaikan login dengan Google. Pastikan popup browser diizinkan dan coba kembali.'
-      );
+      const friendlyMsg = getAuthErrorMessage(err);
+      triggerNewTaskAlert('Autentikasi Google / Firebase', friendlyMsg);
     } finally {
       setIsLoggingIn(false);
     }
   };
 
-  // Handle Logout / Reset Session (stays as default admin)
+  // Handle Logout / Reset Session (stays as authorized admin)
   const handleGoogleLogout = async () => {
     await logout();
-    setUser(DEFAULT_ADMIN_USER);
+    const savedEmail = localStorage.getItem(STORAGE_KEYS.ACTIVE_ADMIN);
+    const activeProfile = (savedEmail && ADMIN_PROFILES[savedEmail]) || ADMIN_PROFILES['irfandwi.hs@gmail.com'] || DEFAULT_ADMIN_USER;
+    setUser(activeProfile);
     setToken(null);
   };
 
@@ -554,6 +579,7 @@ export default function App() {
           token={token}
           onLogin={handleGoogleLogin}
           onLogout={handleGoogleLogout}
+          onSwitchAdminProfile={handleSwitchAdminProfile}
           isLoggingIn={isLoggingIn}
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
@@ -571,6 +597,7 @@ export default function App() {
           token={token}
           onLogin={handleGoogleLogin}
           onLogout={handleGoogleLogout}
+          onSwitchAdminProfile={handleSwitchAdminProfile}
           isLoggingIn={isLoggingIn}
           isSyncing={isSyncing}
           onManualSync={handleManualSync}

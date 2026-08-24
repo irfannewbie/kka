@@ -16,6 +16,7 @@ import {
   ArrowLeft,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
+import { ADMIN_EMAILS } from '../services/firebaseAuth';
 
 interface SidebarProps {
   activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek';
@@ -25,6 +26,7 @@ interface SidebarProps {
   token: string | null;
   onLogin: () => void;
   onLogout: () => void;
+  onSwitchAdminProfile?: (email: string) => void;
   isLoggingIn: boolean;
   isOpenMobile: boolean;
   onCloseMobile: () => void;
@@ -39,6 +41,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   token,
   onLogin,
   onLogout,
+  onSwitchAdminProfile,
   isLoggingIn,
   isOpenMobile,
   onCloseMobile,
@@ -160,7 +163,54 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </nav>
       </div>
 
-      {/* Navigation list ends */}
+      {/* Admin User Profile & Google Authorization Box */}
+      <div className="p-3.5 border-t border-white/20 bg-black/40 font-mono-code">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[10px] font-bold text-slate-400 uppercase">AKUN ADMIN AKTIF</span>
+          <span className={`w-2 h-2 rounded-full ${token ? 'bg-emerald-400 animate-pulse' : 'bg-blue-400'}`} />
+        </div>
+
+        {/* Profile Switcher */}
+        <div className="mb-2">
+          <select
+            value={user?.email || ADMIN_EMAILS[0]}
+            onChange={(e) => onSwitchAdminProfile && onSwitchAdminProfile(e.target.value)}
+            className="w-full bg-[#2a2a2a] text-white text-xs font-bold p-2 border border-white/20 rounded-none focus:outline-hidden cursor-pointer"
+          >
+            {ADMIN_EMAILS.map((email) => (
+              <option key={email} value={email}>
+                {email}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="text-[10px] text-slate-400 mb-2 leading-tight">
+          {token ? (
+            <span className="text-emerald-400 font-semibold">✓ Terhubung Google Sheets API</span>
+          ) : (
+            <span>Mode Master Aktif (Akses Penuh)</span>
+          )}
+        </div>
+
+        {token ? (
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs font-bold cursor-pointer"
+          >
+            <LogOut className="h-3 w-3" />
+            <span>PUTUSKAN SESI</span>
+          </button>
+        ) : (
+          <button
+            onClick={onLogin}
+            disabled={isLoggingIn}
+            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-[#2e59e6] hover:bg-blue-600 text-white text-xs font-bold border border-blue-400 cursor-pointer disabled:opacity-50"
+          >
+            <span>{isLoggingIn ? 'MENGHUBUNGKAN...' : 'LOGIN GOOGLE'}</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 

@@ -168,10 +168,11 @@ export async function fetchPublicGvizData(
   spreadsheetId: string,
   sheetNamesToTry: string[]
 ): Promise<any[][] | null> {
+  const nocache = Date.now();
   for (const sheetName of sheetNamesToTry) {
     try {
-      const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}`;
-      const res = await fetch(url);
+      const url = `https://docs.google.com/spreadsheets/d/${spreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(sheetName)}&_nc=${nocache}`;
+      const res = await fetch(url, { cache: 'no-cache' });
       if (!res.ok) continue;
 
       const text = await res.text();
@@ -1216,8 +1217,8 @@ export async function detectClassTaskColumns(
     // 1. Fetch header rows (A1:Z6) to get actual task titles like "Tugas 1 - KKA - Algoritma"
     const taskHeaders: { [colIdx: number]: string } = {};
     try {
-      const headerUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&range=A1:Z6&sheet=${encodeURIComponent(rawClass)}`;
-      const hRes = await fetch(headerUrl);
+      const headerUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&range=A1:Z6&sheet=${encodeURIComponent(rawClass)}&_nc=${Date.now()}`;
+      const hRes = await fetch(headerUrl, { cache: 'no-cache' });
       if (hRes.ok) {
         const hText = await hRes.text();
         const fb = hText.indexOf('{');

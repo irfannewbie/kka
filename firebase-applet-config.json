@@ -1,11 +1,11 @@
 {
-  "projectId": "instant-polygon-dlcf1",
-  "appId": "1:784616610683:web:a00e7d6cc9a3f9b8773bde",
-  "apiKey": "AIzaSyDhj-F6zn1ptyMwELkNvv1Rz3n1jbScb-0",
-  "authDomain": "instant-polygon-dlcf1.firebaseapp.com",
-  "storageBucket": "instant-polygon-dlcf1.firebasestorage.app",
-  "messagingSenderId": "784616610683",
-  "measurementId": "",
-  "oAuthClientId": "784616610683-dvlh0vuhg0d4lkf797kql31r0apmnus1.apps.googleusercontent.com",
+  "projectId": "penilaian-c2329",
+  "appId": "1:66464804006:web:8726eb91f46f24f92b1867",
+  "apiKey": "AIzaSyAFd2SgaH1YeC86izY5UeFEJLDa5dQK7O4",
+  "authDomain": "penilaian-c2329.firebaseapp.com",
+  "storageBucket": "penilaian-c2329.firebasestorage.app",
+  "messagingSenderId": "66464804006",
+  "measurementId": "G-1VWR43D9DG",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }
