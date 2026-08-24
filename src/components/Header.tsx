@@ -203,10 +203,10 @@ export const Header: React.FC<HeaderProps> = ({
           <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin text-[#2e59e6]' : ''}`} />
         </button>
 
-        {/* Login / User Status Indicator */}
-        <div className="flex items-center gap-2 font-mono-code text-xs">
-          {/* Active Admin Profile Switcher (when in master mode) */}
-          {isMasterMode && (
+        {/* Login / User Status Indicator (Only in Master mode, hidden on Homepage and /cek) */}
+        {isMasterMode && (
+          <div className="flex items-center gap-2 font-mono-code text-xs">
+            {/* Active Admin Profile Switcher */}
             <div className="hidden sm:flex items-center bg-white border border-[#1a1a1a] px-2 py-1 gap-1.5">
               <span className={`w-2 h-2 rounded-full inline-block ${token ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`}></span>
               <select
@@ -222,30 +222,30 @@ export const Header: React.FC<HeaderProps> = ({
                 ))}
               </select>
             </div>
-          )}
 
-          {/* Google OAuth Connect / Logout Button */}
-          {token ? (
-            <button
-              onClick={onLogout}
-              className="font-mono-code text-[11px] sm:text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 px-2.5 py-1 border border-rose-600 bg-white transition-colors cursor-pointer flex items-center gap-1.5"
-              title="Keluar / Putuskan Sesi Google"
-            >
-              <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
-              LOGOUT
-            </button>
-          ) : (
-            <button
-              onClick={onLogin}
-              disabled={isLoggingIn}
-              className="font-mono-code text-[11px] sm:text-xs font-bold text-white bg-[#1a1a1a] hover:bg-[#2e59e6] px-2.5 sm:px-3 py-1 border border-[#1a1a1a] transition-colors cursor-pointer flex items-center gap-1.5"
-              title="Hubungkan akun Google langsung untuk sinkronisasi menulis ke Google Spreadsheet"
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-400 inline-block animate-ping"></span>
-              {isLoggingIn ? 'MENGHUBUNGKAN...' : 'LOGIN GOOGLE'}
-            </button>
-          )}
-        </div>
+            {/* Google OAuth Connect / Logout Button */}
+            {token ? (
+              <button
+                onClick={onLogout}
+                className="font-mono-code text-[11px] sm:text-xs font-bold text-rose-600 hover:text-white hover:bg-rose-600 px-2.5 py-1 border border-rose-600 bg-white transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Keluar / Putuskan Sesi Google"
+              >
+                <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                LOGOUT
+              </button>
+            ) : (
+              <button
+                onClick={onLogin}
+                disabled={isLoggingIn}
+                className="font-mono-code text-[11px] sm:text-xs font-bold text-white bg-[#1a1a1a] hover:bg-[#2e59e6] px-2.5 sm:px-3 py-1 border border-[#1a1a1a] transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Hubungkan akun Google langsung untuk sinkronisasi menulis ke Google Spreadsheet"
+              >
+                <span className="w-2 h-2 rounded-full bg-amber-400 inline-block animate-ping"></span>
+                {isLoggingIn ? 'MENGHUBUNGKAN...' : 'LOGIN GOOGLE'}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </header>
   );
