@@ -379,27 +379,33 @@ export default function App() {
       if (syncRes.success) {
         triggerNewTaskAlert(
           'Karya Berhasil Masuk ke Google Spreadsheet!',
-          `${newTask.studentName} (${newTask.group}): "${newTask.taskTitle}" telah tersimpan di tab 'Tugas_Siswa'.`,
+          `${newTask.studentName} (${newTask.group}): "${newTask.taskTitle}" telah tersimpan di Google Spreadsheet.`,
+          newId
+        );
+      } else if (syncRes.isPermissionError) {
+        triggerNewTaskAlert(
+          'Izin Editor Spreadsheet Diperlukan',
+          `Karya tersimpan lokal. ${syncRes.message}`,
           newId
         );
       } else if (syncRes.isAuthError) {
         setToken(null);
         triggerNewTaskAlert(
-          'Karya Disimpan Lokal',
-          `Karya tersimpan di aplikasi. Sesi Google Anda kedaluwarsa—klik LOGIN (GOOGLE) di bilah atas untuk menyinkronkan ke Spreadsheet asli.`,
+          'Sesi Google Kedaluwarsa',
+          `Karya tersimpan di aplikasi. Sesi Google Anda kedaluwarsa—klik LOGIN GOOGLE di bilah atas untuk menyinkronkan ke Spreadsheet asli.`,
           newId
         );
       } else {
         triggerNewTaskAlert(
           'Karya Disimpan Lokal',
-          `Karya tersimpan di web, respon Spreadsheet: ${syncRes.message}`,
+          `Karya tersimpan di web: ${syncRes.message}`,
           newId
         );
       }
     } else {
       triggerNewTaskAlert(
         'Karya Berhasil Disimpan!',
-        `${newTask.studentName} (${newTask.group}): "${newTask.taskTitle}" tersimpan di aplikasi. Klik LOGIN (GOOGLE) untuk menulis otomatis ke file Google Spreadsheet Anda.`,
+        `${newTask.studentName} (${newTask.group}): "${newTask.taskTitle}" tersimpan di aplikasi. Klik tombol LOGIN GOOGLE di bilah atas jika ingin menulis otomatis ke Google Spreadsheet Anda.`,
         newId
       );
     }
@@ -424,7 +430,7 @@ export default function App() {
     if (!activeToken) {
       triggerNewTaskAlert(
         'Perlu Akses Akun Google',
-        'Silakan hubungkan akun Google Anda dengan menekan tombol Login Google agar dapat menulis ke Google Spreadsheet.'
+        'Silakan hubungkan akun Google Anda dengan menekan tombol LOGIN GOOGLE agar dapat menulis ke Google Spreadsheet.'
       );
       return;
     }
@@ -436,6 +442,11 @@ export default function App() {
         triggerNewTaskAlert(
           'Sinkronisasi Berhasil!',
           `${res.count} data karya siswa berhasil dimasukkan ke tab 'Tugas_Siswa' di Google Spreadsheet.`
+        );
+      } else if (res.isPermissionError) {
+        triggerNewTaskAlert(
+          'Izin Editor Spreadsheet Diperlukan',
+          res.message
         );
       } else if (res.isAuthError) {
         setToken(null);
@@ -510,7 +521,20 @@ export default function App() {
     setNotifications((prev) => [notif, ...prev]);
 
     if (token) {
-      await syncAllStudentsToSheet(token, spreadsheetId, newStudents);
+      const res = await syncAllStudentsToSheet(token, spreadsheetId, newStudents);
+      if (res.success) {
+        triggerNewTaskAlert('Siswa Tersimpan di Spreadsheet', `${newStudent.name} telah tersimpan ke Google Spreadsheet.`);
+      } else if (res.isPermissionError) {
+        triggerNewTaskAlert('Izin Editor Diperlukan', res.message);
+      } else if (res.isAuthError) {
+        setToken(null);
+        triggerNewTaskAlert('Sesi Kedaluwarsa', 'Silakan klik LOGIN GOOGLE untuk menyinkronkan data siswa ke Spreadsheet.');
+      }
+    } else {
+      triggerNewTaskAlert(
+        'Siswa Tersimpan Lokal',
+        `${newStudent.name} tersimpan di aplikasi. Hubungkan akun Google untuk menulis otomatis ke file Google Spreadsheet.`
+      );
     }
   };
 
@@ -544,9 +568,36 @@ export default function App() {
   };
 
   const handleSyncStudentsToSheet = async () => {
-    if (token) {
-      setIsSyncing(true);
-      await syncAllStudentsToSheet(token, spreadsheetId, students);
+    let activeToken = token;
+    if (!activeToken) {
+      try {
+        const authRes = await googleSignIn();
+        if (authRes) {
+          setUser(authRes.user);
+          setToken(authRes.accessToken);
+          activeToken = authRes.accessToken;
+        }
+      } catch (err) {
+        console.warn('Google Sign In:', err);
+      }
+    }
+
+    if (!activeToken) {
+      triggerNewTaskAlert('Perlu Akses Akun Google', 'Silakan klik LOGIN GOOGLE agar dapat memperbarui spreadsheet.');
+      return;
+    }
+
+    setIsSyncing(true);
+    try {
+      const res = await syncAllStudentsToSheet(activeToken, spreadsheetId, students);
+      if (res.success) {
+        triggerNewTaskAlert('Sinkronisasi Siswa Berhasil', `${res.count} siswa berhasil disinkronkan ke Google Spreadsheet.`);
+      } else if (res.isPermissionError) {
+        triggerNewTaskAlert('Izin Editor Diperlukan', res.message);
+      } else {
+        triggerNewTaskAlert('Gagal Sinkronisasi Siswa', res.message);
+      }
+    } finally {
       setIsSyncing(false);
     }
   };

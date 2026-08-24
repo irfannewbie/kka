@@ -59,14 +59,58 @@ export function formatGvizDate(dateVal: any): string {
   return String(dateVal);
 }
 
-// Helper to ensure target sheet exists
+// Helper to parse Google API error responses
+export function parseGoogleApiError(status: number, errText: string, actionDesc: string = 'operasi'): { isAuthError: boolean; isPermissionError: boolean; message: string } {
+  let cleanMsg = '';
+  try {
+    const parsed = JSON.parse(errText);
+    cleanMsg = parsed.error?.message || '';
+  } catch (e) {
+    cleanMsg = errText || '';
+  }
+
+  if (status === 401) {
+    clearAuthToken();
+    return {
+      isAuthError: true,
+      isPermissionError: false,
+      message: 'Sesi akun Google Anda telah kedaluwarsa. Silakan klik LOGIN GOOGLE kembali untuk memperbarui sesi.',
+    };
+  }
+
+  if (status === 403 || cleanMsg.toLowerCase().includes('permission') || cleanMsg.toLowerCase().includes('caller does not have')) {
+    return {
+      isAuthError: false,
+      isPermissionError: true,
+      message: `Akun Google Anda terhubung tetapi belum memiliki izin "Editor" (Penyunting) pada file Spreadsheet ini. Silakan buka Google Spreadsheet, klik tombol "Bagikan" (Share), dan tambahkan akun Google Anda sebagai Editor.`,
+    };
+  }
+
+  if (status === 404) {
+    return {
+      isAuthError: false,
+      isPermissionError: false,
+      message: 'File Google Spreadsheet tidak ditemukan. Pastikan ID Spreadsheet valid.',
+    };
+  }
+
+  return {
+    isAuthError: false,
+    isPermissionError: false,
+    message: `Gagal ${actionDesc} (${status}): ${cleanMsg || 'Terjadi kesalahan pada Google Sheets API'}`,
+  };
+}
+
+// Helper to ensure target sheet exists and return its resolved exact name
 export async function ensureSheetExists(
   accessToken: string,
   spreadsheetId: string,
-  sheetTitle: string,
+  preferredSheetTitle: string,
   headers: string[]
-): Promise<boolean> {
-  if (!accessToken) return false;
+): Promise<{ success: boolean; resolvedTitle: string; isAuthError?: boolean; isPermissionError?: boolean; message?: string }> {
+  if (!accessToken) {
+    return { success: false, resolvedTitle: preferredSheetTitle, isAuthError: true, message: 'Autentikasi Google diperlukan.' };
+  }
   try {
     const metaRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
@@ -77,73 +121,83 @@ export async function ensureSheetExists(
 
     if (metaRes.status === 401) {
       clearAuthToken();
-      return false;
+      return { success: false, resolvedTitle: preferredSheetTitle, isAuthError: true, message: 'Sesi Google kedaluwarsa.' };
+    }
+
+    if (metaRes.status === 403) {
+      const errText = await metaRes.text();
+      const parsed = parseGoogleApiError(403, errText, 'mengakses metadata spreadsheet');
+      return { success: false, resolvedTitle: preferredSheetTitle, isPermissionError: true, message: parsed.message };
     }
 
     if (!metaRes.ok) {
-      console.warn(`Failed to fetch spreadsheet metadata (status ${metaRes.status})`);
-      return false;
+      const errText = await metaRes.text();
+      const parsed = parseGoogleApiError(metaRes.status, errText, 'membaca spreadsheet');
+      return { success: false, resolvedTitle: preferredSheetTitle, message: parsed.message };
     }
 
     const meta = await metaRes.json();
     const existingSheets = meta.sheets || [];
-    const sheetExists = existingSheets.some(
-      (s: any) => s.properties?.title?.toLowerCase() === sheetTitle.toLowerCase()
-    );
+    
+    // Look for matching sheet title (e.g. 'Tugas_Siswa' vs 'Tugas Siswa')
+    const cleanPreferred = preferredSheetTitle.replace(/[\s_]/g, '').toLowerCase();
+    const matchingSheet = existingSheets.find((s: any) => {
+      const t = String(s.properties?.title || '').replace(/[\s_]/g, '').toLowerCase();
+      return t === cleanPreferred;
+    });
 
-    if (!sheetExists) {
-      // 1. Add sheet
-      const addRes = await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            requests: [
-              {
-                addSheet: {
-                  properties: {
-                    title: sheetTitle,
-                    gridProperties: { rowCount: 1000, columnCount: 20 },
-                  },
+    if (matchingSheet) {
+      return { success: true, resolvedTitle: matchingSheet.properties.title };
+    }
+
+    // Sheet doesn't exist, create it
+    const addRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}:batchUpdate`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          requests: [
+            {
+              addSheet: {
+                properties: {
+                  title: preferredSheetTitle,
+                  gridProperties: { rowCount: 1000, columnCount: 20 },
                 },
               },
-            ],
-          }),
-        }
-      );
-
-      if (addRes.status === 401) {
-        clearAuthToken();
-        return false;
+            },
+          ],
+        }),
       }
+    );
 
-      if (!addRes.ok) {
-        console.warn('Failed to add sheet via batchUpdate:', await addRes.text());
-      }
-
-      // 2. Set headers
-      await fetch(
-        `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetTitle)}!A1:${String.fromCharCode(64 + headers.length)}1?valueInputOption=USER_ENTERED`,
-        {
-          method: 'PUT',
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            values: [headers],
-          }),
-        }
-      );
+    if (!addRes.ok) {
+      const errText = await addRes.text();
+      console.warn('Failed to add sheet via batchUpdate:', errText);
     }
-    return true;
-  } catch (err) {
-    console.warn(`Error ensuring sheet ${sheetTitle} exists:`, err);
-    return false;
+
+    // Set headers
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(preferredSheetTitle)}!A1:${String.fromCharCode(64 + headers.length)}1?valueInputOption=USER_ENTERED`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          values: [headers],
+        }),
+      }
+    );
+
+    return { success: true, resolvedTitle: preferredSheetTitle };
+  } catch (err: any) {
+    console.warn(`Error ensuring sheet ${preferredSheetTitle} exists:`, err);
+    return { success: false, resolvedTitle: preferredSheetTitle, message: err.message || String(err) };
   }
 }
 
@@ -447,7 +501,7 @@ export async function syncNewTaskToSheet(
   accessToken: string,
   spreadsheetId: string,
   task: TaskSubmission
-): Promise<{ success: boolean; isAuthError?: boolean; message: string }> {
+): Promise<{ success: boolean; isAuthError?: boolean; isPermissionError?: boolean; message: string }> {
   if (!accessToken) {
     return {
       success: false,
@@ -466,8 +520,24 @@ export async function syncNewTaskToSheet(
       'Deskripsi / Link Web & PDF',
     ];
 
-    // Ensure Tugas_Siswa sheet tab exists
-    await ensureSheetExists(accessToken, spreadsheetId, SHEET_NAMES.TASKS, taskHeaders);
+    // Ensure Tugas_Siswa sheet tab exists & get exact name (e.g. Tugas_Siswa or Tugas Siswa)
+    const sheetEnsure = await ensureSheetExists(accessToken, spreadsheetId, SHEET_NAMES.TASKS, taskHeaders);
+    if (sheetEnsure.isPermissionError) {
+      return {
+        success: false,
+        isPermissionError: true,
+        message: sheetEnsure.message || 'Izin Editor pada Spreadsheet diperlukan.',
+      };
+    }
+    if (sheetEnsure.isAuthError) {
+      return {
+        success: false,
+        isAuthError: true,
+        message: sheetEnsure.message || 'Sesi Google kedaluwarsa.',
+      };
+    }
+
+    const targetSheetTitle = sheetEnsure.resolvedTitle || SHEET_NAMES.TASKS;
 
     const row = [
       task.id,
@@ -479,7 +549,7 @@ export async function syncNewTaskToSheet(
     ];
 
     const res = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(SHEET_NAMES.TASKS)}!A:F:append?valueInputOption=USER_ENTERED`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(targetSheetTitle)}!A:F:append?valueInputOption=USER_ENTERED`,
       {
         method: 'POST',
         headers: {
@@ -492,25 +562,19 @@ export async function syncNewTaskToSheet(
       }
     );
 
-    if (res.status === 401) {
-      clearAuthToken();
-      return {
-        success: false,
-        isAuthError: true,
-        message: 'Sesi akun Google Anda telah kedaluwarsa. Silakan login kembali dengan akun Google.',
-      };
-    }
-
     if (res.ok) {
       return {
         success: true,
-        message: `Karya "${task.taskTitle}" berhasil ditambahkan ke tab '${SHEET_NAMES.TASKS}' di Google Spreadsheet!`,
+        message: `Karya "${task.taskTitle}" berhasil ditambahkan ke tab '${targetSheetTitle}' di Google Spreadsheet!`,
       };
     } else {
       const errText = await res.text();
+      const parsed = parseGoogleApiError(res.status, errText, 'menambahkan karya ke Google Spreadsheet');
       return {
         success: false,
-        message: `Gagal menyimpan ke Google Spreadsheet (${res.status}): ${errText}`,
+        isAuthError: parsed.isAuthError,
+        isPermissionError: parsed.isPermissionError,
+        message: parsed.message,
       };
     }
   } catch (err: any) {
@@ -527,7 +591,7 @@ export async function syncAllTasksToSheet(
   accessToken: string,
   spreadsheetId: string,
   tasks: TaskSubmission[]
-): Promise<{ success: boolean; isAuthError?: boolean; count: number; message: string }> {
+): Promise<{ success: boolean; isAuthError?: boolean; isPermissionError?: boolean; count: number; message: string }> {
   if (!accessToken) {
     return {
       success: false,
@@ -547,7 +611,25 @@ export async function syncAllTasksToSheet(
       'Deskripsi / Link Web & PDF',
     ];
 
-    await ensureSheetExists(accessToken, spreadsheetId, SHEET_NAMES.TASKS, headers);
+    const sheetEnsure = await ensureSheetExists(accessToken, spreadsheetId, SHEET_NAMES.TASKS, headers);
+    if (sheetEnsure.isPermissionError) {
+      return {
+        success: false,
+        isPermissionError: true,
+        count: 0,
+        message: sheetEnsure.message || 'Izin Editor pada Spreadsheet diperlukan.',
+      };
+    }
+    if (sheetEnsure.isAuthError) {
+      return {
+        success: false,
+        isAuthError: true,
+        count: 0,
+        message: sheetEnsure.message || 'Sesi Google kedaluwarsa.',
+      };
+    }
+
+    const targetSheetTitle = sheetEnsure.resolvedTitle || SHEET_NAMES.TASKS;
 
     const rows = tasks.map((t) => [
       t.id,
@@ -559,7 +641,7 @@ export async function syncAllTasksToSheet(
     ]);
 
     const res = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(SHEET_NAMES.TASKS)}!A1:F${rows.length + 1}?valueInputOption=USER_ENTERED`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(targetSheetTitle)}!A1:F${rows.length + 1}?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {
@@ -572,28 +654,21 @@ export async function syncAllTasksToSheet(
       }
     );
 
-    if (res.status === 401) {
-      clearAuthToken();
-      return {
-        success: false,
-        isAuthError: true,
-        count: 0,
-        message: 'Sesi akun Google Anda telah kedaluwarsa. Silakan login kembali.',
-      };
-    }
-
     if (res.ok) {
       return {
         success: true,
         count: tasks.length,
-        message: `Berhasil menyinkronkan ${tasks.length} data karya ke tab '${SHEET_NAMES.TASKS}' di Google Spreadsheet!`,
+        message: `Berhasil menyinkronkan ${tasks.length} data karya ke tab '${targetSheetTitle}' di Google Spreadsheet!`,
       };
     } else {
       const errText = await res.text();
+      const parsed = parseGoogleApiError(res.status, errText, 'memperbarui data karya di Google Spreadsheet');
       return {
         success: false,
+        isAuthError: parsed.isAuthError,
+        isPermissionError: parsed.isPermissionError,
         count: 0,
-        message: `Gagal memperbarui Google Spreadsheet (${res.status}): ${errText}`,
+        message: parsed.message,
       };
     }
   } catch (err: any) {
@@ -611,7 +686,7 @@ export async function syncAllStudentsToSheet(
   accessToken: string,
   spreadsheetId: string,
   students: Student[]
-): Promise<{ success: boolean; isAuthError?: boolean; count: number; message: string }> {
+): Promise<{ success: boolean; isAuthError?: boolean; isPermissionError?: boolean; count: number; message: string }> {
   if (!accessToken) {
     return {
       success: false,
@@ -633,7 +708,25 @@ export async function syncAllStudentsToSheet(
       'Status',
     ];
 
-    await ensureSheetExists(accessToken, spreadsheetId, SHEET_NAMES.STUDENTS, headers);
+    const sheetEnsure = await ensureSheetExists(accessToken, spreadsheetId, SHEET_NAMES.STUDENTS, headers);
+    if (sheetEnsure.isPermissionError) {
+      return {
+        success: false,
+        isPermissionError: true,
+        count: 0,
+        message: sheetEnsure.message || 'Izin Editor pada Spreadsheet diperlukan.',
+      };
+    }
+    if (sheetEnsure.isAuthError) {
+      return {
+        success: false,
+        isAuthError: true,
+        count: 0,
+        message: sheetEnsure.message || 'Sesi Google kedaluwarsa.',
+      };
+    }
+
+    const targetSheetTitle = sheetEnsure.resolvedTitle || SHEET_NAMES.STUDENTS;
 
     const rows = students.map((s) => [
       s.id,
@@ -647,7 +740,7 @@ export async function syncAllStudentsToSheet(
     ]);
 
     const res = await fetch(
-      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(SHEET_NAMES.STUDENTS)}!A1:H${rows.length + 1}?valueInputOption=USER_ENTERED`,
+      `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(targetSheetTitle)}!A1:H${rows.length + 1}?valueInputOption=USER_ENTERED`,
       {
         method: 'PUT',
         headers: {
@@ -660,28 +753,21 @@ export async function syncAllStudentsToSheet(
       }
     );
 
-    if (res.status === 401) {
-      clearAuthToken();
-      return {
-        success: false,
-        isAuthError: true,
-        count: 0,
-        message: 'Sesi akun Google Anda telah kedaluwarsa. Silakan login kembali.',
-      };
-    }
-
     if (res.ok) {
       return {
         success: true,
         count: students.length,
-        message: `Berhasil menyinkronkan ${students.length} data siswa ke tab '${SHEET_NAMES.STUDENTS}' di Google Spreadsheet!`,
+        message: `Berhasil menyinkronkan ${students.length} data siswa ke tab '${targetSheetTitle}' di Google Spreadsheet!`,
       };
     } else {
       const errText = await res.text();
+      const parsed = parseGoogleApiError(res.status, errText, 'memperbarui data siswa di Google Spreadsheet');
       return {
         success: false,
+        isAuthError: parsed.isAuthError,
+        isPermissionError: parsed.isPermissionError,
         count: 0,
-        message: `Gagal memperbarui Google Spreadsheet: ${errText}`,
+        message: parsed.message,
       };
     }
   } catch (err: any) {
@@ -943,9 +1029,11 @@ export async function syncGradesToClassSheet(
 
     if (!updateRes.ok) {
       const errText = await updateRes.text();
+      const parsed = parseGoogleApiError(updateRes.status, errText, 'memperbarui sel nilai di spreadsheet');
       return {
         success: false,
-        message: `Gagal memperbarui sel nilai (${updateRes.status}): ${errText}`,
+        isAuthError: parsed.isAuthError,
+        message: parsed.message,
       };
     }
 
@@ -1039,6 +1127,15 @@ export interface StudentTaskCheckItem {
   notes?: string;
 }
 
+// Standard Task Titles mapped to columns E, F, G
+export const STANDARD_TASK_TITLES: { [colLetter: string]: string } = {
+  E: 'Tugas 1 - KKA - Algoritma',
+  F: 'Tugas 1 - Informatika - Analisis Data',
+  G: 'Tugas 2 - KKA - Algoritma Web',
+  H: 'Tugas 4',
+  I: 'Tugas 5',
+};
+
 // Fetch all task/grade completion status for an individual student directly from Spreadsheet
 export async function fetchStudentAssignmentStatus(
   spreadsheetId: string,
@@ -1054,120 +1151,211 @@ export async function fetchStudentAssignmentStatus(
   try {
     const rawClass = className.replace(/^Kelas\s*/i, '').trim(); // e.g. '8G' or '8A'
     const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
+    const nocache = Date.now();
 
-    // 1. Fetch header rows (A3:Z5) to get actual task titles like "Tugas 1 - KKA - Algoritma"
-    const taskHeaders: { [colIdx: number]: string } = {};
-    try {
-      const headerUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&range=A3:Z5&sheet=${encodeURIComponent(rawClass)}`;
-      const hRes = await fetch(headerUrl);
-      if (hRes.ok) {
-        const hText = await hRes.text();
-        const fb = hText.indexOf('{');
-        const lb = hText.lastIndexOf('}');
-        if (fb !== -1 && lb !== -1) {
-          const hData = JSON.parse(hText.substring(fb, lb + 1));
-          if (hData.status === 'ok' && hData.table && hData.table.rows) {
-            for (const r of hData.table.rows) {
-              if (!r.c) continue;
-              for (let c = 4; c < r.c.length; c++) {
-                const val = r.c[c] ? String(r.c[c].v || '').trim() : '';
-                if (val && val !== '-' && val.toUpperCase() !== 'ASPEK' && !/^\d+$/.test(val)) {
-                  taskHeaders[c] = val;
-                }
-              }
-            }
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Failed to fetch header range:', e);
+    // Fetch full GViz json
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(rawClass)}&_nc=${nocache}`;
+    const res = await fetch(sheetUrl, { cache: 'no-cache' });
+    if (!res.ok) {
+      throw new Error(`Gagal menghubungi Google Spreadsheet (Status: ${res.status})`);
     }
 
-    // 2. Fetch all student rows via GViz
-    const classRows = await fetchPublicGvizData(targetSpreadsheetId, [rawClass, `Kelas ${rawClass}`, `KELAS ${rawClass}`]);
-    
-    const taskItems: StudentTaskCheckItem[] = [];
+    const text = await res.text();
+    const fb = text.indexOf('{');
+    const lb = text.lastIndexOf('}');
+    if (fb === -1 || lb === -1) {
+      throw new Error('Format data Google Spreadsheet tidak valid.');
+    }
 
-    if (classRows && classRows.length > 0) {
-      // Filter student rows (row with first column as number 1..50)
-      const studentRows = classRows.filter((r) => {
-        const n = parseInt(String(r[0] || '').trim(), 10);
-        return !isNaN(n) && n >= 1 && n <= 50;
-      });
+    const gData = JSON.parse(text.substring(fb, lb + 1));
+    if (gData.status !== 'ok' || !gData.table || !gData.table.rows) {
+      throw new Error('Tabel spreadsheet kelas tidak ditemukan.');
+    }
 
-      const maxCols = Math.max(...classRows.map((r) => r.length), 0);
-      const detectedTaskColumns: { colIdx: number; colLetter: string; title: string }[] = [];
+    const cols = gData.table.cols || [];
+    const rawRows = gData.table.rows || [];
 
-      for (let c = 4; c < maxCols; c++) {
-        const colLetter = columnToLetter(c);
-        const hasHeader = !!taskHeaders[c];
-        const hasStudentData = studentRows.some((r) => {
-          const v = r[c];
-          return v !== null && v !== undefined && String(v).trim() !== '' && String(v).trim() !== '-';
-        });
+    // 1. Extract task titles from GViz cols label and non-student header rows
+    const taskHeaders: { [colIdx: number]: string } = {};
 
-        // Only include if there is a real task title or real student data in this column
-        if (hasHeader || hasStudentData) {
-          detectedTaskColumns.push({
-            colIdx: c,
-            colLetter,
-            title: taskHeaders[c] || `Tugas ${detectedTaskColumns.length + 1}`,
-          });
+    // Check table cols labels
+    cols.forEach((col: any, idx: number) => {
+      if (idx >= 4 && col && col.label) {
+        let l = String(col.label).trim().replace(/^ASPEK\s*/i, '').trim();
+        if (
+          l &&
+          l !== '-' &&
+          l.toUpperCase() !== 'ASPEK' &&
+          l.toUpperCase() !== rawClass.toUpperCase() &&
+          !/^\d+$/.test(l) &&
+          !l.includes('Guru Mapel') &&
+          !l.includes('Wedi')
+        ) {
+          taskHeaders[idx] = l;
         }
       }
+    });
 
-      // Find the row for this student (matching attendanceNo or NIPD or Name)
-      const targetAttNum = parseInt(attendanceNo, 10);
-      const studentRow = studentRows.find((r) => {
-        const col0Num = parseInt(String(r[0] || '').trim(), 10);
-        const col1Nis = String(r[1] || '').trim();
-        const col3Name = String(r[3] || '').trim().toLowerCase();
-
-        return (
-          (!isNaN(targetAttNum) && col0Num === targetAttNum) ||
-          (studentNis && col1Nis === studentNis.trim()) ||
-          (studentName && col3Name && (col3Name.includes(studentName.trim().toLowerCase()) || studentName.trim().toLowerCase().includes(col3Name)))
-        );
-      });
-
-      // Populate task items strictly according to detected columns in the spreadsheet
-      for (const taskCol of detectedTaskColumns) {
-        let cellScore: any = null;
-        let isDone = false;
-
-        if (studentRow && studentRow.length > taskCol.colIdx) {
-          const val = studentRow[taskCol.colIdx];
-          if (val !== null && val !== undefined) {
-            const strVal = String(val).trim();
-            if (strVal !== '' && strVal !== '-' && strVal !== '0') {
-              const numVal = Number(strVal);
-              if (!isNaN(numVal) && numVal > 0) {
-                cellScore = numVal;
-                isDone = true;
-              } else if (
-                strVal.toLowerCase() === 'v' ||
-                strVal.toLowerCase() === 'ya' ||
-                strVal.toLowerCase() === 'selesai' ||
-                strVal.toLowerCase() === 'sudah' ||
-                strVal.length > 0
-              ) {
-                cellScore = strVal;
-                isDone = true;
+    // Check first 6 rows for header cell titles
+    for (let rIdx = 0; rIdx < Math.min(6, rawRows.length); rIdx++) {
+      const r = rawRows[rIdx];
+      if (!r || !r.c) continue;
+      const firstVal = r.c[0] ? String(r.c[0].v || '').trim() : '';
+      const isStudentNum = !isNaN(parseInt(firstVal, 10)) && parseInt(firstVal, 10) >= 1 && parseInt(firstVal, 10) <= 50;
+      if (!isStudentNum) {
+        r.c.forEach((cell: any, cIdx: number) => {
+          if (cIdx >= 4 && cell && cell.v) {
+            let val = String(cell.v).trim().replace(/^ASPEK\s*/i, '').trim();
+            if (
+              val &&
+              val !== '-' &&
+              val.toUpperCase() !== 'ASPEK' &&
+              val.toUpperCase() !== rawClass.toUpperCase() &&
+              !/^\d+$/.test(val) &&
+              !val.includes('Guru Mapel') &&
+              !val.includes('Wedi')
+            ) {
+              if (!taskHeaders[cIdx] || val.length > taskHeaders[cIdx].length) {
+                taskHeaders[cIdx] = val;
               }
             }
           }
-        }
-
-        taskItems.push({
-          id: `task-col-${taskCol.colLetter.toLowerCase()}`,
-          category: 'Koding / KKA',
-          taskName: taskCol.title,
-          columnLetter: taskCol.colLetter,
-          isCompleted: isDone,
-          score: cellScore,
-          notes: isDone ? 'Sudah Mengerjakan' : 'Belum Mengerjakan',
         });
       }
+    }
+
+    // 2. Parse all student rows from sheet
+    const studentRows: {
+      attNum: number;
+      nis: string;
+      name: string;
+      cells: any[];
+      colOffset: number;
+    }[] = [];
+
+    for (const r of rawRows) {
+      if (!r || !r.c) continue;
+      let colOffset = 0;
+      let attNum = parseInt(String(r.c[0]?.v || '').trim(), 10);
+      let nisVal = String(r.c[1]?.v || '').trim();
+      let nameVal = String(r.c[3]?.v || '').trim();
+
+      // Check shifted column (if absen is at index 1)
+      if (isNaN(attNum) || attNum < 1 || attNum > 50) {
+        const shifted = parseInt(String(r.c[1]?.v || '').trim(), 10);
+        if (!isNaN(shifted) && shifted >= 1 && shifted <= 50) {
+          attNum = shifted;
+          nisVal = String(r.c[2]?.v || '').trim();
+          nameVal = String(r.c[4]?.v || '').trim();
+          colOffset = 1;
+        }
+      }
+
+      if (
+        !isNaN(attNum) &&
+        attNum >= 1 &&
+        attNum <= 50 &&
+        nameVal &&
+        !nameVal.toUpperCase().includes('ASPEK') &&
+        !nameVal.toUpperCase().includes('NAMA')
+      ) {
+        studentRows.push({
+          attNum,
+          nis: nisVal,
+          name: nameVal,
+          cells: r.c,
+          colOffset,
+        });
+      }
+    }
+
+    // 3. Detect task columns: Always include E (4), F (5), G (6) plus any column up to idx 10 with scores/header
+    const maxCols = Math.min(rawRows.reduce((m: number, r: any) => Math.max(m, r.c ? r.c.length : 0), 0), 10);
+    const activeColumns: { colIdx: number; colLetter: string; title: string }[] = [];
+
+    for (let cIdx = 4; cIdx <= Math.max(6, maxCols - 1); cIdx++) {
+      const colLetter = columnToLetter(cIdx);
+      const title = taskHeaders[cIdx] || STANDARD_TASK_TITLES[colLetter] || `Tugas Kolom ${colLetter}`;
+
+      const hasScores = studentRows.some((s) => {
+        const cell = s.cells[cIdx + s.colOffset];
+        if (!cell || cell.v === null || cell.v === undefined) return false;
+        const str = String(cell.v).trim();
+        return str !== '' && str !== '-' && str !== '0';
+      });
+
+      // Always include E, F, G, or any column with header or score
+      if (cIdx <= 6 || taskHeaders[cIdx] || hasScores) {
+        activeColumns.push({
+          colIdx: cIdx,
+          colLetter,
+          title,
+        });
+      }
+    }
+
+    // 4. Find the matching student row
+    const targetAttNum = parseInt(attendanceNo, 10);
+    const cleanNis = String(studentNis || '').trim();
+    const cleanName = String(studentName || '').trim().toLowerCase();
+
+    const matchedStudent = studentRows.find((s) => {
+      if (!isNaN(targetAttNum) && targetAttNum > 0 && s.attNum === targetAttNum) {
+        return true;
+      }
+      if (cleanNis && s.nis && s.nis === cleanNis) {
+        return true;
+      }
+      if (cleanName && s.name) {
+        const sLower = s.name.toLowerCase();
+        return sLower.includes(cleanName) || cleanName.includes(sLower);
+      }
+      return false;
+    });
+
+    // 5. Construct task completion items
+    const taskItems: StudentTaskCheckItem[] = [];
+
+    for (const taskCol of activeColumns) {
+      let cellScore: any = null;
+      let isDone = false;
+
+      if (matchedStudent) {
+        const cell = matchedStudent.cells[taskCol.colIdx + matchedStudent.colOffset];
+        if (cell && cell.v !== null && cell.v !== undefined) {
+          const strVal = String(cell.v).trim();
+          if (strVal !== '' && strVal !== '-' && strVal !== '0') {
+            const numVal = Number(strVal.replace(',', '.'));
+            if (!isNaN(numVal) && numVal > 0) {
+              cellScore = numVal;
+              isDone = true;
+            } else if (
+              strVal.toLowerCase() === 'v' ||
+              strVal.toLowerCase() === 'ya' ||
+              strVal.toLowerCase() === 'selesai' ||
+              strVal.toLowerCase() === 'sudah' ||
+              strVal.length > 0
+            ) {
+              cellScore = strVal;
+              isDone = true;
+            }
+          }
+        }
+      }
+
+      taskItems.push({
+        id: `task-col-${taskCol.colLetter.toLowerCase()}`,
+        category: 'Koding / KKA',
+        taskName: taskCol.title,
+        columnLetter: taskCol.colLetter,
+        isCompleted: isDone,
+        score: cellScore,
+        notes: isDone
+          ? cellScore && typeof cellScore === 'number'
+            ? `Sudah Mengerjakan (Nilai: ${cellScore})`
+            : 'Sudah Mengerjakan'
+          : 'Belum Mengerjakan',
+      });
     }
 
     return {
@@ -1212,58 +1400,99 @@ export async function detectClassTaskColumns(
 ): Promise<ClassColumnDetectionResult> {
   const rawClass = className.replace(/^Kelas\s*/i, '').trim();
   const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
+  const nocache = Date.now();
 
   try {
-    // 1. Fetch header rows (A1:Z6) to get actual task titles like "Tugas 1 - KKA - Algoritma"
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(rawClass)}&_nc=${nocache}`;
+    const res = await fetch(sheetUrl, { cache: 'no-cache' });
+    if (!res.ok) {
+      throw new Error(`Gagal membaca sheet kelas ${rawClass}`);
+    }
+
+    const text = await res.text();
+    const fb = text.indexOf('{');
+    const lb = text.lastIndexOf('}');
+    if (fb === -1 || lb === -1) {
+      throw new Error('Data spreadsheet tidak valid.');
+    }
+
+    const gData = JSON.parse(text.substring(fb, lb + 1));
+    const cols = gData?.table?.cols || [];
+    const rawRows = gData?.table?.rows || [];
+
+    // 1. Extract task titles from cols label and header rows
     const taskHeaders: { [colIdx: number]: string } = {};
-    try {
-      const headerUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&range=A1:Z6&sheet=${encodeURIComponent(rawClass)}&_nc=${Date.now()}`;
-      const hRes = await fetch(headerUrl, { cache: 'no-cache' });
-      if (hRes.ok) {
-        const hText = await hRes.text();
-        const fb = hText.indexOf('{');
-        const lb = hText.lastIndexOf('}');
-        if (fb !== -1 && lb !== -1) {
-          const hData = JSON.parse(hText.substring(fb, lb + 1));
-          if (hData.status === 'ok' && hData.table && hData.table.rows) {
-            for (const r of hData.table.rows) {
-              if (!r.c) continue;
-              for (let c = 4; c < r.c.length; c++) {
-                const val = r.c[c] ? String(r.c[c].v || '').trim() : '';
-                if (
-                  val &&
-                  val !== '-' &&
-                  val.toUpperCase() !== 'ASPEK' &&
-                  val.toUpperCase() !== rawClass.toUpperCase() &&
-                  !/^\d+$/.test(val)
-                ) {
-                  // Prefer longer/more descriptive title if already set
-                  if (!taskHeaders[c] || val.length > taskHeaders[c].length) {
-                    taskHeaders[c] = val;
-                  }
-                }
+
+    cols.forEach((col: any, idx: number) => {
+      if (idx >= 4 && col && col.label) {
+        let l = String(col.label).trim().replace(/^ASPEK\s*/i, '').trim();
+        if (
+          l &&
+          l !== '-' &&
+          l.toUpperCase() !== 'ASPEK' &&
+          l.toUpperCase() !== rawClass.toUpperCase() &&
+          !/^\d+$/.test(l) &&
+          !l.includes('Guru Mapel') &&
+          !l.includes('Wedi')
+        ) {
+          taskHeaders[idx] = l;
+        }
+      }
+    });
+
+    for (let rIdx = 0; rIdx < Math.min(6, rawRows.length); rIdx++) {
+      const r = rawRows[rIdx];
+      if (!r || !r.c) continue;
+      const firstVal = r.c[0] ? String(r.c[0].v || '').trim() : '';
+      const isStudentNum = !isNaN(parseInt(firstVal, 10)) && parseInt(firstVal, 10) >= 1 && parseInt(firstVal, 10) <= 50;
+      if (!isStudentNum) {
+        r.c.forEach((cell: any, cIdx: number) => {
+          if (cIdx >= 4 && cell && cell.v) {
+            let val = String(cell.v).trim().replace(/^ASPEK\s*/i, '').trim();
+            if (
+              val &&
+              val !== '-' &&
+              val.toUpperCase() !== 'ASPEK' &&
+              val.toUpperCase() !== rawClass.toUpperCase() &&
+              !/^\d+$/.test(val) &&
+              !val.includes('Guru Mapel') &&
+              !val.includes('Wedi')
+            ) {
+              if (!taskHeaders[cIdx] || val.length > taskHeaders[cIdx].length) {
+                taskHeaders[cIdx] = val;
               }
             }
           }
-        }
+        });
       }
-    } catch (e) {
-      console.warn('Failed to fetch header range in detectClassTaskColumns:', e);
     }
 
-    // 2. Fetch full sheet rows via GViz
-    const classRows = await fetchPublicGvizData(targetSpreadsheetId, [rawClass, `Kelas ${rawClass}`, `KELAS ${rawClass}`]);
-    const studentRows = classRows.filter((r) => {
-      const n = parseInt(String(r[0] || '').trim(), 10);
-      return !isNaN(n) && n >= 1 && n <= 50;
-    });
+    // 2. Parse student rows
+    const studentRows: { attNum: number; cells: any[]; colOffset: number }[] = [];
+    for (const r of rawRows) {
+      if (!r || !r.c) continue;
+      let colOffset = 0;
+      let attNum = parseInt(String(r.c[0]?.v || '').trim(), 10);
+
+      if (isNaN(attNum) || attNum < 1 || attNum > 50) {
+        const shifted = parseInt(String(r.c[1]?.v || '').trim(), 10);
+        if (!isNaN(shifted) && shifted >= 1 && shifted <= 50) {
+          attNum = shifted;
+          colOffset = 1;
+        }
+      }
+
+      if (!isNaN(attNum) && attNum >= 1 && attNum <= 50) {
+        studentRows.push({ attNum, cells: r.c, colOffset });
+      }
+    }
 
     const columns: DetectedColumnDetail[] = [];
 
     // Scan aspect task columns E (idx 4) through R (idx 17)
     for (let c = 4; c <= 17; c++) {
       const colLetter = columnToLetter(c);
-      let headerTitle = taskHeaders[c] || '';
+      let headerTitle = taskHeaders[c] || STANDARD_TASK_TITLES[colLetter] || '';
       if (
         headerTitle.toUpperCase() === 'ASPEK' ||
         headerTitle.toUpperCase() === rawClass.toUpperCase() ||
@@ -1275,9 +1504,10 @@ export async function detectClassTaskColumns(
       let scoreCount = 0;
       const colGradesMap: { [attendanceNo: string]: number | null } = {};
 
-      for (const r of studentRows) {
-        const attNo = String(parseInt(String(r[0] || '').trim(), 10));
-        const v = r[c];
+      for (const s of studentRows) {
+        const attNo = String(s.attNum);
+        const cell = s.cells[c + s.colOffset];
+        const v = cell ? cell.v : null;
         if (v !== null && v !== undefined && String(v).trim() !== '' && String(v).trim() !== '-' && String(v).trim() !== '0') {
           const num = parseFloat(String(v).replace(',', '.'));
           if (!isNaN(num)) {
@@ -1292,12 +1522,12 @@ export async function detectClassTaskColumns(
       }
 
       const hasScores = scoreCount > 0;
-      const isOccupied = !!headerTitle || hasScores;
+      const isOccupied = !!taskHeaders[c] || hasScores;
 
       columns.push({
         colIdx: c,
         colLetter,
-        headerTitle,
+        headerTitle: taskHeaders[c] || (hasScores ? STANDARD_TASK_TITLES[colLetter] || '' : ''),
         hasScores,
         isOccupied,
         scoreCount,

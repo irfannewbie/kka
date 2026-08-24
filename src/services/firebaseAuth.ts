@@ -108,9 +108,10 @@ export const DEFAULT_ADMIN_USER: User = ADMIN_PROFILES['irfandwi.hs@gmail.com'] 
 export const getAuthErrorMessage = (error: any): string => {
   const code = error?.code || '';
   const message = error?.message || '';
+  const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'domain Anda';
 
   if (code === 'auth/unauthorized-domain' || message.includes('unauthorized-domain')) {
-    return 'Domain web ini belum ditambahkan ke "Authorized Domains" di Firebase Console (Authentication > Settings > Authorized Domains). Namun Anda tetap dapat mengakses dan mengelola seluruh menu /master menggunakan profil admin offline.';
+    return `Domain "${currentHost}" belum ditambahkan ke daftar "Authorized Domains" di Firebase Console proyek penilaian-c2329. Anda tetap memiliki akses penuh sebagai Admin Master untuk mengelola data siswa, nilai, dan rekapitulasi. Untuk mengaktifkan sinkronisasi tulis langsung, tambahkan "${currentHost}" di Firebase Console > Authentication > Settings > Authorized Domains.`;
   }
   if (code === 'auth/popup-blocked' || message.includes('popup-blocked')) {
     return 'Jendela popup Google diblokir oleh browser. Silakan izinkan pop-up pada bilah URL browser Anda atau buka aplikasi di tab baru.';
@@ -129,21 +130,68 @@ export const getAuthErrorMessage = (error: any): string => {
 
 // Flag to indicate if we are in the middle of a sign-in flow.
 let isSigningIn = false;
-// Cache the access token in memory only
-let cachedAccessToken: string | null = null;
+
+const TOKEN_STORAGE_KEY = 'inforkoding_oauth_token';
+const TOKEN_EXPIRY_KEY = 'inforkoding_oauth_token_expiry';
+
+// Get saved access token from localStorage/sessionStorage if not expired
+export const getSavedAccessToken = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY) || sessionStorage.getItem(TOKEN_STORAGE_KEY);
+    const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY) || sessionStorage.getItem(TOKEN_EXPIRY_KEY);
+    if (token && expiry) {
+      const expTime = parseInt(expiry, 10);
+      if (Date.now() < expTime) {
+        return token;
+      } else {
+        // Token has expired
+        clearAuthToken();
+      }
+    }
+  } catch (e) {
+    console.warn('Could not retrieve saved token:', e);
+  }
+  return null;
+};
+
+// Save access token with expiration (typically 1 hour / 3600 seconds)
+export const saveAccessToken = (token: string, expiresInSeconds: number = 3600) => {
+  cachedAccessToken = token;
+  if (typeof window === 'undefined') return;
+  try {
+    const expiryTime = Date.now() + (expiresInSeconds - 60) * 1000;
+    localStorage.setItem(TOKEN_STORAGE_KEY, token);
+    localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
+    sessionStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+  } catch (e) {
+    console.warn('Could not save token to storage:', e);
+  }
+};
+
+// Cache the access token in memory with initial fallback to storage
+let cachedAccessToken: string | null = getSavedAccessToken();
 
 // Initialize auth state listener. Call this on app load.
 export const initAuth = (
   onAuthSuccess?: (user: User, token: string | null) => void,
   onAuthFailure?: () => void
 ) => {
+  const restoredToken = getSavedAccessToken();
+  if (restoredToken) {
+    cachedAccessToken = restoredToken;
+  }
+
   return onAuthStateChanged(auth, async (firebaseUser: User | null) => {
+    const currentToken = cachedAccessToken || getSavedAccessToken();
     if (firebaseUser) {
-      if (onAuthSuccess) onAuthSuccess(firebaseUser, cachedAccessToken);
+      if (onAuthSuccess) onAuthSuccess(firebaseUser, currentToken);
     } else {
-      cachedAccessToken = null;
       if (onAuthSuccess) {
-        onAuthSuccess(DEFAULT_ADMIN_USER, null);
+        const savedEmail = typeof localStorage !== 'undefined' ? localStorage.getItem('tugas_siswa_active_admin_email_v3') : null;
+        const activeProfile = (savedEmail && ADMIN_PROFILES[savedEmail]) || ADMIN_PROFILES['irfandwi.hs@gmail.com'] || DEFAULT_ADMIN_USER;
+        onAuthSuccess(activeProfile, currentToken);
       }
     }
   });
@@ -151,6 +199,15 @@ export const initAuth = (
 
 export const clearAuthToken = () => {
   cachedAccessToken = null;
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.removeItem(TOKEN_STORAGE_KEY);
+    localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    sessionStorage.removeItem(TOKEN_STORAGE_KEY);
+    sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
+  } catch (e) {
+    // ignore
+  }
 };
 
 // Must be called from a button click or user interaction
@@ -188,8 +245,8 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
       throw new Error('Gagal memperoleh token akses dari Google.');
     }
 
-    cachedAccessToken = credential.accessToken;
-    return { user: result.user, accessToken: cachedAccessToken };
+    saveAccessToken(credential.accessToken);
+    return { user: result.user, accessToken: credential.accessToken };
   } catch (error: any) {
     if (
       error?.code === 'auth/popup-closed-by-user' ||
@@ -197,7 +254,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
     ) {
       return null;
     }
-    console.error('Sign in error:', error);
+    console.warn('Sign in handled:', error?.code || error?.message || error);
     throw error;
   } finally {
     isSigningIn = false;
@@ -205,7 +262,7 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
 };
 
 export const getAccessToken = async (): Promise<string | null> => {
-  return cachedAccessToken;
+  return cachedAccessToken || getSavedAccessToken();
 };
 
 export const logout = async () => {
@@ -214,7 +271,7 @@ export const logout = async () => {
   } catch (e) {
     // ignore
   }
-  cachedAccessToken = null;
+  clearAuthToken();
 };
 
 

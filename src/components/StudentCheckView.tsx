@@ -546,9 +546,16 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                         {/* Status (v or x) */}
                         <td className="py-3.5 px-4 text-center">
                           {task.isCompleted ? (
-                            <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-emerald-100 text-emerald-900 border-2 border-emerald-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#047857]">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-700 stroke-[2.5]" />
-                              <span>v (SUDAH)</span>
+                            <div className="inline-flex flex-col sm:flex-row items-center justify-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-900 border-2 border-emerald-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#047857]">
+                              <div className="flex items-center gap-1">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-700 stroke-[2.5]" />
+                                <span>v (SUDAH)</span>
+                              </div>
+                              {task.score !== null && task.score !== undefined && typeof task.score === 'number' && (
+                                <span className="px-1.5 py-0.2 bg-emerald-200/80 border border-emerald-600 rounded text-[11px] text-emerald-950 font-extrabold">
+                                  Nilai: {task.score}
+                                </span>
+                              )}
                             </div>
                           ) : (
                             <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-rose-100 text-rose-900 border-2 border-rose-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#be123c]">
