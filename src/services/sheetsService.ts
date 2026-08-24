@@ -62,27 +62,44 @@ export function formatGvizDate(dateVal: any): string {
 // Helper to parse Google API error responses
 export function parseGoogleApiError(status: number, errText: string, actionDesc: string = 'operasi'): { isAuthError: boolean; isPermissionError: boolean; message: string } {
   let cleanMsg = '';
+  let errorObj: any = null;
   try {
-    const parsed = JSON.parse(errText);
-    cleanMsg = parsed.error?.message || '';
+    errorObj = JSON.parse(errText);
+    cleanMsg = errorObj.error?.message || '';
   } catch (e) {
     cleanMsg = errText || '';
   }
+
+  const lowerMsg = cleanMsg.toLowerCase();
 
   if (status === 401) {
     clearAuthToken();
     return {
       isAuthError: true,
       isPermissionError: false,
-      message: 'Sesi akun Google Anda telah kedaluwarsa. Silakan klik LOGIN GOOGLE kembali untuk memperbarui sesi.',
+      message: 'Sesi akun Google Anda telah kedaluwarsa. Silakan klik LOGIN GOOGLE di bilah atas untuk menyegarkan sesi.',
     };
   }
 
-  if (status === 403 || cleanMsg.toLowerCase().includes('permission') || cleanMsg.toLowerCase().includes('caller does not have')) {
+  if (status === 403 || lowerMsg.includes('permission') || lowerMsg.includes('caller does not have') || lowerMsg.includes('access denied')) {
+    if (lowerMsg.includes('has not been used') || lowerMsg.includes('has not been enabled') || lowerMsg.includes('api disabled')) {
+      return {
+        isAuthError: false,
+        isPermissionError: true,
+        message: `Google Sheets API belum diaktifkan di Google Cloud Console untuk proyek ini. Buka console.cloud.google.com > APIs & Services > Library > cari 'Google Sheets API' > klik 'Enable'.`,
+      };
+    }
+    if (lowerMsg.includes('insufficient') || lowerMsg.includes('scope')) {
+      return {
+        isAuthError: true,
+        isPermissionError: false,
+        message: `Izin akses Spreadsheet belum dicentang saat login. Silakan klik LOGOUT di bilah atas, lalu klik LOGIN GOOGLE kembali dan pastikan mencentang semua izin akses Google Sheets yang diminta.`,
+      };
+    }
     return {
       isAuthError: false,
       isPermissionError: true,
-      message: `Akun Google Anda terhubung tetapi belum memiliki izin "Editor" (Penyunting) pada file Spreadsheet ini. Silakan buka Google Spreadsheet, klik tombol "Bagikan" (Share), dan tambahkan akun Google Anda sebagai Editor.`,
+      message: `Izin Akses Ditolak (Error 403): Akun Google yang terhubung saat ini belum memiliki akses "Editor" (Penyunting) pada file Spreadsheet ini. Silakan buka Google Spreadsheet > klik tombol "Bagikan" (Share) > tambahkan email Anda sebagai Editor.`,
     };
   }
 
@@ -840,9 +857,12 @@ export async function syncGradesToClassSheet(
     }
 
     if (!metaRes.ok) {
+      const errText = await metaRes.text();
+      const parsed = parseGoogleApiError(metaRes.status, errText, 'membaca spreadsheet');
       return {
         success: false,
-        message: `Gagal membaca spreadsheet: status ${metaRes.status}`,
+        isAuthError: parsed.isAuthError,
+        message: parsed.message,
       };
     }
 
@@ -884,13 +904,21 @@ export async function syncGradesToClassSheet(
         }
       );
 
-      if (addRes.ok) {
-        const addData = await addRes.json();
-        sheetId = addData.replies?.[0]?.addSheet?.properties?.sheetId ?? null;
+      if (!addRes.ok) {
+        const errText = await addRes.text();
+        const parsed = parseGoogleApiError(addRes.status, errText, `membuat sheet '${sheetTitle}'`);
+        return {
+          success: false,
+          isAuthError: parsed.isAuthError,
+          message: parsed.message,
+        };
       }
+
+      const addData = await addRes.json();
+      sheetId = addData.replies?.[0]?.addSheet?.properties?.sheetId ?? null;
     }
 
-    // 2. Fetch existing rows to determine structure (inspect A1 to Z45)
+    // 2. Fetch existing rows to determine structure and preserve existing grades (inspect A1 to Z45)
     const fetchRange = `${encodeURIComponent(sheetTitle)}!A1:Z45`;
     const dataRes = await fetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${fetchRange}`,
@@ -903,6 +931,14 @@ export async function syncGradesToClassSheet(
     if (dataRes.ok) {
       const dataJson = await dataRes.json();
       existingRows = dataJson.values || [];
+    } else {
+      const errText = await dataRes.text();
+      const parsed = parseGoogleApiError(dataRes.status, errText, `mengambil data sheet '${sheetTitle}'`);
+      return {
+        success: false,
+        isAuthError: parsed.isAuthError,
+        message: parsed.message,
+      };
     }
 
     // Standard school template structure:
@@ -923,7 +959,6 @@ export async function syncGradesToClassSheet(
       // AUTO detection:
       // Locate Row 5 (index 4) and Row 4 (index 3)
       const row5 = existingRows[4] || [];
-      const row4 = existingRows[3] || [];
       let foundExactCol = -1;
 
       const cleanTitle = (taskTitle || '').trim().toLowerCase();
@@ -1000,13 +1035,42 @@ export async function syncGradesToClassSheet(
       return na - nb;
     });
 
-    // Build the column values array starting with Header at Row 5, then student 1 at Row 6, etc.
+    // Check if header row already has a custom title in this column
+    const existingHeader = String(existingRows[headerRowNumber - 1]?.[targetColIdx] || '').trim();
+    const finalHeaderTitle = (taskTitle && taskTitle.trim()) || existingHeader || `Tugas Kolom ${targetColLetter}`;
+
+    // Build the column values array starting with Header at Row 5
     const columnValues: (string | number)[][] = [
-      [taskTitle || 'Tugas'] // Row 5 (Header)
+      [finalHeaderTitle]
     ];
 
-    for (const sg of sortedGrades) {
-      columnValues.push([sg.score !== null && sg.score !== undefined ? sg.score : '']);
+    // MERGE LOGIC: Safely preserve existing student scores in this column if not updated in this session
+    let updatedCount = 0;
+    let preservedCount = 0;
+
+    for (let i = 0; i < sortedGrades.length; i++) {
+      const sg = sortedGrades[i];
+      const studentRowIndex = (studentStartRowNumber - 1) + i;
+      const existingRow = existingRows[studentRowIndex] || [];
+      const existingCellVal = existingRow[targetColIdx];
+      
+      let finalScore: string | number = '';
+      if (sg.score !== null && sg.score !== undefined) {
+        finalScore = sg.score;
+        updatedCount++;
+      } else if (
+        existingCellVal !== undefined &&
+        existingCellVal !== null &&
+        String(existingCellVal).trim() !== '' &&
+        String(existingCellVal).trim() !== '-'
+      ) {
+        // Keep previously stored grade from spreadsheet so it is NEVER lost
+        const parsedExisting = parseFloat(String(existingCellVal).replace(',', '.'));
+        finalScore = !isNaN(parsedExisting) ? parsedExisting : existingCellVal;
+        preservedCount++;
+      }
+
+      columnValues.push([finalScore]);
     }
 
     // Write range: e.g. '8G'!E5:E37
@@ -1043,7 +1107,7 @@ export async function syncGradesToClassSheet(
       success: true,
       columnLetter: targetColLetter,
       startCell: startStudentCell,
-      message: `Sukses! Nilai "${taskTitle}" tersinkronisasi ke sheet '${sheetTitle}' pada Kolom ${targetColLetter} (Header di ${targetColLetter}${headerRowNumber}, Nilai Absen 1 di ${startStudentCell} s.d. Absen ${sortedGrades.length} di ${targetColLetter}${endRowNumber}).`,
+      message: `Sukses! Nilai "${finalHeaderTitle}" berhasil disimpan ke sheet '${sheetTitle}' pada Kolom ${targetColLetter} (${updatedCount} nilai diperbarui, ${preservedCount} nilai tersimpan dipertahankan).`,
     };
   } catch (err: any) {
     console.error('Error syncing grades to class sheet:', err);
@@ -1060,9 +1124,9 @@ export async function clearColumnInClassSheet(
   spreadsheetId: string,
   className: string,
   columnLetter: string
-): Promise<{ success: boolean; message: string }> {
+): Promise<{ success: boolean; isAuthError?: boolean; isPermissionError?: boolean; message: string }> {
   if (!accessToken) {
-    return { success: false, message: 'Autentikasi Google diperlukan.' };
+    return { success: false, isAuthError: true, message: 'Autentikasi Google diperlukan.' };
   }
 
   try {
@@ -1071,7 +1135,11 @@ export async function clearColumnInClassSheet(
       `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}`,
       { headers: { Authorization: `Bearer ${accessToken}` } }
     );
-    if (!metaRes.ok) return { success: false, message: 'Gagal mengakses spreadsheet' };
+    if (!metaRes.ok) {
+      const errText = await metaRes.text();
+      const parsed = parseGoogleApiError(metaRes.status, errText, 'membaca spreadsheet');
+      return { success: false, isAuthError: parsed.isAuthError, isPermissionError: parsed.isPermissionError, message: parsed.message };
+    }
 
     const meta = await metaRes.json();
     const sheetsList = meta.sheets || [];
@@ -1098,7 +1166,8 @@ export async function clearColumnInClassSheet(
       return { success: true, message: `Kolom ${columnLetter} pada sheet '${sheetTitle}' berhasil dibersihkan.` };
     } else {
       const errText = await clearRes.text();
-      return { success: false, message: `Gagal membersihkan Kolom ${columnLetter}: ${errText}` };
+      const parsed = parseGoogleApiError(clearRes.status, errText, `membersihkan Kolom ${columnLetter}`);
+      return { success: false, isAuthError: parsed.isAuthError, isPermissionError: parsed.isPermissionError, message: parsed.message };
     }
   } catch (err: any) {
     return { success: false, message: `Error: ${err.message || err}` };
@@ -1396,12 +1465,131 @@ export interface ClassColumnDetectionResult {
 // Detect existing task columns and find the next available column for a class sheet
 export async function detectClassTaskColumns(
   spreadsheetId: string,
-  className: string
+  className: string,
+  token?: string | null
 ): Promise<ClassColumnDetectionResult> {
   const rawClass = className.replace(/^Kelas\s*/i, '').trim();
   const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
   const nocache = Date.now();
 
+  // 1. Try Google Sheets v4 API first if token is provided
+  if (token) {
+    try {
+      const fetchRange = `${encodeURIComponent(rawClass)}!A1:Z45`;
+      const apiRes = await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${targetSpreadsheetId}/values/${fetchRange}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (apiRes.ok) {
+        const dataJson = await apiRes.json();
+        const rows: any[][] = dataJson.values || [];
+
+        if (rows.length > 0) {
+          const row5 = rows[4] || [];
+          const row4 = rows[3] || [];
+          const taskHeaders: { [colIdx: number]: string } = {};
+
+          for (let c = 4; c <= 17; c++) {
+            const val5 = String(row5[c] || '').trim();
+            const val4 = String(row4[c] || '').trim();
+            let header = val5 || val4;
+            if (
+              header &&
+              header !== '-' &&
+              header.toUpperCase() !== 'ASPEK' &&
+              header.toUpperCase() !== rawClass.toUpperCase() &&
+              !/^\d+$/.test(header) &&
+              !header.includes('Guru Mapel') &&
+              !header.includes('Wedi')
+            ) {
+              taskHeaders[c] = header;
+            }
+          }
+
+          // Locate student start row
+          let studentStartRow = 5; // index 5 = row 6
+          for (let r = 0; r < rows.length; r++) {
+            if (String(rows[r]?.[0] || '').trim() === '1') {
+              studentStartRow = r;
+              break;
+            }
+          }
+
+          const columns: DetectedColumnDetail[] = [];
+          for (let c = 4; c <= 17; c++) {
+            const colLetter = columnToLetter(c);
+            let scoreCount = 0;
+            const colGradesMap: { [attendanceNo: string]: number | null } = {};
+
+            for (let r = studentStartRow; r < Math.min(rows.length, studentStartRow + 40); r++) {
+              const row = rows[r] || [];
+              const attNo = String(r - studentStartRow + 1);
+              const cellVal = row[c];
+              if (
+                cellVal !== undefined &&
+                cellVal !== null &&
+                String(cellVal).trim() !== '' &&
+                String(cellVal).trim() !== '-' &&
+                String(cellVal).trim() !== '0'
+              ) {
+                const parsed = parseFloat(String(cellVal).replace(',', '.'));
+                if (!isNaN(parsed)) {
+                  colGradesMap[attNo] = parsed;
+                  scoreCount++;
+                } else {
+                  colGradesMap[attNo] = null;
+                }
+              } else {
+                colGradesMap[attNo] = null;
+              }
+            }
+
+            const hasScores = scoreCount > 0;
+            const isOccupied = !!taskHeaders[c] || hasScores;
+
+            columns.push({
+              colIdx: c,
+              colLetter,
+              headerTitle: taskHeaders[c] || (hasScores ? STANDARD_TASK_TITLES[colLetter] || '' : ''),
+              hasScores,
+              isOccupied,
+              scoreCount,
+              gradesMap: colGradesMap,
+            });
+          }
+
+          const occupiedColumns = columns.filter((c) => c.isOccupied);
+          const nextCol = columns.find((c) => !c.isOccupied) || {
+            colIdx: 18,
+            colLetter: 'S',
+            headerTitle: '',
+            hasScores: false,
+            isOccupied: false,
+            scoreCount: 0,
+            gradesMap: {},
+          };
+          const lastOccupied = occupiedColumns[occupiedColumns.length - 1];
+
+          return {
+            success: true,
+            className: rawClass,
+            columns,
+            occupiedColumns,
+            nextAvailableColumn: nextCol.colLetter,
+            nextTaskNumber: occupiedColumns.length + 1,
+            lastTaskTitle: lastOccupied?.headerTitle || (lastOccupied ? `Tugas Kolom ${lastOccupied.colLetter}` : undefined),
+          };
+        }
+      }
+    } catch (apiErr) {
+      console.warn('API detect columns failed, falling back to GViz:', apiErr);
+    }
+  }
+
+  // 2. Fallback to GViz public endpoint
   try {
     const sheetUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(rawClass)}&_nc=${nocache}`;
     const res = await fetch(sheetUrl, { cache: 'no-cache' });

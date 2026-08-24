@@ -77,25 +77,28 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
   const [isDetectingCols, setIsDetectingCols] = useState<boolean>(false);
 
   // Fetch / detect occupied columns and next available column for selected class
-  const loadClassColumns = async (className: string, autoSelectLatest = true) => {
+  const loadClassColumns = async (className: string, preserveSelection = false) => {
     setIsDetectingCols(true);
     try {
-      const res = await detectClassTaskColumns(spreadsheetId, className);
+      const res = await detectClassTaskColumns(spreadsheetId, className, token);
       setColumnDetection(res);
 
-      if (autoSelectLatest && res.occupiedColumns && res.occupiedColumns.length > 0) {
-        // Find currently selected task or default to first / latest occupied task
-        let activeTask = res.occupiedColumns.find((c) => c.colLetter === selectedTaskId);
-        if (!activeTask) {
-          activeTask = res.occupiedColumns[0]; // Start with first task or latest
-        }
-        if (activeTask && selectedTaskId !== 'NEW') {
-          setSelectedTaskId(activeTask.colLetter);
-          setTargetColumn(activeTask.colLetter);
-          setTaskTitle(activeTask.headerTitle || `Tugas Kolom ${activeTask.colLetter}`);
-          setGradesMap(activeTask.gradesMap || {});
+      if (preserveSelection && selectedTaskId !== 'NEW' && selectedTaskId !== 'AUTO') {
+        const found = res.columns?.find((c) => c.colLetter === selectedTaskId);
+        if (found) {
+          setTargetColumn(found.colLetter);
+          setTaskTitle(found.headerTitle || `Tugas Kolom ${found.colLetter}`);
+          setGradesMap(found.gradesMap || {});
+          return;
         }
       }
+
+      // Default to "NEW" (Tambah Tugas Baru ke kolom kosong berikutnya)
+      // agar tidak menimpa tugas yang sudah ada di sheet!
+      setSelectedTaskId('NEW');
+      setTargetColumn('AUTO');
+      const nextNum = res.nextTaskNumber || ((res.occupiedColumns?.length || 0) + 1);
+      setTaskTitle(`Tugas ${nextNum} - Informatika`);
     } catch (err) {
       console.warn('Failed to detect columns:', err);
     } finally {
@@ -104,15 +107,15 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
   };
 
   useEffect(() => {
-    loadClassColumns(selectedClass, true);
-  }, [selectedClass, spreadsheetId]);
+    loadClassColumns(selectedClass, false);
+  }, [selectedClass, spreadsheetId, token]);
 
   // Handler when user chooses a task from the spreadsheet task dropdown
   const handleSelectTaskFromSpreadsheet = (taskKey: string) => {
     setSelectedTaskId(taskKey);
     if (taskKey === 'NEW') {
       setTargetColumn('AUTO');
-      const nextNum = (columnDetection?.occupiedColumns.length || 0) + 1;
+      const nextNum = columnDetection?.nextTaskNumber || ((columnDetection?.occupiedColumns?.length || 0) + 1);
       setTaskTitle(`Tugas ${nextNum} - Informatika`);
       setGradesMap({});
       setRawInputText('');
@@ -1131,10 +1134,15 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
                     <RefreshCw className="h-4 w-4 animate-spin text-[#2e59e6]" />
                     <span>MENYINKRONKAN KE SHEET '{selectedClass.replace(/^Kelas\s*/i, '')}' (KOLOM {effectiveColLetter})...</span>
                   </>
-                ) : (
+                ) : selectedTaskId === 'NEW' ? (
                   <>
                     <UploadCloud className="h-4 w-4 text-emerald-400" />
-                    <span>SINKRONKAN KE SHEET '{selectedClass.replace(/^Kelas\s*/i, '')}' [KOLOM {effectiveColLetter} (MULAI {effectiveColLetter}6)]</span>
+                    <span>➕ SINKRONKAN TUGAS BARU KE SHEET '{selectedClass.replace(/^Kelas\s*/i, '')}' [KOLOM {effectiveColLetter} (MULAI {effectiveColLetter}6)]</span>
+                  </>
+                ) : (
+                  <>
+                    <UploadCloud className="h-4 w-4 text-amber-400" />
+                    <span>🔄 PERBARUI NILAI TUGAS "{taskTitle}" [KOLOM {effectiveColLetter}]</span>
                   </>
                 )}
               </button>

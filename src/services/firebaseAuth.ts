@@ -111,21 +111,24 @@ export const getAuthErrorMessage = (error: any): string => {
   const currentHost = typeof window !== 'undefined' ? window.location.hostname : 'domain Anda';
 
   if (code === 'auth/unauthorized-domain' || message.includes('unauthorized-domain')) {
-    return `Domain "${currentHost}" belum ditambahkan ke daftar "Authorized Domains" di Firebase Console proyek penilaian-c2329. Anda tetap memiliki akses penuh sebagai Admin Master untuk mengelola data siswa, nilai, dan rekapitulasi. Untuk mengaktifkan sinkronisasi tulis langsung, tambahkan "${currentHost}" di Firebase Console > Authentication > Settings > Authorized Domains.`;
+    return `[Kode: auth/unauthorized-domain] Domain "${currentHost}" belum diizinkan. Buka Firebase Console (proyek penilaian-c2329) > Authentication > Settings > Authorized Domains, lalu tambahkan domain "${currentHost}" (pastikan TANPA 'https://' dan TANPA garis miring '/').`;
+  }
+  if (code === 'auth/operation-not-allowed' || message.includes('operation-not-allowed')) {
+    return `[Kode: auth/operation-not-allowed] Metode login Google belum diaktifkan di Firebase. Buka Firebase Console > Authentication > Sign-in method > klik 'Google' > pilih 'Enable' > pilih email dukungan proyek > klik 'Save'.`;
   }
   if (code === 'auth/popup-blocked' || message.includes('popup-blocked')) {
-    return 'Jendela popup Google diblokir oleh browser. Silakan izinkan pop-up pada bilah URL browser Anda atau buka aplikasi di tab baru.';
+    return `[Kode: auth/popup-blocked] Jendela popup Google diblokir oleh browser. Silakan klik ikon gembok / popup di bilah URL browser Anda untuk mengizinkan pop-up, atau buka link aplikasi di tab baru (bukan di dalam frame preview).`;
   }
   if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
-    return 'Login dibatalkan karena jendela pop-up ditutup.';
+    return 'Proses login dibatalkan karena jendela pop-up Google ditutup sebelum selesai.';
   }
-  if (code === 'auth/network-request-failed') {
-    return 'Gagal menghubungi server autentikasi. Periksa koneksi internet atau ekstensi pemblokir skrip.';
+  if (code === 'auth/network-request-failed' || message.includes('network-request-failed')) {
+    return '[Kode: auth/network-request-failed] Gagal terhubung ke server autentikasi Google/Firebase. Periksa koneksi internet atau matikan ekstensi AdBlocker/Privacy Badger yang mungkin memblokir permintaan Firebase.';
   }
-  if (code === 'auth/operation-not-allowed') {
-    return 'Metode Google Sign-In belum diaktifkan di Firebase Console > Authentication > Sign-in method.';
+  if (code === 'auth/invalid-api-key') {
+    return '[Kode: auth/invalid-api-key] Kunci API Firebase tidak valid.';
   }
-  return error?.message || 'Terjadi kendala saat proses autentikasi Firebase.';
+  return error?.message ? `[${code || 'Error'}] ${error.message}` : 'Terjadi kendala saat proses autentikasi Firebase.';
 };
 
 // Flag to indicate if we are in the middle of a sign-in flow.
