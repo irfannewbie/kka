@@ -19,8 +19,8 @@ import { User } from 'firebase/auth';
 import { ADMIN_EMAILS } from '../services/firebaseAuth';
 
 interface SidebarProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks', path?: string) => void;
   onOpenSubmitModal: () => void;
   user: User | null;
   token: string | null;
@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   spreadsheetUrl,
 }) => {
   interface NavItem {
-    id: 'master' | 'students' | 'grades' | 'tasks' | 'spreadsheet';
+    id: 'master' | 'students' | 'grades' | 'tasks' | 'substitute_tasks' | 'spreadsheet';
     label: string;
     code: string;
     path: string;
@@ -80,9 +80,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: '/master/tasks',
     },
     {
+      id: 'substitute_tasks',
+      label: 'TUGAS PENGGANTI KKA 2',
+      code: '05',
+      path: '/master/substitute',
+    },
+    {
       id: 'spreadsheet',
       label: 'SPREADSHEET VIEWER',
-      code: '05',
+      code: '06',
       path: '/master/spreadsheet',
     },
   ];
@@ -113,20 +119,48 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </button>
         </div>
 
-        {/* Back to Public Showcase button */}
-        <div className="p-3 pb-1">
+        {/* Public & Student Portal Links */}
+        <div className="p-3 pb-1 space-y-1.5">
           <button
             onClick={() => {
               onNavigate('showcase', '/');
               onCloseMobile();
             }}
-            className="w-full flex items-center justify-between px-3 py-2.5 text-xs font-mono-code font-bold bg-white/10 hover:bg-white hover:text-[#1a1a1a] text-white border border-white/20 transition-all cursor-pointer"
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-white/10 hover:bg-white hover:text-[#1a1a1a] text-white border border-white/20 transition-all cursor-pointer"
           >
             <span className="flex items-center gap-1.5">
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>KEMBALI KE SHOWCASE</span>
+              <ArrowLeft className="h-3 w-3" />
+              <span>SHOWCASE SISWA</span>
             </span>
             <span className="text-[10px] text-slate-300 font-mono-code">/</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onNavigate('cek', '/cek');
+              onCloseMobile();
+            }}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-[#2e59e6]/20 hover:bg-[#2e59e6] hover:text-white text-blue-300 border border-blue-500/30 transition-all cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5">
+              <CheckSquare className="h-3 w-3 text-blue-400" />
+              <span>PORTAL CEK SISWA</span>
+            </span>
+            <span className="text-[10px] text-blue-300 font-mono-code">/cek</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onNavigate('pengganti', '/pengganti');
+              onCloseMobile();
+            }}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-amber-500/20 hover:bg-amber-400 hover:text-[#1a1a1a] text-amber-300 border border-amber-500/30 transition-all cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5">
+              <BookOpen className="h-3 w-3 text-amber-400" />
+              <span>TUGAS PENGGANTI</span>
+            </span>
+            <span className="text-[10px] text-amber-300 font-mono-code">/pengganti</span>
           </button>
         </div>
 

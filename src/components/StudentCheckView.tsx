@@ -26,6 +26,7 @@ interface StudentCheckViewProps {
   spreadsheetId: string;
   spreadsheetUrl?: string;
   onNavigateHome: () => void;
+  onNavigatePengganti?: () => void;
 }
 
 const STORAGE_KEY_STUDENT_SESSION = 'siswa_logged_in_session_v1';
@@ -49,6 +50,7 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
   spreadsheetId,
   spreadsheetUrl = DEFAULT_SPREADSHEET_URL,
   onNavigateHome,
+  onNavigatePengganti,
 }) => {
   // Authentication states
   const [usernameInput, setUsernameInput] = useState<string>('');
@@ -469,6 +471,30 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
               <div className="text-2xl font-bold text-rose-700 mt-1">{incompleteTasks} Tugas</div>
             </div>
           </div>
+
+          {/* Substitute Task Callout Banner */}
+          {onNavigatePengganti && (
+            <div className="bg-amber-50 border-2 border-amber-500 p-4 shadow-[3px_3px_0px_#f59e0b] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono-code">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold uppercase">
+                    INFO TUGAS PENGGANTI
+                  </span>
+                  <span className="text-xs font-bold text-amber-900">Tugas Pengganti KKA 2 Tersedia</span>
+                </div>
+                <p className="text-xs text-amber-800 mt-1">
+                  Bagi siswa yang belum menyelesaikan tugas KKA 2 atau ingin melakukan remedial, silakan kerjakan tugas pengganti (Mainkan game teka-teki & buat video algoritma).
+                </p>
+              </div>
+              <button
+                onClick={onNavigatePengganti}
+                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
+              >
+                <span>BUKA TUGAS PENGGANTI</span>
+                <span>→</span>
+              </button>
+            </div>
+          )}
 
           {/* Tasks Status Table */}
           <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] overflow-hidden">

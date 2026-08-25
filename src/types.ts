@@ -53,6 +53,31 @@ export interface AppNotification {
   taskId?: string;
 }
 
+export interface SubstituteTaskSubmission {
+  id: string;
+  submittedAt: string;
+  studentName: string;
+  attendanceNo: string;
+  className: string;
+  nis?: string;
+  youtubeUrl: string;
+  notes?: string;
+  status: 'Terkirim' | 'Ditinjau' | 'Selesai';
+}
+
+export interface StudentSubstituteTarget {
+  id: string;
+  studentName: string;
+  className: string;
+  attendanceNo: string;
+  nis: string;
+  gender?: string;
+  columnGScore: number | string | null;
+  hasColumnGScore: boolean;
+  hasSubmittedSubstitute: boolean;
+  substituteSubmission?: SubstituteTaskSubmission;
+}
+
 export interface SheetConfig {
   spreadsheetId: string;
   spreadsheetUrl: string;

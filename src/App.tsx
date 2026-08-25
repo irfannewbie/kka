@@ -30,6 +30,8 @@ import { StudentManagerView } from './components/StudentManagerView';
 import { GradeMappingView } from './components/GradeMappingView';
 import { SpreadsheetIframeView } from './components/SpreadsheetIframeView';
 import { StudentCheckView } from './components/StudentCheckView';
+import { SubstituteTaskView } from './components/SubstituteTaskView';
+import { MasterSubstituteTaskView } from './components/MasterSubstituteTaskView';
 import { TaskSubmissionModal } from './components/TaskSubmissionModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
 import { ConfirmationModal } from './components/ConfirmationModal';
@@ -60,20 +62,22 @@ try {
 }
 
 // Helper to determine route tab from pathname
-const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' => {
+const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks' => {
   const cleanPath = (path || '/').toLowerCase().replace(/\/$/, '') || '/';
   if (cleanPath === '/cek' || cleanPath === '/check' || cleanPath === '/login-siswa') return 'cek';
+  if (cleanPath === '/pengganti' || cleanPath === '/tugas-pengganti' || cleanPath === '/pengganti-kka2' || cleanPath === '/kka2') return 'pengganti';
   if (cleanPath === '/master') return 'master';
   if (cleanPath === '/master/students' || cleanPath === '/students') return 'students';
   if (cleanPath === '/master/grades' || cleanPath === '/grades') return 'grades';
   if (cleanPath === '/master/tasks' || cleanPath === '/tasks') return 'tasks';
+  if (cleanPath === '/master/substitute' || cleanPath === '/master/pengganti' || cleanPath === '/master/tugas-pengganti' || cleanPath === '/substitute') return 'substitute_tasks';
   if (cleanPath === '/master/spreadsheet' || cleanPath === '/spreadsheet') return 'spreadsheet';
   return 'showcase';
 };
 
 export default function App() {
   // Navigation state initialized based on current URL pathname
-  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek'>(() => {
+  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks'>(() => {
     return getTabFromPath(window.location.pathname);
   });
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
@@ -90,12 +94,14 @@ export default function App() {
   }, []);
 
   // Programmatic navigation that updates the browser URL
-  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek', targetPath?: string) => {
+  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks', targetPath?: string) => {
     setActiveTab(tab);
     let resolvedPath = targetPath;
     if (!resolvedPath) {
       if (tab === 'showcase') resolvedPath = '/';
       else if (tab === 'cek') resolvedPath = '/cek';
+      else if (tab === 'pengganti') resolvedPath = '/pengganti';
+      else if (tab === 'substitute_tasks') resolvedPath = '/master/substitute';
       else resolvedPath = `/master${tab === 'master' ? '' : `/${tab}`}`;
     }
     if (window.location.pathname !== resolvedPath) {
@@ -621,7 +627,7 @@ export default function App() {
   return (
     <div className="flex h-screen w-full bg-[#F2EFEB] font-sans overflow-hidden text-[#1a1a1a]">
       {/* High Density Left Sidebar (Mounted ONLY for Master Admin Views) */}
-      {activeTab !== 'showcase' && activeTab !== 'cek' && (
+      {activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'pengganti' && (
         <Sidebar
           activeTab={activeTab}
           onNavigate={handleNavigate}
@@ -663,7 +669,7 @@ export default function App() {
         />
 
         {/* Real-time Toast Floating Alert (Only in Master Mode) */}
-        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && (
+        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'pengganti' && (
           <div className="fixed top-16 right-4 z-50 max-w-sm bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-3 font-mono-code animate-in slide-in-from-top-4 duration-200">
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
@@ -712,6 +718,25 @@ export default function App() {
                 spreadsheetId={spreadsheetId}
                 spreadsheetUrl={spreadsheetUrl}
                 onNavigateHome={() => handleNavigate('showcase', '/')}
+                onNavigatePengganti={() => handleNavigate('pengganti', '/pengganti')}
+              />
+            )}
+
+            {activeTab === 'pengganti' && (
+              <SubstituteTaskView
+                students={students}
+                spreadsheetId={spreadsheetId}
+                spreadsheetUrl={spreadsheetUrl}
+                token={token}
+                onLogin={handleGoogleLogin}
+                onNavigateShowcase={() => handleNavigate('showcase', '/')}
+                onNavigateCek={() => handleNavigate('cek', '/cek')}
+                onNotifySubmission={(sName, cName, aNo) => {
+                  triggerNewTaskAlert(
+                    'Tugas Pengganti Masuk!',
+                    `Siswa ${sName} (${cName} - Absen ${aNo}) telah mengumpulkan link video tugas pengganti KKA 2.`
+                  );
+                }}
               />
             )}
 
@@ -763,6 +788,16 @@ export default function App() {
                 token={token}
                 onLogin={handleGoogleLogin}
                 onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
+              />
+            )}
+
+            {activeTab === 'substitute_tasks' && (
+              <MasterSubstituteTaskView
+                students={students}
+                spreadsheetId={spreadsheetId}
+                spreadsheetUrl={spreadsheetUrl}
+                token={token}
+                onLogin={handleGoogleLogin}
               />
             )}
 

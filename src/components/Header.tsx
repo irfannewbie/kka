@@ -5,14 +5,13 @@ import {
   Volume2,
   VolumeX,
   Menu,
-  ArrowLeft,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { ADMIN_EMAILS } from '../services/firebaseAuth';
 
 interface HeaderProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks', path?: string) => void;
   user: User | null;
   token: string | null;
   onLogin: () => void;
@@ -51,16 +50,17 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMobileSidebar,
   onOpenSubmitModal,
 }) => {
-  const isMasterMode = activeTab !== 'showcase' && activeTab !== 'cek';
+  const isMasterMode = activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'pengganti';
   const isCekMode = activeTab === 'cek';
+  const isPenggantiMode = activeTab === 'pengganti';
 
   return (
     <header
       id="main-app-header"
-      className="h-14 sm:h-16 bg-[#F2EFEB] border-b-[1.5px] border-[#1a1a1a] flex items-center justify-between px-4 sm:px-6 shrink-0 z-20 select-none"
+      className="h-14 sm:h-16 bg-[#F2EFEB] border-b-[1.5px] border-[#1a1a1a] flex items-center justify-between px-3 sm:px-6 shrink-0 z-20 select-none"
     >
       {/* Top Left Navigation Anchor */}
-      <div className="flex items-center space-x-3 min-w-0">
+      <div className="flex items-center space-x-2 sm:space-x-3 min-w-0">
         {isMasterMode && (
           <button
             id="btn-mobile-menu"
@@ -74,10 +74,10 @@ export const Header: React.FC<HeaderProps> = ({
 
         <div
           onClick={() => onNavigate('showcase', '/')}
-          className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-2"
+          className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-1.5 sm:gap-2 shrink-0"
         >
           <span>[ SISWAHUB v2.0 ]</span>
-          {!isMasterMode && !isCekMode && (
+          {!isMasterMode && !isCekMode && !isPenggantiMode && (
             <span className="hidden sm:inline-block text-[11px] font-normal text-slate-500 font-mono-code border-l border-[#1a1a1a] pl-2">
               SHOWCASE KARYA SISWA
             </span>
@@ -87,75 +87,12 @@ export const Header: React.FC<HeaderProps> = ({
               CEK STATUS TUGAS SISWA
             </span>
           )}
+          {isPenggantiMode && (
+            <span className="hidden sm:inline-block text-[11px] font-bold text-amber-700 font-mono-code border-l border-[#1a1a1a] pl-2">
+              TUGAS PENGGANTI KKA 2
+            </span>
+          )}
         </div>
-
-        {/* Master View Navigation Tabs (Visible when inside /master) */}
-        {isMasterMode && (
-          <div className="hidden md:flex items-center space-x-1 pl-4 border-l border-[#1a1a1a]">
-            <button
-              onClick={() => onNavigate('showcase', '/')}
-              className="font-mono-code text-xs px-2.5 py-1 border border-transparent hover:border-[#1a1a1a] text-slate-600 hover:text-[#1a1a1a] transition-all flex items-center gap-1 cursor-pointer"
-            >
-              <ArrowLeft className="h-3 w-3" /> KE SHOWCASE (/)
-            </button>
-            <button
-              onClick={() => onNavigate('cek', '/cek')}
-              className="font-mono-code text-xs px-2.5 py-1 border border-[#2e59e6] text-[#2e59e6] hover:bg-blue-50 transition-all font-bold cursor-pointer"
-            >
-              PORTAL CEK (/cek)
-            </button>
-            <button
-              onClick={() => onNavigate('master', '/master')}
-              className={`font-mono-code text-xs px-2.5 py-1 border transition-all cursor-pointer ${
-                activeTab === 'master'
-                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] font-bold'
-                  : 'text-[#1a1a1a] border-transparent hover:border-[#1a1a1a]'
-              }`}
-            >
-              KONTROL MASTER
-            </button>
-            <button
-              onClick={() => onNavigate('students', '/master/students')}
-              className={`font-mono-code text-xs px-2.5 py-1 border transition-all cursor-pointer ${
-                activeTab === 'students'
-                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] font-bold'
-                  : 'text-[#1a1a1a] border-transparent hover:border-[#1a1a1a]'
-              }`}
-            >
-              DAFTAR SISWA
-            </button>
-            <button
-              onClick={() => onNavigate('grades', '/master/grades')}
-              className={`font-mono-code text-xs px-2.5 py-1 border transition-all cursor-pointer ${
-                activeTab === 'grades'
-                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] font-bold'
-                  : 'text-[#1a1a1a] border-transparent hover:border-[#1a1a1a]'
-              }`}
-            >
-              PEMETAAN NILAI
-            </button>
-            <button
-              onClick={() => onNavigate('tasks', '/master/tasks')}
-              className={`font-mono-code text-xs px-2.5 py-1 border transition-all cursor-pointer ${
-                activeTab === 'tasks'
-                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] font-bold'
-                  : 'text-[#1a1a1a] border-transparent hover:border-[#1a1a1a]'
-              }`}
-            >
-              REKAP TABEL
-            </button>
-            <button
-              onClick={() => onNavigate('spreadsheet', '/master/spreadsheet')}
-              className={`font-mono-code text-xs px-2.5 py-1 border transition-all cursor-pointer ${
-                activeTab === 'spreadsheet'
-                  ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] font-bold'
-                  : 'text-[#1a1a1a] border-transparent hover:border-[#1a1a1a]'
-              }`}
-            >
-              SPREADSHEET
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Top Right Navigation Anchor */}
