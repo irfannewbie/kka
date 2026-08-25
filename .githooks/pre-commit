@@ -1,0 +1,23 @@
+#!/bin/sh
+# Pre-commit hook: ensure files under node_modules are not staged/committed
+
+# Get list of staged files (NUL-separated)
+STAGED=$(git diff --cached --name-only -z)
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+# For each staged file, if it is under node_modules, unstage it
+printf '%s' "$STAGED" | tr '\0' '\n' | grep -E '^node_modules/' | while IFS= read -r file; do
+  if [ -z "$file" ]; then
+    continue
+  fi
+  # Try git restore --staged, fallback to git reset
+  if git restore --staged -- "$file" 2>/dev/null; then
+    echo "pre-commit: unstaged $file"
+  else
+    git reset -q HEAD -- "$file" 2>/dev/null && echo "pre-commit: unstaged $file"
+  fi
+done
+
+exit 0
