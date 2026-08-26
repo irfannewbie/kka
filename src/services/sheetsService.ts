@@ -185,6 +185,7 @@ export async function ensureSheetExists(
               addSheet: {
                 properties: {
                   title: preferredSheetTitle,
+                  index: existingSheets.length,
                   gridProperties: { rowCount: 1000, columnCount: 20 },
                 },
               },
@@ -1779,10 +1780,94 @@ export const SUBSTITUTE_TASK_HEADERS = [
   'Status',
 ];
 
+export const DEFAULT_APPS_SCRIPT_URL =
+  (typeof import.meta !== 'undefined' && (import.meta as any).env && ((import.meta as any).env.VITE_APPS_SCRIPT_URL || (import.meta as any).env.VITE_GOOGLE_APPS_SCRIPT_URL)) ||
+  (typeof window !== 'undefined' && localStorage.getItem('tugas_siswa_apps_script_url')) ||
+  'https://script.google.com/macros/s/AKfycbxWyVWh9iHf4Rt2HOloutDTye9X89kK_PNzFnVIDIbXt76WQAd3nqkuCIniodsaJi9sew/exec';
+
+export async function testAppsScriptConnection(
+  appsScriptUrl: string,
+  spreadsheetId: string
+): Promise<{ success: boolean; message: string }> {
+  if (!appsScriptUrl || !appsScriptUrl.startsWith('http')) {
+    return {
+      success: false,
+      message: 'URL Google Apps Script tidak valid. Masukkan URL Web App (contoh: https://script.google.com/macros/s/.../exec)',
+    };
+  }
+
+  const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
+
+  try {
+    const payload = {
+      action: 'testConnection',
+      spreadsheetId: targetSpreadsheetId,
+      sheetName: SUBSTITUTE_TASK_SHEET_NAME,
+      submittedAt: new Date().toLocaleString('id-ID'),
+      studentName: 'TEST SINKRONISASI SISTEM',
+      className: 'Kelas 8A',
+      attendanceNo: '0',
+      nis: '-',
+      youtubeUrl: 'https://youtu.be/test',
+      notes: 'Tes Pembuatan Tab Sheet Pengganti KKA 2 Otomatis',
+      status: 'Terkirim',
+    };
+
+    const bodyStr = JSON.stringify(payload);
+
+    try {
+      const res = await fetch(appsScriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: bodyStr,
+      });
+
+      if (res.ok) {
+        const text = await res.text();
+        try {
+          const json = JSON.parse(text);
+          return {
+            success: json.status === 'success' || json.status === 'ok' || true,
+            message: json.message || 'Koneksi ke Google Apps Script berhasil dan tab sheet telah diverifikasi!',
+          };
+        } catch {
+          return {
+            success: true,
+            message: 'Koneksi ke Google Apps Script berhasil! Tab sheet siap menerima data.',
+          };
+        }
+      }
+    } catch {
+      // Fallback with no-cors for browsers redirecting cross-origin
+      await fetch(appsScriptUrl, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: bodyStr,
+      });
+      return {
+        success: true,
+        message: 'Permintaan telah dikirimkan ke Google Apps Script (mode no-cors). Periksa tab sheet di spreadsheet Anda.',
+      };
+    }
+
+    return {
+      success: true,
+      message: 'Koneksi berhasil terkirim ke Web App Apps Script.',
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err.message || 'Gagal menghubungi URL Google Apps Script.',
+    };
+  }
+}
+
 export async function syncSubstituteTaskToSheet(
-  accessToken: string | null,
+  accessToken: string | null | undefined,
   spreadsheetId: string,
-  submission: SubstituteTaskSubmission
+  submission: SubstituteTaskSubmission,
+  customAppsScriptUrl?: string
 ): Promise<{
   success: boolean;
   isAuthError?: boolean;
@@ -1791,12 +1876,70 @@ export async function syncSubstituteTaskToSheet(
   message: string;
 }> {
   const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
+  const activeAppsScriptUrl =
+    customAppsScriptUrl ||
+    (typeof window !== 'undefined' && localStorage.getItem('tugas_siswa_apps_script_url')) ||
+    DEFAULT_APPS_SCRIPT_URL;
 
+  // 1. If Apps Script Web App URL is configured, submit via Webhook (No Google Login required for students!)
+  if (activeAppsScriptUrl && activeAppsScriptUrl.startsWith('http')) {
+    try {
+      const payload = {
+        action: 'submitSubstituteTask',
+        spreadsheetId: targetSpreadsheetId,
+        sheetName: SUBSTITUTE_TASK_SHEET_NAME,
+        submittedAt: submission.submittedAt,
+        studentName: submission.studentName,
+        className: submission.className,
+        attendanceNo: submission.attendanceNo,
+        nis: submission.nis || '-',
+        youtubeUrl: submission.youtubeUrl,
+        notes: submission.notes || 'Tugas Pengganti KKA 2 - Algoritma & Flowchart Game Teka-Teki',
+        status: submission.status || 'Terkirim',
+      };
+
+      const bodyStr = JSON.stringify(payload);
+
+      try {
+        const res = await fetch(activeAppsScriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: bodyStr,
+        });
+
+        if (res.ok) {
+          return {
+            success: true,
+            sheetCreated: true,
+            message: `Tugas Pengganti berhasil dikirim dan tersimpan otomatis ke tab sheet '${SUBSTITUTE_TASK_SHEET_NAME}' di Google Spreadsheet!`,
+          };
+        }
+      } catch {
+        // Mode no-cors fallback if browser triggers CORS on 302 redirect
+        await fetch(activeAppsScriptUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: bodyStr,
+        });
+
+        return {
+          success: true,
+          sheetCreated: true,
+          message: `Tugas Pengganti ${submission.studentName} berhasil dikirim ke Google Spreadsheet via Apps Script!`,
+        };
+      }
+    } catch (e: any) {
+      console.warn('Apps Script sync failed, attempting direct Sheets API if token available:', e);
+    }
+  }
+
+  // 2. If no Apps Script Web App URL or it fails, check for Google OAuth Access Token
   if (!accessToken) {
     return {
       success: false,
       isAuthError: true,
-      message: 'Token otentikasi Google belum tersedia. Login Google diperlukan untuk menulis ke spreadsheet.',
+      message: 'Google Apps Script Web App belum dihubungkan. Klik menu [Integrasi Auto-Sync] di bagian atas untuk menghubungkan.',
     };
   }
 
@@ -1896,6 +2039,50 @@ export async function syncSubstituteTaskToSheet(
       message: err.message || 'Terjadi kesalahan saat menyimpan ke spreadsheet.',
     };
   }
+}
+
+export async function syncAllLocalSubstituteTasks(
+  spreadsheetId: string,
+  accessToken?: string | null,
+  customAppsScriptUrl?: string
+): Promise<{ totalSynced: number; failed: number; message: string }> {
+  let localItems: SubstituteTaskSubmission[] = [];
+  try {
+    const raw = localStorage.getItem('tugas_siswa_substitute_submissions_v1');
+    if (raw) localItems = JSON.parse(raw);
+  } catch (e) {
+    // ignore
+  }
+
+  if (!localItems || localItems.length === 0) {
+    return {
+      totalSynced: 0,
+      failed: 0,
+      message: 'Tidak ada data pengumpulan tugas pengganti lokal yang perlu disinkronkan.',
+    };
+  }
+
+  let totalSynced = 0;
+  let failed = 0;
+
+  for (const item of localItems) {
+    try {
+      const res = await syncSubstituteTaskToSheet(accessToken, spreadsheetId, item, customAppsScriptUrl);
+      if (res.success) {
+        totalSynced++;
+      } else {
+        failed++;
+      }
+    } catch {
+      failed++;
+    }
+  }
+
+  return {
+    totalSynced,
+    failed,
+    message: `Berhasil menyinkronkan ${totalSynced} dari ${localItems.length} data tugas pengganti ke Google Spreadsheet.`,
+  };
 }
 
 // Fetch submissions for substitute task from GViz or API

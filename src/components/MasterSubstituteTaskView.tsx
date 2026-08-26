@@ -23,6 +23,7 @@ import {
   loadSubstituteTaskSubmissions,
   SUBSTITUTE_TASK_SHEET_NAME,
 } from '../services/sheetsService';
+import { AutoSyncConfigModal } from './AutoSyncConfigModal';
 
 interface MasterSubstituteTaskViewProps {
   students: Student[];
@@ -97,6 +98,7 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
     className: string;
     attendanceNo: string;
   } | null>(null);
+  const [isAutoSyncModalOpen, setIsAutoSyncModalOpen] = useState<boolean>(false);
 
   // Load submissions from LocalStorage and Google Sheets
   const fetchSubmissions = async () => {
@@ -210,6 +212,14 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
 
           {/* Action Tools */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              onClick={() => setIsAutoSyncModalOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-100 hover:bg-amber-200 border-2 border-[#1a1a1a] text-[#1a1a1a] font-mono-code text-xs font-bold shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer"
+            >
+              <Sparkles className="h-4 w-4 text-amber-700" />
+              <span>⚙️ AUTO-SYNC SPREADSHEET</span>
+            </button>
+
             <a
               href={spreadsheetUrl}
               target="_blank"
@@ -490,6 +500,17 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
           </div>
         </div>
       )}
+      {/* Auto-Sync Configuration Modal for Teacher */}
+      <AutoSyncConfigModal
+        isOpen={isAutoSyncModalOpen}
+        onClose={() => setIsAutoSyncModalOpen(false)}
+        spreadsheetId={spreadsheetId}
+        spreadsheetUrl={spreadsheetUrl}
+        token={token}
+        onSuccessSync={() => {
+          fetchSubmissions();
+        }}
+      />
     </div>
   );
 };

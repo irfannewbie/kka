@@ -33,6 +33,7 @@ import {
   loadSubstituteTaskSubmissions,
   SUBSTITUTE_TASK_SHEET_NAME,
 } from '../services/sheetsService';
+import { AutoSyncConfigModal } from './AutoSyncConfigModal';
 
 interface SubstituteTaskViewProps {
   students: Student[];
@@ -113,6 +114,15 @@ export const SubstituteTaskView: React.FC<SubstituteTaskViewProps> = ({
   const [gameKey, setGameKey] = useState<number>(Date.now());
   const [submissionsList, setSubmissionsList] = useState<SubstituteTaskSubmission[]>([]);
   const [isLoadingSubmissions, setIsLoadingSubmissions] = useState<boolean>(false);
+  const [isAutoSyncModalOpen, setIsAutoSyncModalOpen] = useState<boolean>(false);
+
+  // Check if Webhook / Apps Script is configured
+  const [hasAppsScriptUrl, setHasAppsScriptUrl] = useState<boolean>(() => {
+    return Boolean(
+      (typeof window !== 'undefined' && localStorage.getItem('tugas_siswa_apps_script_url')) ||
+      (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_APPS_SCRIPT_URL)
+    );
+  });
 
   // Filter students by selected class
   const classStudents = useMemo(() => {
@@ -244,22 +254,20 @@ export const SubstituteTaskView: React.FC<SubstituteTaskViewProps> = ({
       console.warn('LocalStorage save error:', err);
     }
 
-    // Attempt direct sync to Google Spreadsheet
+    // Attempt sync to Google Spreadsheet (via Apps Script Webhook or direct Sheets API)
     try {
-      if (token) {
-        const syncRes = await syncSubstituteTaskToSheet(token, spreadsheetId, newSubmission);
-        if (syncRes.success) {
-          setSubmitSuccessMsg(
-            `Selamat ${cleanName} (${selectedClass} - Absen ${selectedAttendanceNo})! Tugas Pengganti Anda telah berhasil dikirim dan tersimpan di tab sheet '${SUBSTITUTE_TASK_SHEET_NAME}' pada Google Spreadsheet.`
-          );
-        } else {
-          setSubmitSuccessMsg(
-            `Tugas Pengganti ${cleanName} berhasil tersimpan di sistem lokal! (${syncRes.message})`
-          );
-        }
+      const syncRes = await syncSubstituteTaskToSheet(token, spreadsheetId, newSubmission);
+      if (syncRes.success) {
+        setSubmitSuccessMsg(
+          `Selamat ${cleanName} (${selectedClass} - Absen ${selectedAttendanceNo})! Tugas Pengganti Anda telah berhasil dikirim dan tersimpan di Google Spreadsheet.`
+        );
+      } else if (token) {
+        setSubmitSuccessMsg(
+          `Tugas Pengganti ${cleanName} berhasil tersimpan di sistem lokal! (${syncRes.message})`
+        );
       } else {
         setSubmitSuccessMsg(
-          `Tugas Pengganti ${cleanName} (${selectedClass} - Absen ${selectedAttendanceNo}) berhasil dicatat di sistem! Hubungkan Akun Google untuk sinkronisasi otomatis langsung ke Google Spreadsheet.`
+          `Tugas Pengganti ${cleanName} (${selectedClass} - Absen ${selectedAttendanceNo}) berhasil dicatat di sistem lokal!`
         );
       }
 
@@ -517,14 +525,24 @@ export const SubstituteTaskView: React.FC<SubstituteTaskViewProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 font-mono-code text-xs">
+          <div className="flex flex-wrap items-center gap-2 font-mono-code text-xs">
             <span className="px-2.5 py-1 bg-amber-100 border border-amber-500 text-amber-900 font-bold flex items-center gap-1.5">
               <Clock className="h-3.5 w-3.5 text-rose-600" />
               <span>Deadline: 1 Sep 2026, 23.59 WIB</span>
             </span>
-            <span className="hidden sm:inline px-2.5 py-1 bg-blue-50 border border-blue-300 text-blue-800 font-bold">
-              Auto-Sync Spreadsheet
-            </span>
+            <button
+              type="button"
+              onClick={() => setIsAutoSyncModalOpen(true)}
+              className={`px-2.5 py-1 border font-bold flex items-center gap-1.5 transition-colors cursor-pointer ${
+                hasAppsScriptUrl
+                  ? 'bg-emerald-50 border-emerald-500 text-emerald-800 hover:bg-emerald-100'
+                  : 'bg-blue-50 border-blue-400 text-blue-900 hover:bg-blue-100'
+              }`}
+              title="Pengaturan Integrasi Google Apps Script agar siswa mengirim tanpa login"
+            >
+              <Sparkles className="h-3.5 w-3.5 text-[#2e59e6]" />
+              <span>{hasAppsScriptUrl ? 'Auto-Sync: Aktif' : '⚙️ Setup Auto-Sync Spreadsheet'}</span>
+            </button>
           </div>
         </div>
 
@@ -532,9 +550,23 @@ export const SubstituteTaskView: React.FC<SubstituteTaskViewProps> = ({
         {submitSuccessMsg && (
           <div className="mb-6 p-4 bg-emerald-50 border-2 border-emerald-600 text-emerald-950 font-mono-code text-xs sm:text-sm flex items-start gap-3 shadow-[3px_3px_0px_#059669]">
             <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5" />
-            <div className="space-y-1">
+            <div className="space-y-1.5 flex-1">
               <div className="font-bold uppercase">PENGUMPULAN BERHASIL DISIMPAN!</div>
               <div>{submitSuccessMsg}</div>
+              {!hasAppsScriptUrl && (
+                <div className="pt-2 border-t border-emerald-300 flex items-center justify-between">
+                  <span className="text-[11px] text-emerald-900">
+                    💡 <em>Guru:</em> Hubungkan Google Apps Script agar tugas otomatis tertulis di Google Spreadsheet tanpa login siswa.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsAutoSyncModalOpen(true)}
+                    className="px-2.5 py-1 bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold border border-emerald-900 cursor-pointer shrink-0 ml-2"
+                  >
+                    Setup Auto-Sync
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -693,6 +725,26 @@ export const SubstituteTaskView: React.FC<SubstituteTaskViewProps> = ({
           </div>
         </form>
       </section>
+
+      {/* Auto-Sync Configuration Modal for Teacher */}
+      <AutoSyncConfigModal
+        isOpen={isAutoSyncModalOpen}
+        onClose={() => {
+          setIsAutoSyncModalOpen(false);
+          setHasAppsScriptUrl(
+            Boolean(
+              (typeof window !== 'undefined' && localStorage.getItem('tugas_siswa_apps_script_url')) ||
+              (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_APPS_SCRIPT_URL)
+            )
+          );
+        }}
+        spreadsheetId={spreadsheetId}
+        spreadsheetUrl={spreadsheetUrl}
+        token={token}
+        onSuccessSync={() => {
+          loadSubmissions();
+        }}
+      />
     </div>
   );
 };
