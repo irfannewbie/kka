@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from "react";
 import {
   FileSpreadsheet,
   RefreshCw,
@@ -17,13 +17,14 @@ import {
   Eye,
   X,
   Sparkles,
-} from 'lucide-react';
-import { Student, SubstituteTaskSubmission } from '../types';
+} from "lucide-react";
+import { Student, SubstituteTaskSubmission } from "../types";
 import {
   loadSubstituteTaskSubmissions,
+  syncSubstituteTaskToSheet,
   SUBSTITUTE_TASK_SHEET_NAME,
-} from '../services/sheetsService';
-import { AutoSyncConfigModal } from './AutoSyncConfigModal';
+} from "../services/sheetsService";
+import { AutoSyncConfigModal } from "./AutoSyncConfigModal";
 
 interface MasterSubstituteTaskViewProps {
   students: Student[];
@@ -33,39 +34,46 @@ interface MasterSubstituteTaskViewProps {
   onLogin?: () => void;
 }
 
-const LOCAL_STORAGE_SUBSTITUTE_KEY = 'tugas_siswa_substitute_submissions_v1';
+const LOCAL_STORAGE_SUBSTITUTE_KEY = "tugas_siswa_substitute_submissions_v1";
+const GOOGLE_FORM_URL_STORAGE_KEY = "tugas_siswa_google_form_url";
+const DEFAULT_GOOGLE_FORM_URL =
+  (typeof import.meta !== "undefined" &&
+    (import.meta as any).env?.VITE_GOOGLE_FORM_URL) ||
+  "https://forms.gle/9NnFRP63ycBU1mMJ8";
 
 const CLASS_FILTER_OPTIONS = [
-  'SEMUA KELAS',
-  'Kelas 8A',
-  'Kelas 8B',
-  'Kelas 8C',
-  'Kelas 8D',
-  'Kelas 8E',
-  'Kelas 8F',
-  'Kelas 8G',
-  'Kelas 8H',
-  'Kelas 7A',
-  'Kelas 7B',
-  'Kelas 7C',
-  'Kelas 7D',
-  'Kelas 7E',
-  'Kelas 7F',
-  'Kelas 7G',
+  "SEMUA KELAS",
+  "Kelas 8A",
+  "Kelas 8B",
+  "Kelas 8C",
+  "Kelas 8D",
+  "Kelas 8E",
+  "Kelas 8F",
+  "Kelas 8G",
+  "Kelas 8H",
+  "Kelas 7A",
+  "Kelas 7B",
+  "Kelas 7C",
+  "Kelas 7D",
+  "Kelas 7E",
+  "Kelas 7F",
+  "Kelas 7G",
 ];
 
 // Helper to extract YouTube Video ID
 function extractYouTubeVideoId(url: string): string | null {
   if (!url) return null;
   const cleanUrl = url.trim();
-  
+
   const shortMatch = cleanUrl.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/);
   if (shortMatch) return shortMatch[1];
-  
+
   const watchMatch = cleanUrl.match(/[?&]v=([a-zA-Z0-9_-]{11})/);
   if (watchMatch) return watchMatch[1];
 
-  const shortsMatch = cleanUrl.match(/youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/);
+  const shortsMatch = cleanUrl.match(
+    /youtube\.com\/shorts\/([a-zA-Z0-9_-]{11})/,
+  );
   if (shortsMatch) return shortsMatch[1];
 
   const embedMatch = cleanUrl.match(/youtube\.com\/embed\/([a-zA-Z0-9_-]{11})/);
@@ -78,19 +86,72 @@ function extractYouTubeVideoId(url: string): string | null {
   return null;
 }
 
-export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> = ({
-  students,
-  spreadsheetId,
-  spreadsheetUrl,
-  token,
-  onLogin,
-}) => {
-  const [submissions, setSubmissions] = useState<SubstituteTaskSubmission[]>([]);
+export const MasterSubstituteTaskView: React.FC<
+  MasterSubstituteTaskViewProps
+> = ({ students, spreadsheetId, spreadsheetUrl, token, onLogin }) => {
+  const [submissions, setSubmissions] = useState<SubstituteTaskSubmission[]>(
+    [],
+  );
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [selectedClassFilter, setSelectedClassFilter] = useState<string>('SEMUA KELAS');
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  
+  const [selectedClassFilter, setSelectedClassFilter] =
+    useState<string>("SEMUA KELAS");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [isPushing, setIsPushing] = useState<boolean>(false);
+  const [pushStatus, setPushStatus] = useState<string | null>(null);
+  const [googleFormUrl, setGoogleFormUrl] = useState<string>(() => {
+    if (typeof window === "undefined") return DEFAULT_GOOGLE_FORM_URL;
+    const saved = localStorage.getItem(GOOGLE_FORM_URL_STORAGE_KEY);
+    return saved || DEFAULT_GOOGLE_FORM_URL;
+  });
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem(
+        GOOGLE_FORM_URL_STORAGE_KEY,
+        DEFAULT_GOOGLE_FORM_URL,
+      );
+    }
+  }, []);
+
+  const handleOpenGoogleForm = () => {
+    if (!googleFormUrl) {
+      setPushStatus("URL Google Form belum diatur.");
+      return;
+    }
+
+    window.open(googleFormUrl, "_blank", "noopener,noreferrer");
+    setPushStatus("Form pengumpulan tugas pengganti dibuka di tab baru.");
+  };
+
+  const normalizeSubmissionDisplay = (sub: SubstituteTaskSubmission) => {
+    const classText = (sub.className || "").trim();
+    const attendanceText = (sub.attendanceNo || "").trim();
+
+    if (/^kelas$/i.test(classText) && /^[789][A-H]$/i.test(attendanceText)) {
+      return {
+        ...sub,
+        className: `Kelas ${attendanceText}`,
+        attendanceNo:
+          sub.nis && /^\d{1,2}$/.test(String(sub.nis)) ? String(sub.nis) : "1",
+      };
+    }
+
+    if (
+      /^kelas\s+[789][A-H]$/i.test(classText) &&
+      !/^\d{1,2}$/.test(attendanceText) &&
+      /^[789][A-H]$/i.test(attendanceText)
+    ) {
+      return {
+        ...sub,
+        className: classText,
+        attendanceNo: "1",
+      };
+    }
+
+    return sub;
+  };
+
   // Video Modal Preview State
   const [activeVideoModal, setActiveVideoModal] = useState<{
     url: string;
@@ -98,7 +159,8 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
     className: string;
     attendanceNo: string;
   } | null>(null);
-  const [isAutoSyncModalOpen, setIsAutoSyncModalOpen] = useState<boolean>(false);
+  const [isAutoSyncModalOpen, setIsAutoSyncModalOpen] =
+    useState<boolean>(false);
 
   // Load submissions from LocalStorage and Google Sheets
   const fetchSubmissions = async () => {
@@ -115,33 +177,40 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
       }
 
       // 2. Fetch directly from Google Sheets
-      const sheetData = await loadSubstituteTaskSubmissions(spreadsheetId, token);
+      const sheetData = await loadSubstituteTaskSubmissions(
+        spreadsheetId,
+        token,
+      );
 
       // Merge (Google Sheet has priority)
       const mergedMap = new Map<string, SubstituteTaskSubmission>();
       localData.forEach((item) => {
-        const key = `${item.className}-${item.attendanceNo}-${item.studentName}`.toUpperCase();
+        const key =
+          `${item.className}-${item.attendanceNo}-${item.studentName}`.toUpperCase();
         mergedMap.set(key, item);
       });
       sheetData.forEach((item) => {
-        const key = `${item.className}-${item.attendanceNo}-${item.studentName}`.toUpperCase();
+        const key =
+          `${item.className}-${item.attendanceNo}-${item.studentName}`.toUpperCase();
         mergedMap.set(key, item);
       });
 
       const combined = Array.from(mergedMap.values()).sort((a, b) => {
         // Sort by class then attendance number
         if (a.className !== b.className) {
-          return (a.className || '').localeCompare(b.className || '');
+          return (a.className || "").localeCompare(b.className || "");
         }
-        const na = parseInt(a.attendanceNo || '0', 10);
-        const nb = parseInt(b.attendanceNo || '0', 10);
+        const na = parseInt(a.attendanceNo || "0", 10);
+        const nb = parseInt(b.attendanceNo || "0", 10);
         return na - nb;
       });
 
       setSubmissions(combined);
     } catch (err: any) {
-      console.error('Error loading substitute submissions:', err);
-      setErrorMsg(`Gagal memuat data dari Spreadsheet: ${err.message || String(err)}`);
+      console.error("Error loading substitute submissions:", err);
+      setErrorMsg(
+        `Gagal memuat data dari Spreadsheet: ${err.message || String(err)}`,
+      );
     } finally {
       setIsLoading(false);
     }
@@ -151,14 +220,73 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
     fetchSubmissions();
   }, [spreadsheetId, token]);
 
+  const handlePushDetectedToSheets = async () => {
+    const itemsToPush =
+      filteredSubmissions.length > 0 ? filteredSubmissions : submissions;
+
+    if (!itemsToPush.length) {
+      setPushStatus("Tidak ada data yang bisa dikirim ke Google Spreadsheet.");
+      return;
+    }
+
+    setIsPushing(true);
+    setPushStatus(null);
+
+    const appsScriptUrl =
+      (typeof window !== "undefined" &&
+        localStorage.getItem("tugas_siswa_apps_script_url")) ||
+      (typeof import.meta !== "undefined" &&
+        (import.meta as any).env?.VITE_APPS_SCRIPT_URL) ||
+      undefined;
+
+    let successCount = 0;
+    let failedCount = 0;
+
+    for (const item of itemsToPush) {
+      try {
+        const res = await syncSubstituteTaskToSheet(
+          token,
+          spreadsheetId,
+          item,
+          appsScriptUrl,
+        );
+        if (res.success) {
+          successCount += 1;
+        } else {
+          failedCount += 1;
+        }
+      } catch {
+        failedCount += 1;
+      }
+    }
+
+    setPushStatus(
+      successCount > 0
+        ? `Berhasil mengirim ${successCount} data ke sheet '${SUBSTITUTE_TASK_SHEET_NAME}'${failedCount ? `; ${failedCount} gagal` : ""}.`
+        : `Gagal mengirim data ke sheet '${SUBSTITUTE_TASK_SHEET_NAME}'. Periksa URL Apps Script dan akses spreadsheet.`,
+    );
+
+    await fetchSubmissions();
+    setIsPushing(false);
+  };
+
   // Filtered Submissions
   const filteredSubmissions = useMemo(() => {
     return submissions.filter((item) => {
       // Class Filter
-      if (selectedClassFilter !== 'SEMUA KELAS') {
-        const itemClassNorm = (item.className || '').replace(/^Kelas\s*/i, '').trim().toUpperCase();
-        const filterNorm = selectedClassFilter.replace(/^Kelas\s*/i, '').trim().toUpperCase();
-        if (itemClassNorm !== filterNorm && !item.className?.toUpperCase().includes(filterNorm)) {
+      if (selectedClassFilter !== "SEMUA KELAS") {
+        const itemClassNorm = (item.className || "")
+          .replace(/^Kelas\s*/i, "")
+          .trim()
+          .toUpperCase();
+        const filterNorm = selectedClassFilter
+          .replace(/^Kelas\s*/i, "")
+          .trim()
+          .toUpperCase();
+        if (
+          itemClassNorm !== filterNorm &&
+          !item.className?.toUpperCase().includes(filterNorm)
+        ) {
           return false;
         }
       }
@@ -166,10 +294,10 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
       // Search Query
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim();
-        const nameMatch = (item.studentName || '').toLowerCase().includes(q);
-        const absenMatch = (item.attendanceNo || '').toLowerCase().includes(q);
-        const classMatch = (item.className || '').toLowerCase().includes(q);
-        const notesMatch = (item.notes || '').toLowerCase().includes(q);
+        const nameMatch = (item.studentName || "").toLowerCase().includes(q);
+        const absenMatch = (item.attendanceNo || "").toLowerCase().includes(q);
+        const classMatch = (item.className || "").toLowerCase().includes(q);
+        const notesMatch = (item.notes || "").toLowerCase().includes(q);
         if (!nameMatch && !absenMatch && !classMatch && !notesMatch) {
           return false;
         }
@@ -206,12 +334,31 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
               Rekap Pengumpulan Tugas Pengganti KKA 2
             </h1>
             <p className="font-mono-code text-xs sm:text-sm text-slate-600 mt-1">
-              Daftar pengumpulan video YouTube analisis algoritma & flowchart game teka-teki (Tab Sheet: '{SUBSTITUTE_TASK_SHEET_NAME}')
+              Daftar pengumpulan video YouTube analisis algoritma & flowchart
+              game teka-teki (Tab Sheet: '{SUBSTITUTE_TASK_SHEET_NAME}')
             </p>
           </div>
 
           {/* Action Tools */}
           <div className="flex flex-wrap items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleOpenGoogleForm}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-blue-100 hover:bg-blue-200 border-2 border-[#1a1a1a] text-[#1a1a1a] font-mono-code text-xs font-bold shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer"
+            >
+              <ExternalLink className="h-4 w-4 text-blue-700" />
+              <span>BUKA FORM</span>
+            </button>
+
+            <button
+              onClick={handlePushDetectedToSheets}
+              disabled={isPushing}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-emerald-100 hover:bg-emerald-200 border-2 border-[#1a1a1a] text-[#1a1a1a] font-mono-code text-xs font-bold shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer disabled:opacity-60"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-emerald-700" />
+              <span>{isPushing ? "MENGIRIM..." : "PUSH KE SHEETS"}</span>
+            </button>
+
             <button
               onClick={() => setIsAutoSyncModalOpen(true)}
               className="inline-flex items-center gap-1.5 px-3 py-2 bg-amber-100 hover:bg-amber-200 border-2 border-[#1a1a1a] text-[#1a1a1a] font-mono-code text-xs font-bold shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer"
@@ -236,8 +383,10 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
               disabled={isLoading}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#FAF8F5] hover:bg-white border-2 border-[#1a1a1a] font-mono-code text-xs font-bold text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer disabled:opacity-50"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin text-[#2e59e6]' : ''}`} />
-              <span>{isLoading ? 'MEMUAT...' : 'PERBARUI DATA'}</span>
+              <RefreshCw
+                className={`h-3.5 w-3.5 ${isLoading ? "animate-spin text-[#2e59e6]" : ""}`}
+              />
+              <span>{isLoading ? "MEMUAT..." : "PERBARUI DATA"}</span>
             </button>
           </div>
         </div>
@@ -245,25 +394,35 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
         {/* 2. Top Summary KPI Stats */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-mono-code">
           <div className="bg-[#FAF8F5] border-2 border-[#1a1a1a] p-3.5 shadow-[3px_3px_0px_#1a1a1a]">
-            <div className="text-[11px] font-bold text-slate-500 uppercase">TOTAL TUGAS PENGGANTI</div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase">
+              TOTAL TUGAS PENGGANTI
+            </div>
             <div className="text-2xl sm:text-3xl font-bold text-[#1a1a1a] mt-1">
-              {totalSubmissions} <span className="text-xs text-slate-500 font-normal">Siswa</span>
+              {totalSubmissions}{" "}
+              <span className="text-xs text-slate-500 font-normal">Siswa</span>
             </div>
           </div>
 
           <div className="bg-[#FAF8F5] border-2 border-[#1a1a1a] p-3.5 shadow-[3px_3px_0px_#1a1a1a]">
-            <div className="text-[11px] font-bold text-slate-500 uppercase">KELAS TERLIBAT</div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase">
+              KELAS TERLIBAT
+            </div>
             <div className="text-2xl sm:text-3xl font-bold text-[#2e59e6] mt-1">
-              {classesWithSubmissions} <span className="text-xs text-slate-500 font-normal">Kelas</span>
+              {classesWithSubmissions}{" "}
+              <span className="text-xs text-slate-500 font-normal">Kelas</span>
             </div>
           </div>
 
           <div className="bg-[#FAF8F5] border-2 border-[#1a1a1a] p-3.5 shadow-[3px_3px_0px_#1a1a1a]">
-            <div className="text-[11px] font-bold text-slate-500 uppercase">SINKRONISASI GOOGLE SHEETS</div>
+            <div className="text-[11px] font-bold text-slate-500 uppercase">
+              SINKRONISASI GOOGLE SHEETS
+            </div>
             <div className="flex items-center gap-2 mt-1.5">
-              <span className={`w-2.5 h-2.5 rounded-full ${token ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+              <span
+                className={`w-2.5 h-2.5 rounded-full ${token ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`}
+              />
               <span className="text-xs font-bold text-[#1a1a1a]">
-                {token ? 'Tab Sheet Aktif Terkoneksi' : 'Lokal / Mode Standby'}
+                {token ? "Tab Sheet Aktif Terkoneksi" : "Lokal / Mode Standby"}
               </span>
             </div>
           </div>
@@ -287,7 +446,9 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
         {/* Class Filter */}
         <div className="flex items-center gap-2 w-full sm:w-auto">
           <Filter className="h-4 w-4 text-slate-500 shrink-0" />
-          <span className="text-xs font-bold text-slate-600 shrink-0">FILTER KELAS:</span>
+          <span className="text-xs font-bold text-slate-600 shrink-0">
+            FILTER KELAS:
+          </span>
           <select
             value={selectedClassFilter}
             onChange={(e) => setSelectedClassFilter(e.target.value)}
@@ -310,15 +471,28 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
         </div>
       )}
 
+      {pushStatus && (
+        <div className="p-4 bg-emerald-50 border-2 border-emerald-600 text-emerald-800 font-mono-code text-xs flex items-center gap-2 shadow-[3px_3px_0px_#10b981]">
+          <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+          <span>{pushStatus}</span>
+        </div>
+      )}
+
       {/* 4. Submissions Table */}
       <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] overflow-hidden">
         <div className="p-4 border-b-2 border-[#1a1a1a] bg-[#FAF8F5] flex items-center justify-between font-mono-code">
           <div className="text-xs font-bold text-[#1a1a1a] flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-[#2e59e6]" />
-            <span>DAFTAR PENGUMPULAN TUGAS ({filteredSubmissions.length} DATA DITEMUKAN)</span>
+            <span>
+              DAFTAR PENGUMPULAN TUGAS ({filteredSubmissions.length} DATA
+              DITEMUKAN)
+            </span>
           </div>
           <div className="text-[11px] text-slate-500">
-            Tab Google Sheet: <span className="font-bold text-[#1a1a1a]">'{SUBSTITUTE_TASK_SHEET_NAME}'</span>
+            Tab Google Sheet:{" "}
+            <span className="font-bold text-[#1a1a1a]">
+              '{SUBSTITUTE_TASK_SHEET_NAME}'
+            </span>
           </div>
         </div>
 
@@ -331,9 +505,9 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
               Belum ada data pengumpulan tugas pengganti
             </p>
             <p className="text-xs text-slate-500 max-w-md mx-auto">
-              {searchQuery || selectedClassFilter !== 'SEMUA KELAS'
-                ? 'Tidak ada siswa yang cocok dengan filter atau kata kunci pencarian saat ini.'
-                : 'Siswa dapat mengumpulkan video tugas pengganti melalui halaman /pengganti.'}
+              {searchQuery || selectedClassFilter !== "SEMUA KELAS"
+                ? "Tidak ada siswa yang cocok dengan filter atau kata kunci pencarian saat ini."
+                : "Siswa dapat mengumpulkan video tugas pengganti melalui halaman /pengganti."}
             </p>
           </div>
         ) : (
@@ -342,42 +516,58 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
               <thead>
                 <tr className="bg-[#1a1a1a] text-white border-b-2 border-[#1a1a1a]">
                   <th className="py-3 px-3 text-center w-12 font-bold">NO</th>
-                  <th className="py-3 px-3 text-center w-24 font-bold">KELAS</th>
-                  <th className="py-3 px-3 text-center w-16 font-bold">ABSEN</th>
+                  <th className="py-3 px-3 text-center w-24 font-bold">
+                    KELAS
+                  </th>
+                  <th className="py-3 px-3 text-center w-16 font-bold">
+                    ABSEN
+                  </th>
                   <th className="py-3 px-4 text-left font-bold">NAMA SISWA</th>
-                  <th className="py-3 px-3 text-center font-bold">WAKTU PENGUMPULAN</th>
-                  <th className="py-3 px-4 text-left font-bold">LINK VIDEO YOUTUBE</th>
+                  <th className="py-3 px-3 text-center font-bold">
+                    WAKTU PENGUMPULAN
+                  </th>
+                  <th className="py-3 px-4 text-left font-bold">
+                    LINK VIDEO YOUTUBE
+                  </th>
                   <th className="py-3 px-4 text-left font-bold">CATATAN</th>
-                  <th className="py-3 px-3 text-center w-28 font-bold">STATUS</th>
+                  <th className="py-3 px-3 text-center w-28 font-bold">
+                    STATUS
+                  </th>
                 </tr>
               </thead>
               <tbody className="divide-y-2 divide-[#1a1a1a] bg-white">
                 {filteredSubmissions.map((sub, idx) => {
-                  const videoId = extractYouTubeVideoId(sub.youtubeUrl);
+                  const normalizedSub = normalizeSubmissionDisplay(sub);
+                  const videoId = extractYouTubeVideoId(
+                    normalizedSub.youtubeUrl,
+                  );
 
                   return (
-                    <tr key={sub.id || idx} className="hover:bg-amber-50/40 transition-colors">
+                    <tr
+                      key={normalizedSub.id || idx}
+                      className="hover:bg-amber-50/40 transition-colors"
+                    >
                       <td className="py-3 px-3 text-center font-bold text-slate-400">
                         {idx + 1}
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span className="px-2 py-0.5 bg-blue-100 text-[#2e59e6] border border-blue-600 font-bold text-[10px]">
-                          {sub.className || '-'}
+                          {normalizedSub.className || "-"}
                         </span>
                       </td>
                       <td className="py-3 px-3 text-center font-bold text-[#2e59e6]">
-                        {sub.attendanceNo}
+                        {normalizedSub.attendanceNo}
                       </td>
                       <td className="py-3 px-4 font-bold text-[#1a1a1a]">
                         <div className="flex items-center gap-1.5">
                           <User className="h-3.5 w-3.5 text-slate-400 shrink-0" />
-                          <span>{sub.studentName}</span>
+                          <span>{normalizedSub.studentName}</span>
                         </div>
                       </td>
                       <td className="py-3 px-3 text-center text-slate-600 text-[11px]">
                         <div className="flex items-center justify-center gap-1">
                           <Clock className="h-3 w-3 text-slate-400" />
-                          <span>{sub.submittedAt}</span>
+                          <span>{normalizedSub.submittedAt}</span>
                         </div>
                       </td>
                       <td className="py-3 px-4">
@@ -385,10 +575,10 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
                           <button
                             onClick={() =>
                               setActiveVideoModal({
-                                url: sub.youtubeUrl,
-                                studentName: sub.studentName,
-                                className: sub.className,
-                                attendanceNo: sub.attendanceNo,
+                                url: normalizedSub.youtubeUrl,
+                                studentName: normalizedSub.studentName,
+                                className: normalizedSub.className,
+                                attendanceNo: normalizedSub.attendanceNo,
                               })
                             }
                             className="inline-flex items-center gap-1 px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white font-bold text-[10px] border border-[#1a1a1a] shadow-[1px_1px_0px_#1a1a1a] cursor-pointer shrink-0"
@@ -399,19 +589,21 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
                           </button>
 
                           <a
-                            href={sub.youtubeUrl}
+                            href={normalizedSub.youtubeUrl}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 text-slate-700 hover:text-rose-600 font-mono-code text-[11px] truncate max-w-[180px] sm:max-w-xs hover:underline"
-                            title={sub.youtubeUrl}
+                            title={normalizedSub.youtubeUrl}
                           >
-                            <span className="truncate">{sub.youtubeUrl}</span>
+                            <span className="truncate">
+                              {normalizedSub.youtubeUrl}
+                            </span>
                             <ExternalLink className="h-3 w-3 shrink-0 text-slate-400" />
                           </a>
                         </div>
                       </td>
                       <td className="py-3 px-4 text-slate-600 text-[11px] max-w-xs truncate">
-                        {sub.notes || '-'}
+                        {normalizedSub.notes || "-"}
                       </td>
                       <td className="py-3 px-3 text-center">
                         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-600 font-bold text-[10px]">
@@ -439,7 +631,8 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
                   PREVIEW VIDEO TUGAS PENGGANTI
                 </div>
                 <div className="text-sm font-bold mt-0.5">
-                  {activeVideoModal.studentName} ({activeVideoModal.className} - Absen {activeVideoModal.attendanceNo})
+                  {activeVideoModal.studentName} ({activeVideoModal.className} -
+                  Absen {activeVideoModal.attendanceNo})
                 </div>
               </div>
 
@@ -464,7 +657,10 @@ export const MasterSubstituteTaskView: React.FC<MasterSubstituteTaskViewProps> =
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-white font-mono-code text-xs p-6 text-center">
                   <AlertCircle className="h-8 w-8 text-rose-500 mb-2" />
-                  <p>Link video YouTube tidak dapat diputar langsung di dalam modal.</p>
+                  <p>
+                    Link video YouTube tidak dapat diputar langsung di dalam
+                    modal.
+                  </p>
                   <a
                     href={activeVideoModal.url}
                     target="_blank"
