@@ -35,6 +35,8 @@ import {
 } from "../services/sheetsService";
 import { AutoSyncConfigModal } from "./AutoSyncConfigModal";
 
+export const SUBSTITUTE_TASK_DEADLINE = "2026-09-01T23:59:59+07:00";
+
 interface SubstituteTaskViewProps {
   students: Student[];
   spreadsheetId: string;
@@ -43,6 +45,7 @@ interface SubstituteTaskViewProps {
   onLogin?: () => void;
   onNavigateShowcase?: () => void;
   onNavigateCek?: () => void;
+  isArchived?: boolean;
   onNotifySubmission?: (
     studentName: string,
     className: string,
@@ -107,6 +110,7 @@ export const SubstituteTaskView: React.FC<SubstituteTaskViewProps> = ({
   onLogin,
   onNavigateShowcase,
   onNavigateCek,
+  isArchived = false,
   onNotifySubmission,
 }) => {
   // Form State
@@ -212,7 +216,7 @@ export const SubstituteTaskView: React.FC<SubstituteTaskViewProps> = ({
       // 2. Fetch from Google Spreadsheet
       const sheetSubmissions = await loadSubstituteTaskSubmissions(
         spreadsheetId,
-        token,
+        null,
       );
 
       // Merge (sheet has higher truth, fallback to local)
@@ -387,6 +391,23 @@ export const SubstituteTaskView: React.FC<SubstituteTaskViewProps> = ({
       return sc === rawClass || s.className?.toUpperCase().includes(rawClass);
     });
   }, [submissionsList, selectedClass]);
+
+  if (isArchived) {
+    return (
+      <div className="min-h-[calc(100vh-7rem)] flex items-center justify-center py-8">
+        <div className="w-full max-w-lg bg-white border-2 border-[#1a1a1a] shadow-[6px_6px_0px_#1a1a1a] p-6 sm:p-8 text-center font-mono-code">
+          <div className="mx-auto mb-4 w-12 h-12 flex items-center justify-center bg-amber-400 border-2 border-[#1a1a1a] text-[#1a1a1a] text-xl">[X]</div>
+          <div className="text-[10px] font-bold tracking-widest text-slate-500 uppercase">HALAMAN DIARSIPKAN</div>
+          <h1 className="mt-2 text-xl sm:text-2xl font-bold uppercase">Tugas Pengganti Sudah Ditutup</h1>
+          <p className="mt-3 text-xs leading-relaxed text-slate-600">Batas waktu pengumpulan tugas pengganti KKA 2 telah berakhir. Form pengumpulan tidak lagi tersedia.</p>
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            {onNavigateShowcase && <button onClick={onNavigateShowcase} className="px-3 py-2 bg-[#1a1a1a] text-white text-[11px] font-bold border border-[#1a1a1a] hover:bg-[#2e59e6] cursor-pointer">KE BERANDA</button>}
+            {onNavigateCek && <button onClick={onNavigateCek} className="px-3 py-2 bg-white text-[#1a1a1a] text-[11px] font-bold border border-[#1a1a1a] hover:bg-[#F2EFEB] cursor-pointer">CEK STATUS TUGAS</button>}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 max-w-6xl mx-auto pb-12">

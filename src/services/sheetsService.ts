@@ -12,6 +12,19 @@ export const DEFAULT_SPREADSHEET_ID =
 export const DEFAULT_SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${DEFAULT_SPREADSHEET_ID}/edit?usp=sharing`;
 
 export const SUBSTITUTE_TASK_SHEET_NAME = "Pengganti KKA 2";
+export const PAGE_ARCHIVE_SHEET_NAME = "Konfigurasi_Halaman";
+export const ADMIN_LOG_SHEET_NAME = "Log_Aktivitas";
+export const CONFIG_BACKUP_SHEET_NAME = "Backup_Konfigurasi";
+
+export interface PageArchiveConfig {
+  pageKey: string;
+  path: string;
+  archived: boolean;
+  archiveAt: string | null;
+  reason: string;
+  updatedAt: string;
+  updatedBy: string;
+}
 
 const SHEET_NAMES = {
   TASKS: "Tugas_Siswa",
@@ -57,6 +70,361 @@ export const INITIAL_STUDENTS_MOCK: Student[] = ALL_255_STUDENTS;
 
 // Authentic Task Submissions with student web showcase projects (empty by default so only real spreadsheet submissions are displayed)
 export const INITIAL_TASKS_MOCK: TaskSubmission[] = [];
+
+export async function fetchPageArchiveStatus(
+  spreadsheetId: string,
+  pageKey: string,
+): Promise<boolean | null> {
+  const rows = await fetchPublicGvizData(spreadsheetId, [
+    PAGE_ARCHIVE_SHEET_NAME,
+  ]);
+  if (!rows) return null;
+
+  const row = rows.slice(1).find(
+    (values) =>
+      String(values[0] || "")
+        .trim()
+        .toLowerCase() === pageKey.toLowerCase(),
+  );
+  if (!row) return false;
+
+  const archivedValue = String(row[2] ?? "")
+    .trim()
+    .toLowerCase();
+  return ["true", "1", "ya", "yes", "arsip", "diarsipkan"].includes(
+    archivedValue,
+  );
+}
+
+export async function fetchPageArchiveConfig(
+  spreadsheetId: string,
+  pageKey: string,
+): Promise<PageArchiveConfig | null> {
+  const rows = await fetchPublicGvizData(spreadsheetId, [
+    PAGE_ARCHIVE_SHEET_NAME,
+  ]);
+  if (!rows) {
+    throw new Error(
+      "Konfigurasi halaman tidak dapat dibaca dari Google Spreadsheet.",
+    );
+  }
+  const values = rows.slice(1).find(
+    (row) =>
+      String(row[0] || "")
+        .trim()
+        .toLowerCase() === pageKey.toLowerCase(),
+  );
+  if (!values) return null;
+  const archiveAt = String(values[4] || "").trim() || null;
+  const scheduledReached = archiveAt
+    ? Date.now() >= new Date(archiveAt).getTime()
+    : false;
+  const archivedValue = String(values[2] ?? "")
+    .trim()
+    .toLowerCase();
+  return {
+    pageKey,
+    path: String(values[1] || ""),
+    archived:
+      ["true", "1", "ya", "yes", "arsip", "diarsipkan"].includes(
+        archivedValue,
+      ) || scheduledReached,
+    archiveAt,
+    reason: String(values[5] || ""),
+    updatedAt: String(values[3] || ""),
+    updatedBy: String(values[6] || ""),
+  };
+}
+
+export async function appendAdminActivityLog(
+  accessToken: string,
+  spreadsheetId: string,
+  adminEmail: string,
+  action: string,
+  details: string,
+): Promise<{ success: boolean; message: string }> {
+  const sheetResult = await ensureSheetExists(
+    accessToken,
+    spreadsheetId,
+    ADMIN_LOG_SHEET_NAME,
+    ["Timestamp", "Admin Email", "Action", "Details"],
+  );
+  if (!sheetResult.success)
+    return {
+      success: false,
+      message: sheetResult.message || "Gagal menyiapkan log aktivitas.",
+    };
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetResult.resolvedTitle)}!A:D:append?valueInputOption=USER_ENTERED`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        values: [[new Date().toISOString(), adminEmail, action, details]],
+      }),
+    },
+  );
+  return response.ok
+    ? { success: true, message: "Aktivitas tercatat." }
+    : { success: false, message: "Gagal mencatat aktivitas admin." };
+}
+
+export async function backupPageConfiguration(
+  accessToken: string,
+  spreadsheetId: string,
+  adminEmail: string,
+  config: PageArchiveConfig,
+): Promise<{ success: boolean; message: string }> {
+  const sheetResult = await ensureSheetExists(
+    accessToken,
+    spreadsheetId,
+    CONFIG_BACKUP_SHEET_NAME,
+    ["Timestamp", "Admin Email", "Configuration JSON"],
+  );
+  if (!sheetResult.success)
+    return {
+      success: false,
+      message: sheetResult.message || "Gagal menyiapkan backup konfigurasi.",
+    };
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetResult.resolvedTitle)}!A:C:append?valueInputOption=USER_ENTERED`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        values: [
+          [new Date().toISOString(), adminEmail, JSON.stringify(config)],
+        ],
+      }),
+    },
+  );
+  return response.ok
+    ? { success: true, message: "Backup konfigurasi berhasil disimpan." }
+    : { success: false, message: "Gagal menyimpan backup konfigurasi." };
+}
+
+export async function restoreLatestPageConfiguration(
+  accessToken: string,
+  spreadsheetId: string,
+): Promise<{ success: boolean; message: string; config?: PageArchiveConfig }> {
+  const sheetResult = await ensureSheetExists(
+    accessToken,
+    spreadsheetId,
+    CONFIG_BACKUP_SHEET_NAME,
+    ["Timestamp", "Admin Email", "Configuration JSON"],
+  );
+  if (!sheetResult.success)
+    return {
+      success: false,
+      message: sheetResult.message || "Gagal membaca backup konfigurasi.",
+    };
+  const response = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetResult.resolvedTitle)}!A:C`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!response.ok)
+    return { success: false, message: "Gagal membaca backup konfigurasi." };
+  const rows: string[][] = (await response.json()).values || [];
+  const raw = rows.length > 1 ? rows[rows.length - 1]?.[2] : "";
+  try {
+    const config = JSON.parse(raw) as PageArchiveConfig;
+    return {
+      success: true,
+      message: "Backup konfigurasi terbaru berhasil dipulihkan.",
+      config,
+    };
+  } catch {
+    return { success: false, message: "Backup konfigurasi tidak valid." };
+  }
+}
+
+export async function savePageArchiveStatus(
+  accessToken: string,
+  spreadsheetId: string,
+  pageKey: string,
+  path: string,
+  archived: boolean,
+): Promise<{ success: boolean; message: string }> {
+  if (!accessToken) {
+    return {
+      success: false,
+      message: "Autentikasi Google diperlukan untuk mengubah status arsip.",
+    };
+  }
+
+  const sheetResult = await ensureSheetExists(
+    accessToken,
+    spreadsheetId,
+    PAGE_ARCHIVE_SHEET_NAME,
+    ["Page Key", "Path", "Archived", "Updated At"],
+  );
+  if (!sheetResult.success) {
+    return {
+      success: false,
+      message:
+        sheetResult.message || "Gagal menyiapkan tab konfigurasi halaman.",
+    };
+  }
+
+  const encodedSheet = encodeURIComponent(sheetResult.resolvedTitle);
+  const readRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A:D`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!readRes.ok) {
+    const errorText = await readRes.text();
+    return {
+      success: false,
+      message: parseGoogleApiError(
+        readRes.status,
+        errorText,
+        "membaca konfigurasi arsip",
+      ).message,
+    };
+  }
+
+  const existingRows: any[][] = (await readRes.json()).values || [];
+  const existingIndex = existingRows.findIndex(
+    (values, index) =>
+      index > 0 &&
+      String(values[0] || "")
+        .trim()
+        .toLowerCase() === pageKey.toLowerCase(),
+  );
+  const row = [
+    pageKey,
+    path,
+    archived ? "TRUE" : "FALSE",
+    new Date().toISOString(),
+  ];
+  const writeUrl =
+    existingIndex >= 0
+      ? `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A${existingIndex + 1}:D${existingIndex + 1}?valueInputOption=USER_ENTERED`
+      : `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodedSheet}!A:D:append?valueInputOption=USER_ENTERED`;
+  const writeRes = await fetch(writeUrl, {
+    method: existingIndex >= 0 ? "PUT" : "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ values: [row] }),
+  });
+
+  if (!writeRes.ok) {
+    const errorText = await writeRes.text();
+    return {
+      success: false,
+      message: parseGoogleApiError(
+        writeRes.status,
+        errorText,
+        "menyimpan status arsip",
+      ).message,
+    };
+  }
+
+  return {
+    success: true,
+    message: archived
+      ? "Halaman berhasil diarsipkan secara global."
+      : "Halaman berhasil dibuka kembali secara global.",
+  };
+}
+
+export async function savePageArchiveConfig(
+  accessToken: string,
+  spreadsheetId: string,
+  config: PageArchiveConfig,
+): Promise<{ success: boolean; message: string }> {
+  if (!accessToken)
+    return { success: false, message: "Autentikasi Google diperlukan." };
+  const sheetResult = await ensureSheetExists(
+    accessToken,
+    spreadsheetId,
+    PAGE_ARCHIVE_SHEET_NAME,
+    [
+      "Page Key",
+      "Path",
+      "Archived",
+      "Updated At",
+      "Archive At",
+      "Reason",
+      "Updated By",
+    ],
+  );
+  if (!sheetResult.success)
+    return {
+      success: false,
+      message: sheetResult.message || "Gagal menyiapkan konfigurasi.",
+    };
+  const sheet = encodeURIComponent(sheetResult.resolvedTitle);
+  await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheet}!A1:G1?valueInputOption=USER_ENTERED`,
+    {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        values: [
+          [
+            "Page Key",
+            "Path",
+            "Archived",
+            "Updated At",
+            "Archive At",
+            "Reason",
+            "Updated By",
+          ],
+        ],
+      }),
+    },
+  );
+  const readRes = await fetch(
+    `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheet}!A:G`,
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  if (!readRes.ok)
+    return { success: false, message: "Gagal membaca konfigurasi halaman." };
+  const rows: any[][] = (await readRes.json()).values || [];
+  const rowIndex = rows.findIndex(
+    (row, index) =>
+      index > 0 &&
+      String(row[0] || "")
+        .trim()
+        .toLowerCase() === config.pageKey.toLowerCase(),
+  );
+  const row = [
+    config.pageKey,
+    config.path,
+    config.archived ? "TRUE" : "FALSE",
+    config.updatedAt,
+    config.archiveAt || "",
+    config.reason,
+    config.updatedBy,
+  ];
+  const url =
+    rowIndex >= 0
+      ? `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheet}!A${rowIndex + 1}:G${rowIndex + 1}?valueInputOption=USER_ENTERED`
+      : `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${sheet}!A:G:append?valueInputOption=USER_ENTERED`;
+  const writeRes = await fetch(url, {
+    method: rowIndex >= 0 ? "PUT" : "POST",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ values: [row] }),
+  });
+  return writeRes.ok
+    ? { success: true, message: "Konfigurasi halaman berhasil disimpan." }
+    : { success: false, message: "Gagal menyimpan konfigurasi halaman." };
+}
 
 // Helper to format GViz Date(YYYY,M,D,H,m,s)
 export function formatGvizDate(dateVal: any): string {

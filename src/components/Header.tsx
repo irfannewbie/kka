@@ -1,17 +1,32 @@
-import React from 'react';
-import {
-  RefreshCw,
-  Bell,
-  Volume2,
-  VolumeX,
-  Menu,
-} from 'lucide-react';
-import { User } from 'firebase/auth';
-import { ADMIN_EMAILS } from '../services/firebaseAuth';
+import React from "react";
+import { RefreshCw, Bell, Volume2, VolumeX, Menu } from "lucide-react";
+import { User } from "firebase/auth";
+import { ADMIN_EMAILS } from "../services/firebaseAuth";
 
 interface HeaderProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks', path?: string) => void;
+  activeTab:
+    | "showcase"
+    | "master"
+    | "tasks"
+    | "students"
+    | "grades"
+    | "spreadsheet"
+    | "cek"
+    | "pengganti"
+    | "substitute_tasks";
+  onNavigate: (
+    tab:
+      | "showcase"
+      | "master"
+      | "tasks"
+      | "students"
+      | "grades"
+      | "spreadsheet"
+      | "cek"
+      | "pengganti"
+      | "substitute_tasks",
+    path?: string,
+  ) => void;
   user: User | null;
   token: string | null;
   onLogin: () => void;
@@ -28,6 +43,8 @@ interface HeaderProps {
   spreadsheetUrl: string;
   onOpenMobileSidebar?: () => void;
   onOpenSubmitModal?: () => void;
+  connectionSecondsRemaining: number | null;
+  onRenewConnection: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -49,10 +66,15 @@ export const Header: React.FC<HeaderProps> = ({
   spreadsheetUrl,
   onOpenMobileSidebar,
   onOpenSubmitModal,
+  connectionSecondsRemaining,
+  onRenewConnection,
 }) => {
-  const isMasterMode = activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'pengganti';
-  const isCekMode = activeTab === 'cek';
-  const isPenggantiMode = activeTab === 'pengganti';
+  const isMasterMode =
+    activeTab !== "showcase" &&
+    activeTab !== "cek" &&
+    activeTab !== "pengganti";
+  const isCekMode = activeTab === "cek";
+  const isPenggantiMode = activeTab === "pengganti";
 
   return (
     <header
@@ -73,7 +95,7 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         <div
-          onClick={() => onNavigate('showcase', '/')}
+          onClick={() => onNavigate("showcase", "/")}
           className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-1.5 sm:gap-2 shrink-0"
         >
           <span>[ SISWAHUB v2.0 ]</span>
@@ -104,12 +126,22 @@ export const Header: React.FC<HeaderProps> = ({
             <button
               id="btn-toggle-sound"
               onClick={onToggleSound}
-              title={soundEnabled ? 'Audio Notifikasi: Aktif' : 'Audio Notifikasi: Hening'}
+              title={
+                soundEnabled
+                  ? "Audio Notifikasi: Aktif"
+                  : "Audio Notifikasi: Hening"
+              }
               className={`p-1.5 border border-[#1a1a1a] transition-all cursor-pointer ${
-                soundEnabled ? 'bg-white text-[#2e59e6]' : 'bg-[#E5E0D8] text-slate-500'
+                soundEnabled
+                  ? "bg-white text-[#2e59e6]"
+                  : "bg-[#E5E0D8] text-slate-500"
               }`}
             >
-              {soundEnabled ? <Volume2 className="h-3.5 w-3.5" /> : <VolumeX className="h-3.5 w-3.5" />}
+              {soundEnabled ? (
+                <Volume2 className="h-3.5 w-3.5" />
+              ) : (
+                <VolumeX className="h-3.5 w-3.5" />
+              )}
             </button>
 
             {/* Notification Bell */}
@@ -137,28 +169,63 @@ export const Header: React.FC<HeaderProps> = ({
           className="p-1.5 bg-white border border-[#1a1a1a] text-[#1a1a1a] hover:bg-[#E5E0D8] transition-colors disabled:opacity-50 cursor-pointer"
           title="Sinkronkan Spreadsheet"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin text-[#2e59e6]' : ''}`} />
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin text-[#2e59e6]" : ""}`}
+          />
         </button>
+
+        {isMasterMode && token && connectionSecondsRemaining !== null && (
+          <div className="hidden sm:flex items-center gap-1">
+            <span
+              className={`inline-flex items-center px-2 py-1 border border-[#1a1a1a] font-mono-code text-[10px] font-bold ${
+                connectionSecondsRemaining <= 300
+                  ? "bg-amber-300 text-[#1a1a1a]"
+                  : "bg-white text-emerald-700"
+              }`}
+              title="Sisa waktu koneksi Google Sheets. Login ulang saat waktu habis."
+            >
+              GOOGLE:{" "}
+              {Math.floor(connectionSecondsRemaining / 60)
+                .toString()
+                .padStart(2, "0")}
+              :{(connectionSecondsRemaining % 60).toString().padStart(2, "0")}
+            </span>
+            {connectionSecondsRemaining <= 300 && (
+              <button
+                type="button"
+                onClick={onRenewConnection}
+                className="px-2 py-1 border border-[#1a1a1a] bg-amber-300 text-[#1a1a1a] font-mono-code text-[10px] font-bold hover:bg-[#2e59e6] hover:text-white cursor-pointer"
+                title="Perbarui koneksi Google Sheets"
+              >
+                PERPANJANG
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Login / User Status Indicator (Only in Master mode, hidden on Homepage and /cek) */}
         {isMasterMode && (
           <div className="flex items-center gap-2 font-mono-code text-xs">
             {/* Active Admin Profile Switcher */}
-            <div className="hidden sm:flex items-center bg-white border border-[#1a1a1a] px-2 py-1 gap-1.5">
-              <span className={`w-2 h-2 rounded-full inline-block ${token ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`}></span>
-              <select
-                value={user?.email || ADMIN_EMAILS[0]}
-                onChange={(e) => onSwitchAdminProfile && onSwitchAdminProfile(e.target.value)}
-                className="bg-transparent text-[11px] font-bold text-[#1a1a1a] border-none focus:outline-hidden cursor-pointer"
-                title="Pilih akun admin aktif"
-              >
-                {ADMIN_EMAILS.map((adminEmail) => (
-                  <option key={adminEmail} value={adminEmail}>
-                    {adminEmail} {adminEmail === user?.email ? '(Aktif)' : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {token && (
+              <div className="hidden sm:flex items-center bg-white border border-[#1a1a1a] px-2 py-1 gap-1.5">
+                <span className="w-2 h-2 rounded-full inline-block bg-emerald-500 animate-pulse"></span>
+                <select
+                  value={user?.email || ADMIN_EMAILS[0]}
+                  onChange={(e) =>
+                    onSwitchAdminProfile && onSwitchAdminProfile(e.target.value)
+                  }
+                  className="bg-transparent text-[11px] font-bold text-[#1a1a1a] border-none focus:outline-hidden cursor-pointer"
+                  title="Pilih akun admin aktif"
+                >
+                  {ADMIN_EMAILS.map((adminEmail) => (
+                    <option key={adminEmail} value={adminEmail}>
+                      {adminEmail} {adminEmail === user?.email ? "(Aktif)" : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
 
             {/* Google OAuth Connect / Logout Button */}
             {token ? (
@@ -178,7 +245,7 @@ export const Header: React.FC<HeaderProps> = ({
                 title="Hubungkan akun Google langsung untuk sinkronisasi menulis ke Google Spreadsheet"
               >
                 <span className="w-2 h-2 rounded-full bg-amber-400 inline-block animate-ping"></span>
-                {isLoggingIn ? 'MENGHUBUNGKAN...' : 'LOGIN GOOGLE'}
+                {isLoggingIn ? "MENGHUBUNGKAN..." : "LOGIN GOOGLE"}
               </button>
             )}
           </div>
