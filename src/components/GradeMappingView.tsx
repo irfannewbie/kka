@@ -733,7 +733,7 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
                 <button
                   onClick={() => {
                     setSelectedGrade('7');
-                    setSelectedClass('Kelas 7A');
+                    setSelectedClass('Kelas 7E');
                   }}
                   className={`px-4 py-1.5 text-xs font-bold font-mono-code border-2 transition-all cursor-pointer ${
                     selectedGrade === '7'
@@ -741,7 +741,7 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
                       : 'bg-white text-slate-700 border-[#1a1a1a] hover:bg-slate-100'
                   }`}
                 >
-                  KELAS 7 (7A - 7H)
+                  KELAS 7 (7E - 7H)
                 </button>
                 <button
                   onClick={() => {

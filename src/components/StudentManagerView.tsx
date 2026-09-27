@@ -198,7 +198,7 @@ export const StudentManagerView: React.FC<StudentManagerViewProps> = ({
             </span>
           </div>
           <p className="font-mono-code text-xs text-slate-500 mt-1">
-            Data siswa terhubung lengkap dengan Google Spreadsheet across Kelas 8A hingga 8H.
+            Data siswa terhubung lengkap dengan Google Spreadsheet untuk Kelas 7E - 7H dan 8A - 8H.
           </p>
         </div>
 
@@ -308,7 +308,7 @@ export const StudentManagerView: React.FC<StudentManagerViewProps> = ({
             <option value={25}>25 / hal</option>
             <option value={50}>50 / hal</option>
             <option value={100}>100 / hal</option>
-            <option value={300}>Semua ({students.length})</option>
+            <option value={500}>Semua ({students.length})</option>
           </select>
         </div>
       </div>
@@ -511,6 +511,10 @@ export const StudentManagerView: React.FC<StudentManagerViewProps> = ({
                     onChange={(e) => setClassName(e.target.value)}
                     className="w-full p-2 border border-[#1a1a1a] bg-white text-[#1a1a1a]"
                   >
+                    <option value="Kelas 7E">Kelas 7E</option>
+                    <option value="Kelas 7F">Kelas 7F</option>
+                    <option value="Kelas 7G">Kelas 7G</option>
+                    <option value="Kelas 7H">Kelas 7H</option>
                     <option value="Kelas 8A">Kelas 8A</option>
                     <option value="Kelas 8B">Kelas 8B</option>
                     <option value="Kelas 8C">Kelas 8C</option>

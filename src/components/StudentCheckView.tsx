@@ -285,7 +285,7 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                   />
                 </div>
                 <p className="font-mono-code text-[11px] text-slate-500 mt-1">
-                  *Format: <span className="font-bold text-[#1a1a1a]">[No Absen] - [Kelas]</span> (contoh: <code className="bg-slate-100 px-1 py-0.5 border">01 - 8G</code>, <code className="bg-slate-100 px-1 py-0.5 border">1 - 8A</code>, <code className="bg-slate-100 px-1 py-0.5 border">15 - 7B</code>)
+                  *Format: <span className="font-bold text-[#1a1a1a]">[No Absen] - [Kelas]</span> (contoh: <code className="bg-slate-100 px-1 py-0.5 border">01 - 8G</code>, <code className="bg-slate-100 px-1 py-0.5 border">1 - 8A</code>, <code className="bg-slate-100 px-1 py-0.5 border">15 - 7E</code>)
                 </p>
               </div>
 
@@ -344,7 +344,7 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                     onChange={(e) => setQuickClassSelect(e.target.value)}
                     className="w-full p-2 bg-white border border-[#1a1a1a] font-mono-code text-xs"
                   >
-                    {['8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '7A', '7B', '7C', '7D', '7E', '7F', '7G', '7H'].map((c) => (
+                    {['8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '7E', '7F', '7G', '7H'].map((c) => (
                       <option key={c} value={c}>
                         Kelas {c}
                       </option>
@@ -471,30 +471,6 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
               <div className="text-2xl font-bold text-rose-700 mt-1">{incompleteTasks} Tugas</div>
             </div>
           </div>
-
-          {/* Substitute Task Callout Banner */}
-          {onNavigatePengganti && (
-            <div className="bg-amber-50 border-2 border-amber-500 p-4 shadow-[3px_3px_0px_#f59e0b] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 font-mono-code">
-              <div>
-                <div className="flex items-center gap-2">
-                  <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold uppercase">
-                    INFO TUGAS PENGGANTI
-                  </span>
-                  <span className="text-xs font-bold text-amber-900">Tugas Pengganti KKA 2 Tersedia</span>
-                </div>
-                <p className="text-xs text-amber-800 mt-1">
-                  Bagi siswa yang belum menyelesaikan tugas KKA 2 atau ingin melakukan remedial, silakan kerjakan tugas pengganti (Mainkan game teka-teki & buat video algoritma).
-                </p>
-              </div>
-              <button
-                onClick={onNavigatePengganti}
-                className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all shrink-0 cursor-pointer flex items-center gap-1.5"
-              >
-                <span>BUKA TUGAS PENGGANTI</span>
-                <span>→</span>
-              </button>
-            </div>
-          )}
 
           {/* Tasks Status Table */}
           <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] overflow-hidden">

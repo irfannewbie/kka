@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   RefreshCw,
   Plus,
@@ -6,14 +6,20 @@ import {
   FileSpreadsheet,
   Database,
   Calculator,
-  Archive,
-} from "lucide-react";
-import {
-  Student,
-  TaskSubmission,
-  AppNotification,
-  SubstituteTaskSubmission,
-} from "../types";
+  Activity,
+  Clock,
+  CheckCircle2,
+  Globe,
+  Video,
+  Bell,
+  Search,
+  Trash2,
+  ExternalLink,
+  ArrowUpRight,
+  Layers,
+} from 'lucide-react';
+import { Student, TaskSubmission, AppNotification, SubstituteTaskSubmission } from '../types';
+import { loadSubstituteTaskSubmissions } from '../services/sheetsService';
 
 interface MasterDataViewProps {
   students: Student[];
@@ -22,106 +28,193 @@ interface MasterDataViewProps {
   spreadsheetUrl: string;
   spreadsheetId: string;
   isSyncing: boolean;
+  lastSyncedAt?: string | null;
   onManualSync: () => void;
-  onQuickAddStudent?: (student: Omit<Student, "id">) => Promise<void>;
+  onQuickAddStudent?: (student: Omit<Student, 'id'>) => Promise<void>;
   onOpenSubmitModal: () => void;
-  onNavigateTab: (
-    tab:
-      | "showcase"
-      | "master"
-      | "tasks"
-      | "students"
-      | "grades"
-      | "spreadsheet",
-  ) => void;
-  isSubstitutePageArchived: boolean;
-  onToggleSubstitutePageArchive: () => void;
-  archiveAt: string | null;
-  archiveReason: string;
-  onSaveArchiveSchedule: (archiveAt: string, reason: string) => void;
-  onBackupConfiguration: () => void;
-  onRestoreConfiguration: () => void;
-  submissions: SubstituteTaskSubmission[];
-  connectionSecondsRemaining: number | null;
+  onClearNotifications?: () => void;
+  onNavigateTab: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'substitute_tasks') => void;
+}
+
+interface UnifiedActivityItem {
+  id: string;
+  category: 'system' | 'task' | 'substitute';
+  title: string;
+  subtitle: string;
+  metaBadge?: string;
+  statusBadge?: string;
+  timestamp: string;
+  sortTime: number;
+  linkUrl?: string;
+  targetTab?: 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'substitute_tasks';
+}
+
+function parseTimestampToMs(ts: string, fallbackIndex: number): number {
+  if (!ts) return Date.now() - fallbackIndex * 60000;
+  const clean = ts.trim();
+
+  // Try standard Date parse
+  const parsed = Date.parse(clean);
+  if (!isNaN(parsed)) return parsed;
+
+  // Try DD/MM/YYYY HH:mm or DD-MM-YYYY HH:mm
+  const dmyMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  if (dmyMatch) {
+    const day = parseInt(dmyMatch[1], 10);
+    const month = parseInt(dmyMatch[2], 10) - 1;
+    const year = parseInt(dmyMatch[3], 10);
+    const hour = dmyMatch[4] ? parseInt(dmyMatch[4], 10) : 12;
+    const min = dmyMatch[5] ? parseInt(dmyMatch[5], 10) : 0;
+    const sec = dmyMatch[6] ? parseInt(dmyMatch[6], 10) : 0;
+    return new Date(year, month, day, hour, min, sec).getTime();
+  }
+
+  // Try HH:mm or HH.mm (today's time from notifications)
+  const timeOnlyMatch = clean.match(/^(\d{1,2})[:.](\d{2})(?:[:.](\d{2}))?$/);
+  if (timeOnlyMatch) {
+    const now = new Date();
+    now.setHours(
+      parseInt(timeOnlyMatch[1], 10),
+      parseInt(timeOnlyMatch[2], 10),
+      timeOnlyMatch[3] ? parseInt(timeOnlyMatch[3], 10) : 0,
+      0
+    );
+    return now.getTime();
+  }
+
+  return Date.now() - fallbackIndex * 60000;
 }
 
 export const MasterDataView: React.FC<MasterDataViewProps> = ({
   students,
   tasks,
+  notifications,
   spreadsheetUrl,
+  spreadsheetId,
   isSyncing,
+  lastSyncedAt,
   onManualSync,
   onOpenSubmitModal,
+  onClearNotifications,
   onNavigateTab,
-  isSubstitutePageArchived,
-  onToggleSubstitutePageArchive,
-  archiveAt,
-  archiveReason,
-  onSaveArchiveSchedule,
-  onBackupConfiguration,
-  onRestoreConfiguration,
-  submissions,
-  connectionSecondsRemaining,
 }) => {
+  const [substituteTasks, setSubstituteTasks] = useState<SubstituteTaskSubmission[]>([]);
+  const [activeLogFilter, setActiveLogFilter] = useState<'all' | 'task' | 'substitute' | 'system'>('all');
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [visibleCount, setVisibleCount] = useState<number>(10);
+
+  // Load substitute task submissions for activity feed
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchSubstituteLogs() {
+      try {
+        const subs = await loadSubstituteTaskSubmissions(null, spreadsheetId);
+        if (isMounted && Array.isArray(subs)) {
+          setSubstituteTasks(subs);
+        }
+      } catch (e) {
+        // ignore error in background log fetch
+      }
+    }
+    fetchSubstituteLogs();
+    return () => {
+      isMounted = false;
+    };
+  }, [spreadsheetId, isSyncing]);
+
   // Calculate live statistics - in sync with submitted works from spreadsheet
   const totalStudentsCount = students.length;
   const totalTasksCount = tasks.length;
   const activeGroupsCount = totalTasksCount;
-  const [classFilter, setClassFilter] = useState("SEMUA KELAS");
-  const [statusFilter, setStatusFilter] = useState("SEMUA STATUS");
-  const filteredSubmissions = submissions.filter(
-    (submission) =>
-      (classFilter === "SEMUA KELAS" || submission.className === classFilter) &&
-      (statusFilter === "SEMUA STATUS" || submission.status === statusFilter),
-  );
-  const submittedClasses = new Set(
-    filteredSubmissions.map((submission) => submission.className),
-  ).size;
-  const latestSubmission = filteredSubmissions[0]?.submittedAt || "Belum ada";
-  const scheduleValue = archiveAt
-    ? new Date(archiveAt).toISOString().slice(0, 16)
-    : "";
-  const submissionsByClass = filteredSubmissions.reduce(
-    (counts: Record<string, number>, submission) => {
-      counts[submission.className] = (counts[submission.className] || 0) + 1;
-      return counts;
-    },
-    {} as Record<string, number>,
-  );
-  const exportSubmissions = () => {
-    const headers = [
-      "Waktu",
-      "Nama Siswa",
-      "Kelas",
-      "No Absen",
-      "NIS",
-      "Link YouTube",
-      "Status",
-      "Catatan",
-    ];
-    const rows = filteredSubmissions.map((submission) => [
-      submission.submittedAt,
-      submission.studentName,
-      submission.className,
-      submission.attendanceNo,
-      submission.nis || "",
-      submission.youtubeUrl,
-      submission.status,
-      submission.notes || "",
-    ]);
-    const csv = [headers, ...rows]
-      .map((row) =>
-        row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","),
-      )
-      .join("\r\n");
-    const link = document.createElement("a");
-    link.href = URL.createObjectURL(
-      new Blob([csv], { type: "text/csv;charset=utf-8" }),
-    );
-    link.download = `monitoring-pengumpulan-${new Date().toISOString().slice(0, 10)}.csv`;
-    link.click();
-    URL.revokeObjectURL(link.href);
-  };
+
+  // Build unified activity list
+  const activityLogs = useMemo<UnifiedActivityItem[]>(() => {
+    const items: UnifiedActivityItem[] = [];
+
+    // 1. System & Admin Notifications
+    notifications.forEach((notif, idx) => {
+      const idTimestampMatch = notif.id.match(/notif-(\d+)/);
+      const exactMs = idTimestampMatch
+        ? parseInt(idTimestampMatch[1], 10)
+        : parseTimestampToMs(notif.timestamp, idx);
+
+      items.push({
+        id: `sys-${notif.id}-${idx}`,
+        category: 'system',
+        title: notif.title,
+        subtitle: notif.message,
+        metaBadge: notif.type === 'sync_success' ? 'SINKRONISASI' : notif.type === 'task_submitted' ? 'AKTIVITAS DATA' : 'SISTEM LOG',
+        timestamp: notif.timestamp || 'Baru saja',
+        sortTime: exactMs,
+        targetTab: notif.taskId ? 'tasks' : undefined,
+      });
+    });
+
+    // 2. Web Task Submissions
+    tasks.forEach((task, idx) => {
+      const idTimestampMatch = task.id.match(/tsk-(\d+)/);
+      const exactMs = idTimestampMatch
+        ? parseInt(idTimestampMatch[1], 10)
+        : parseTimestampToMs(task.submittedAt, idx + 10);
+
+      const memberInfo =
+        task.taskType === 'kelompok' && task.groupMembers && task.groupMembers.length > 0
+          ? `${task.groupMembers.map((m) => m.name).join(', ')}`
+          : task.studentName;
+
+      items.push({
+        id: `task-${task.id}-${idx}`,
+        category: 'task',
+        title: `Pengumpulan Karya Web: "${task.taskTitle || 'Proyek Web Siswa'}"`,
+        subtitle: `Oleh ${memberInfo} (${task.className || 'Kelas'} • ${task.group || 'Individu'})`,
+        metaBadge: task.className || 'KARYA WEB',
+        statusBadge: task.status || 'Selesai',
+        timestamp: task.submittedAt || 'Tercatat di Sheet',
+        sortTime: exactMs,
+        linkUrl: task.descriptionOrLink?.startsWith('http') ? task.descriptionOrLink : undefined,
+        targetTab: 'tasks',
+      });
+    });
+
+    // 3. Substitute Task Submissions
+    substituteTasks.forEach((sub, idx) => {
+      const exactMs = parseTimestampToMs(sub.submittedAt, idx + 100);
+      items.push({
+        id: `sub-${sub.id}-${idx}`,
+        category: 'substitute',
+        title: `Pengumpulan Tugas Pengganti KKA 2 — ${sub.studentName}`,
+        subtitle: `Kelas ${sub.className} (No. Absen ${sub.attendanceNo || '-'}) mengumpulkan tautan video dokumentasi.`,
+        metaBadge: sub.className || 'PENGGANTI KKA 2',
+        statusBadge: sub.status || 'Terkirim',
+        timestamp: sub.submittedAt || 'Tercatat di Sheet',
+        sortTime: exactMs,
+        linkUrl: sub.youtubeUrl?.startsWith('http') ? sub.youtubeUrl : undefined,
+        targetTab: 'substitute_tasks',
+      });
+    });
+
+    return items.sort((a, b) => b.sortTime - a.sortTime);
+  }, [notifications, tasks, substituteTasks]);
+
+  const filteredLogs = useMemo(() => {
+    return activityLogs.filter((item) => {
+      if (activeLogFilter !== 'all' && item.category !== activeLogFilter) {
+        return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return (
+          item.title.toLowerCase().includes(q) ||
+          item.subtitle.toLowerCase().includes(q) ||
+          (item.metaBadge && item.metaBadge.toLowerCase().includes(q)) ||
+          item.timestamp.toLowerCase().includes(q)
+        );
+      }
+      return true;
+    });
+  }, [activityLogs, activeLogFilter, searchQuery]);
+
+  const displayedLogs = filteredLogs.slice(0, visibleCount);
 
   return (
     <div className="space-y-6">
@@ -156,21 +249,28 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
           </button>
 
           <button
-            onClick={() => onNavigateTab("students")}
+            onClick={() => onNavigateTab('students')}
             className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white hover:text-[#1a1a1a] text-white px-3 py-1.5 text-xs font-bold border border-white/20 transition-all cursor-pointer"
           >
             <UserPlus className="h-3.5 w-3.5" /> KELOLA DAFTAR SISWA
           </button>
 
           <button
-            onClick={() => onNavigateTab("grades")}
+            onClick={() => onNavigateTab('grades')}
             className="inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-400 text-[#1a1a1a] px-3 py-1.5 text-xs font-bold border border-white/40 transition-all cursor-pointer"
           >
             <Calculator className="h-3.5 w-3.5" /> PEMETAAN NILAI
           </button>
 
           <button
-            onClick={() => onNavigateTab("tasks")}
+            onClick={() => onNavigateTab('calculator')}
+            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 text-xs font-bold border border-white/40 transition-all cursor-pointer"
+          >
+            <Calculator className="h-3.5 w-3.5" /> KALKULATOR AKADEMIK
+          </button>
+
+          <button
+            onClick={() => onNavigateTab('tasks')}
             className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white hover:text-[#1a1a1a] text-white px-3 py-1.5 text-xs font-bold border border-white/20 transition-all cursor-pointer"
           >
             <FileSpreadsheet className="h-3.5 w-3.5" /> REKAP TABEL
@@ -181,10 +281,7 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
             disabled={isSyncing}
             className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white hover:text-[#1a1a1a] text-white px-3 py-1.5 text-xs font-bold border border-white/20 transition-all cursor-pointer disabled:opacity-50"
           >
-            <RefreshCw
-              className={`h-3.5 w-3.5 ${isSyncing ? "animate-spin" : ""}`}
-            />{" "}
-            SINKRONKAN
+            <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} /> SINKRONKAN
           </button>
         </div>
       </div>
@@ -200,7 +297,7 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
             {totalStudentsCount}
           </div>
           <div className="font-mono-code text-[10px] text-[#2e59e6] mt-0.5 font-bold">
-            {totalStudentsCount} SISWA TERHUBUNG
+            KELAS 7E-7H & 8A-8H TERHUBUNG
           </div>
         </div>
 
@@ -223,8 +320,7 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
             TOTAL KELOMPOK
           </div>
           <div className="text-2xl font-bold font-mono-code text-[#1a1a1a] mt-1">
-            {activeGroupsCount}{" "}
-            <span className="text-xs text-slate-400">KELOMPOK</span>
+            {activeGroupsCount} <span className="text-xs text-slate-400">KELOMPOK</span>
           </div>
           <div className="font-mono-code text-[10px] text-[#2e59e6] mt-0.5 font-bold">
             KARYA KOLABORASI
@@ -251,234 +347,251 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
         </div>
       </div>
 
-      {/* 4. PUBLIC PAGE ARCHIVE CONTROLS */}
-      <section className="bg-white border-[1.5px] border-[#1a1a1a] p-4 shadow-[3px_3px_0px_#1a1a1a]">
-        <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
-          <div className="flex items-start gap-2.5">
-            <div className="bg-amber-400 text-[#1a1a1a] p-2 border border-[#1a1a1a]">
-              <Archive className="h-4 w-4" />
+      {/* 4. LOG AKTIVITAS (ACTIVITY LOG CARD BELOW METRIC CARDS) */}
+      <div className="bg-white border-[1.5px] border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] font-mono-code">
+        {/* Top Header Strip */}
+        <div className="bg-[#1a1a1a] text-white px-4 py-3 border-b-[1.5px] border-[#1a1a1a] flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-[#2e59e6] text-white border border-white/30">
+              <Activity className="h-4 w-4" />
             </div>
             <div>
-              <h2 className="font-mono-code text-sm font-bold uppercase">
-                ARSIP HALAMAN PUBLIK
-              </h2>
-              <p className="font-mono-code text-[10px] text-slate-500 mt-1 max-w-xl">
-                Tutup akses halaman yang sudah melewati deadline. Halaman yang
-                diarsipkan tidak dapat dibuka atau digunakan siswa.
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-white">
+                  LOG AKTIVITAS KONTROL MASTER
+                </h2>
+                <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[10px] font-bold">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  LIVE
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-300 mt-0.5">
+                Riwayat real-time pengumpulan karya siswa, tugas pengganti, dan sinkronisasi sistem
+                {lastSyncedAt ? ` • Sinkron terakhir: ${lastSyncedAt}` : ''}
               </p>
             </div>
           </div>
-          <span className="font-mono-code text-[10px] font-bold px-2 py-1 border border-[#1a1a1a] bg-[#F2EFEB]">
-            {isSubstitutePageArchived
-              ? "1 HALAMAN DIARSIPKAN"
-              : "TIDAK ADA ARSIP AKTIF"}
-          </span>
-        </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#1a1a1a] pt-3">
-          <div>
-            <div className="font-mono-code text-xs font-bold">
-              TUGAS PENGGANTI KKA 2
-            </div>
-            <div className="font-mono-code text-[10px] text-slate-500 mt-1">
-              /pengganti · Form pengumpulan video siswa
-            </div>
+          <div className="flex items-center gap-2">
+            {onClearNotifications && notifications.length > 0 && (
+              <button
+                onClick={onClearNotifications}
+                className="inline-flex items-center gap-1 bg-white/10 hover:bg-rose-600 text-white px-2.5 py-1 text-[10px] font-bold border border-white/20 transition-colors cursor-pointer"
+                title="Bersihkan log notifikasi sistem"
+              >
+                <Trash2 className="h-3 w-3" /> BERSIHKAN LOG SISTEM
+              </button>
+            )}
+            <button
+              onClick={onManualSync}
+              disabled={isSyncing}
+              className="inline-flex items-center gap-1 bg-[#2e59e6] hover:bg-white hover:text-[#1a1a1a] text-white px-2.5 py-1 text-[10px] font-bold border border-white/40 transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`h-3 w-3 ${isSyncing ? 'animate-spin' : ''}`} /> PERBARUI LOG
+            </button>
           </div>
-          <button
-            type="button"
-            onClick={onToggleSubstitutePageArchive}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 border border-[#1a1a1a] font-mono-code text-[11px] font-bold transition-colors cursor-pointer ${
-              isSubstitutePageArchived
-                ? "bg-emerald-500 text-[#1a1a1a] hover:bg-emerald-400"
-                : "bg-rose-600 text-white hover:bg-rose-700"
-            }`}
-          >
-            <Archive className="h-3.5 w-3.5" />
-            {isSubstitutePageArchived
-              ? "BUKA KEMBALI HALAMAN"
-              : "ARSIPKAN HALAMAN"}
-          </button>
         </div>
 
-        <div className="mt-4 border-t border-[#1a1a1a] pt-3 grid gap-3 md:grid-cols-[1fr_1fr_auto] items-end">
-          <label className="font-mono-code text-[10px] font-bold uppercase">
-            Jadwalkan waktu arsip
-            <input
-              type="datetime-local"
-              defaultValue={scheduleValue}
-              id="archive-schedule-input"
-              className="mt-1 block w-full border border-[#1a1a1a] bg-[#F2EFEB] px-2 py-1.5 text-xs font-normal"
-            />
-          </label>
-          <label className="font-mono-code text-[10px] font-bold uppercase">
-            Alasan arsip
+        {/* Filter & Search Sub-bar */}
+        <div className="p-3 bg-[#F2EFEB] border-b-[1.5px] border-[#1a1a1a] flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+          {/* Category Filter Buttons */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              onClick={() => {
+                setActiveLogFilter('all');
+                setVisibleCount(10);
+              }}
+              className={`px-2.5 py-1 text-[10px] font-bold uppercase border border-[#1a1a1a] transition-all cursor-pointer ${
+                activeLogFilter === 'all'
+                  ? 'bg-[#1a1a1a] text-white shadow-[2px_2px_0px_#2e59e6]'
+                  : 'bg-white text-[#1a1a1a] hover:bg-slate-100'
+              }`}
+            >
+              SEMUA ({activityLogs.length})
+            </button>
+            <button
+              onClick={() => {
+                setActiveLogFilter('task');
+                setVisibleCount(10);
+              }}
+              className={`px-2.5 py-1 text-[10px] font-bold uppercase border border-[#1a1a1a] transition-all cursor-pointer ${
+                activeLogFilter === 'task'
+                  ? 'bg-[#2e59e6] text-white shadow-[2px_2px_0px_#1a1a1a]'
+                  : 'bg-white text-[#1a1a1a] hover:bg-slate-100'
+              }`}
+            >
+              KARYA WEB ({tasks.length})
+            </button>
+            <button
+              onClick={() => {
+                setActiveLogFilter('substitute');
+                setVisibleCount(10);
+              }}
+              className={`px-2.5 py-1 text-[10px] font-bold uppercase border border-[#1a1a1a] transition-all cursor-pointer ${
+                activeLogFilter === 'substitute'
+                  ? 'bg-amber-500 text-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
+                  : 'bg-white text-[#1a1a1a] hover:bg-slate-100'
+              }`}
+            >
+              TUGAS PENGGANTI ({substituteTasks.length})
+            </button>
+            <button
+              onClick={() => {
+                setActiveLogFilter('system');
+                setVisibleCount(10);
+              }}
+              className={`px-2.5 py-1 text-[10px] font-bold uppercase border border-[#1a1a1a] transition-all cursor-pointer ${
+                activeLogFilter === 'system'
+                  ? 'bg-emerald-700 text-white shadow-[2px_2px_0px_#1a1a1a]'
+                  : 'bg-white text-[#1a1a1a] hover:bg-slate-100'
+              }`}
+            >
+              SISTEM & ADMIN ({notifications.length})
+            </button>
+          </div>
+
+          {/* Search Input */}
+          <div className="relative min-w-[220px]">
+            <Search className="h-3.5 w-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              defaultValue={archiveReason}
-              id="archive-reason-input"
-              placeholder="Contoh: deadline tugas berakhir"
-              className="mt-1 block w-full border border-[#1a1a1a] bg-[#F2EFEB] px-2 py-1.5 text-xs font-normal"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Cari aktivitas, siswa, kelas..."
+              className="w-full bg-white border border-[#1a1a1a] pl-8 pr-3 py-1 text-[11px] text-[#1a1a1a] placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#2e59e6]"
             />
-          </label>
-          <button
-            type="button"
-            onClick={() =>
-              onSaveArchiveSchedule(
-                (
-                  document.getElementById(
-                    "archive-schedule-input",
-                  ) as HTMLInputElement
-                )?.value || "",
-                (
-                  document.getElementById(
-                    "archive-reason-input",
-                  ) as HTMLInputElement
-                )?.value || "",
-              )
-            }
-            className="px-3 py-1.5 border border-[#1a1a1a] bg-[#2e59e6] text-white font-mono-code text-[11px] font-bold hover:bg-[#1a1a1a] cursor-pointer"
-          >
-            SIMPAN JADWAL
-          </button>
+          </div>
         </div>
 
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onBackupConfiguration}
-            className="px-3 py-1.5 border border-[#1a1a1a] bg-white font-mono-code text-[11px] font-bold hover:bg-[#F2EFEB] cursor-pointer"
-          >
-            BACKUP KONFIGURASI
-          </button>
-          <button
-            type="button"
-            onClick={onRestoreConfiguration}
-            className="px-3 py-1.5 border border-[#1a1a1a] bg-white font-mono-code text-[11px] font-bold hover:bg-[#F2EFEB] cursor-pointer"
-          >
-            PULIHKAN BACKUP TERAKHIR
-          </button>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="bg-white border-[1.5px] border-[#1a1a1a] p-3 shadow-[3px_3px_0px_#1a1a1a]">
-          <div className="font-mono-code text-[10px] font-bold text-slate-500">
-            PENGUMPULAN PENGGANTI
-          </div>
-          <div className="text-2xl font-bold font-mono-code mt-1">
-            {submissions.length}
-          </div>
-          <div className="font-mono-code text-[10px] text-emerald-700">
-            SUBMISSION MASUK
-          </div>
-        </div>
-        <div className="bg-white border-[1.5px] border-[#1a1a1a] p-3 shadow-[3px_3px_0px_#1a1a1a]">
-          <div className="font-mono-code text-[10px] font-bold text-slate-500">
-            KELAS TERJANGKAU
-          </div>
-          <div className="text-2xl font-bold font-mono-code mt-1">
-            {submittedClasses}
-          </div>
-          <div className="font-mono-code text-[10px] text-[#2e59e6]">
-            DARI DATA MASUK
-          </div>
-        </div>
-        <div className="bg-white border-[1.5px] border-[#1a1a1a] p-3 shadow-[3px_3px_0px_#1a1a1a]">
-          <div className="font-mono-code text-[10px] font-bold text-slate-500">
-            TERAKHIR MASUK
-          </div>
-          <div className="text-xs font-bold font-mono-code mt-2 truncate">
-            {latestSubmission}
-          </div>
-          <div className="font-mono-code text-[10px] text-slate-500 mt-1">
-            WAKTU PENGUMPULAN
-          </div>
-        </div>
-        <div className="bg-white border-[1.5px] border-[#1a1a1a] p-3 shadow-[3px_3px_0px_#1a1a1a]">
-          <div className="font-mono-code text-[10px] font-bold text-slate-500">
-            KONEKSI GOOGLE
-          </div>
-          <div
-            className={`text-xl font-bold font-mono-code mt-1 ${connectionSecondsRemaining !== null && connectionSecondsRemaining <= 300 ? "text-amber-600" : "text-emerald-700"}`}
-          >
-            {connectionSecondsRemaining === null
-              ? "TERPUTUS"
-              : `${Math.floor(connectionSecondsRemaining / 60)} MENIT`}
-          </div>
-          <div className="font-mono-code text-[10px] text-slate-500">
-            SISA SESI AKSES
-          </div>
-        </div>
-      </section>
-
-      <section className="bg-white border-[1.5px] border-[#1a1a1a] p-4 shadow-[3px_3px_0px_#1a1a1a]">
-        <div className="flex items-center justify-between gap-2 mb-3">
-          <h2 className="font-mono-code text-sm font-bold uppercase">
-            MONITORING PENGUMPULAN PER KELAS
-          </h2>
-          <button
-            type="button"
-            onClick={exportSubmissions}
-            className="px-2.5 py-1 border border-[#1a1a1a] bg-[#2e59e6] text-white font-mono-code text-[10px] font-bold hover:bg-[#1a1a1a] cursor-pointer"
-          >
-            EKSPOR CSV
-          </button>
-        </div>
-        <div className="flex flex-wrap gap-2 mb-3">
-          <select
-            value={classFilter}
-            onChange={(event) => setClassFilter(event.target.value)}
-            className="border border-[#1a1a1a] bg-[#F2EFEB] px-2 py-1.5 font-mono-code text-[10px]"
-          >
-            <option>SEMUA KELAS</option>
-            {Array.from(
-              new Set(submissions.map((submission) => submission.className)),
-            )
-              .sort()
-              .map((className) => (
-                <option key={className}>{className}</option>
-              ))}
-          </select>
-          <select
-            value={statusFilter}
-            onChange={(event) => setStatusFilter(event.target.value)}
-            className="border border-[#1a1a1a] bg-[#F2EFEB] px-2 py-1.5 font-mono-code text-[10px]"
-          >
-            <option>SEMUA STATUS</option>
-            <option>Terkirim</option>
-            <option>Ditinjau</option>
-            <option>Selesai</option>
-          </select>
-          <span className="font-mono-code text-[10px] text-slate-500 self-center">
-            {filteredSubmissions.length} DATA TERPILIH
-          </span>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2">
-          {Object.entries(submissionsByClass)
-            .sort(([left], [right]) => left.localeCompare(right))
-            .map(([className, count]) => (
-              <div
-                key={className}
-                className="border border-[#1a1a1a] bg-[#F2EFEB] p-2"
-              >
-                <div className="font-mono-code text-[10px] font-bold truncate">
-                  {className}
-                </div>
-                <div className="font-mono-code text-lg font-bold text-[#2e59e6]">
-                  {count}
-                </div>
-                <div className="font-mono-code text-[9px] text-slate-500">
-                  SUBMISSION
-                </div>
-              </div>
-            ))}
-          {Object.keys(submissionsByClass).length === 0 && (
-            <div className="col-span-full font-mono-code text-xs text-slate-500">
-              Belum ada data pengumpulan.
+        {/* Activity Feed List */}
+        <div className="divide-y divide-[#1a1a1a]/20 max-h-[460px] overflow-y-auto">
+          {displayedLogs.length === 0 ? (
+            <div className="p-8 text-center text-slate-500">
+              <Layers className="h-7 w-7 mx-auto mb-2 text-slate-400 opacity-60" />
+              <p className="text-xs font-bold text-[#1a1a1a] uppercase">
+                BELUM ADA LOG AKTIVITAS YANG COCOK
+              </p>
+              <p className="text-[11px] mt-1">
+                Semua aktivitas pengumpulan tugas dan sinkronisasi data akan otomatis tercatat di sini.
+              </p>
             </div>
+          ) : (
+            displayedLogs.map((log) => {
+              const isTask = log.category === 'task';
+              const isSub = log.category === 'substitute';
+
+              return (
+                <div
+                  key={log.id}
+                  className="p-3.5 hover:bg-[#F2EFEB]/60 transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-2.5"
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    {/* Category Icon Box */}
+                    <div
+                      className={`p-2 border border-[#1a1a1a] shrink-0 mt-0.5 ${
+                        isTask
+                          ? 'bg-[#2e59e6] text-white'
+                          : isSub
+                          ? 'bg-amber-400 text-[#1a1a1a]'
+                          : 'bg-emerald-600 text-white'
+                      }`}
+                    >
+                      {isTask ? (
+                        <Globe className="h-3.5 w-3.5" />
+                      ) : isSub ? (
+                        <Video className="h-3.5 w-3.5" />
+                      ) : (
+                        <Bell className="h-3.5 w-3.5" />
+                      )}
+                    </div>
+
+                    {/* Log Content */}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-1.5 mb-1">
+                        <span
+                          className={`px-1.5 py-0.5 text-[9px] font-bold uppercase border border-[#1a1a1a] ${
+                            isTask
+                              ? 'bg-blue-50 text-[#2e59e6]'
+                              : isSub
+                              ? 'bg-amber-50 text-amber-900'
+                              : 'bg-emerald-50 text-emerald-800'
+                          }`}
+                        >
+                          {isTask ? 'KARYA WEB' : isSub ? 'TUGAS PENGGANTI' : 'SISTEM & ADMIN'}
+                        </span>
+
+                        {log.metaBadge && (
+                          <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-[#F2EFEB] text-[#1a1a1a] border border-[#1a1a1a]/40">
+                            {log.metaBadge}
+                          </span>
+                        )}
+
+                        {log.statusBadge && (
+                          <span className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[9px] font-bold uppercase bg-emerald-100 text-emerald-800 border border-emerald-700/30">
+                            <CheckCircle2 className="h-2.5 w-2.5" />
+                            {log.statusBadge}
+                          </span>
+                        )}
+                      </div>
+
+                      <h4 className="text-xs font-bold text-[#1a1a1a] truncate">
+                        {log.title}
+                      </h4>
+                      <p className="text-[11px] text-slate-600 mt-0.5 leading-relaxed break-words">
+                        {log.subtitle}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Right Side Timestamp & Quick Action */}
+                  <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-1.5 shrink-0 pl-10 sm:pl-0">
+                    <div className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 border border-slate-300">
+                      <Clock className="h-3 w-3 text-slate-400" />
+                      <span>{log.timestamp}</span>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      {log.linkUrl && (
+                        <a
+                          href={log.linkUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] font-bold text-[#2e59e6] hover:underline"
+                        >
+                          BUKA LINK <ExternalLink className="h-2.5 w-2.5" />
+                        </a>
+                      )}
+                      {log.targetTab && (
+                        <button
+                          onClick={() => onNavigateTab(log.targetTab!)}
+                          className="inline-flex items-center gap-0.5 text-[10px] font-bold text-[#1a1a1a] hover:text-[#2e59e6] cursor-pointer"
+                        >
+                          DETAIL <ArrowUpRight className="h-3 w-3" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })
           )}
         </div>
-      </section>
+
+        {/* Footer / Load More Bar */}
+        <div className="px-4 py-2.5 bg-[#F2EFEB] border-t-[1.5px] border-[#1a1a1a] flex items-center justify-between text-[10px] font-bold text-slate-600">
+          <span>
+            MENAMPILKAN {displayedLogs.length} DARI {filteredLogs.length} AKTIVITAS TERCATAT
+          </span>
+          {visibleCount < filteredLogs.length && (
+            <button
+              onClick={() => setVisibleCount((prev) => prev + 15)}
+              className="px-3 py-1 bg-white hover:bg-[#1a1a1a] hover:text-white text-[#1a1a1a] border border-[#1a1a1a] transition-colors cursor-pointer uppercase"
+            >
+              TAMPILKAN LEBIH BANYAK (+15)
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };

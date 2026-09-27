@@ -19,8 +19,8 @@ import { User } from 'firebase/auth';
 import { ADMIN_EMAILS } from '../services/firebaseAuth';
 
 interface SidebarProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks', path?: string) => void;
   onOpenSubmitModal: () => void;
   user: User | null;
   token: string | null;
@@ -48,7 +48,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   spreadsheetUrl,
 }) => {
   interface NavItem {
-    id: 'master' | 'students' | 'grades' | 'tasks' | 'substitute_tasks' | 'spreadsheet';
+    id: 'master' | 'students' | 'grades' | 'calculator' | 'tasks' | 'substitute_tasks' | 'spreadsheet';
     label: string;
     code: string;
     path: string;
@@ -62,33 +62,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: '/master',
     },
     {
-      id: 'students',
-      label: 'DAFTAR SISWA',
-      code: '02',
-      path: '/master/students',
-    },
-    {
       id: 'grades',
       label: 'PEMETAAN & REKAP NILAI',
-      code: '03',
+      code: '02',
       path: '/master/grades',
     },
     {
-      id: 'tasks',
-      label: 'REKAPITULASI TABEL',
-      code: '04',
-      path: '/master/tasks',
-    },
-    {
-      id: 'substitute_tasks',
-      label: 'TUGAS PENGGANTI KKA 2',
-      code: '05',
-      path: '/master/substitute',
+      id: 'calculator',
+      label: 'KALKULATOR AKADEMIK',
+      code: '03',
+      path: '/master/calculator',
     },
     {
       id: 'spreadsheet',
       label: 'SPREADSHEET VIEWER',
-      code: '06',
+      code: '04',
       path: '/master/spreadsheet',
     },
   ];

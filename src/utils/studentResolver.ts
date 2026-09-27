@@ -1,5 +1,6 @@
 import { Student, TaskSubmission } from '../types';
 import { ALL_255_STUDENTS } from '../data/students255';
+import { ALL_STUDENTS_DATABASE } from '../data/studentsAll';
 
 // Helper to normalize class string (e.g. "Kelas 8A" -> "8A", "8-A" -> "8A", "VIII A" -> "8A")
 export function normalizeClass(c?: string): string {
@@ -8,6 +9,7 @@ export function normalizeClass(c?: string): string {
     .toUpperCase()
     .replace(/^KELAS\s*/i, '')
     .replace(/^VIII\s*/i, '8')
+    .replace(/^VII\s*/i, '7')
     .replace(/[^0-9A-Z]/g, '');
   return clean || '8A';
 }
@@ -31,10 +33,10 @@ export interface ParsedSubmissionLinks {
   rawDescription: string;
 }
 
-// Build authentic lookup map for all 255 students by class and attendance number
+// Build authentic lookup map for all 382 students (Kelas 7E-7H & 8A-8H) by class and attendance number
 const AUTHENTIC_CLASS_ROSTER: Record<string, Record<string, { name: string; nis: string }>> = {};
 
-ALL_255_STUDENTS.forEach((std) => {
+ALL_STUDENTS_DATABASE.forEach((std) => {
   const normCls = normalizeClass(std.className);
   if (!AUTHENTIC_CLASS_ROSTER[normCls]) {
     AUTHENTIC_CLASS_ROSTER[normCls] = {};
