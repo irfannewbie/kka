@@ -88,12 +88,85 @@ export interface ModeAStudentRecord {
   benarMJ: number | null; // Maks 10 soal, x 2.5 = Maks 25
   skorUraian: number | null; // Maks 25
   remedialScore: number | null; // Diisi jika Total < KKTP
+  isManual?: boolean; // True jika diisi/diedit langsung oleh guru agar tidak pernah tertimpa
 }
 
 export interface ModeBStudentRecord {
   rerataUH: number | null; // Bobot 2x
   nilaiASTS: number | null; // Bobot 1x
   nilaiASAS: number | null; // Bobot 1x
+  isManual?: boolean;
+}
+
+const CALC_STORAGE_PREFIX = 'smpn1wedi_calc_permanent_v2';
+const CALC_UI_STATE_KEY = 'smpn1wedi_calc_ui_state_v2';
+
+function getStorageKey(className: string, subject: SubjectOptionType, assessment: AssessmentOptionType): string {
+  const cleanClass = className.replace(/\s+/g, '_').toUpperCase();
+  const cleanSubj = subject.toUpperCase();
+  const cleanAssess = assessment.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+  return `${CALC_STORAGE_PREFIX}_${cleanClass}_${cleanSubj}_${cleanAssess}`;
+}
+
+interface StoredCalculatorDataset {
+  modeAData: Record<string, ModeAStudentRecord>;
+  modeBData: Record<string, ModeBStudentRecord>;
+  standarData: Record<string, number | null>;
+  updatedAt: string;
+}
+
+function loadStoredDataset(
+  className: string,
+  subject: SubjectOptionType,
+  assessment: AssessmentOptionType
+): StoredCalculatorDataset | null {
+  try {
+    const raw = localStorage.getItem(getStorageKey(className, subject, assessment));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (parsed && typeof parsed === 'object') {
+      return {
+        modeAData: parsed.modeAData || {},
+        modeBData: parsed.modeBData || {},
+        standarData: parsed.standarData || {},
+        updatedAt: parsed.updatedAt || '',
+      };
+    }
+  } catch (e) {
+    // ignore storage parse error
+  }
+  return null;
+}
+
+function saveStoredDataset(
+  className: string,
+  subject: SubjectOptionType,
+  assessment: AssessmentOptionType,
+  data: {
+    modeAData: Record<string, ModeAStudentRecord>;
+    modeBData: Record<string, ModeBStudentRecord>;
+    standarData: Record<string, number | null>;
+  }
+): string {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  });
+  try {
+    const payload: StoredCalculatorDataset = {
+      ...data,
+      updatedAt: timeStr,
+    };
+    localStorage.setItem(
+      getStorageKey(className, subject, assessment),
+      JSON.stringify(payload)
+    );
+  } catch (e) {
+    // ignore quota error
+  }
+  return timeStr;
 }
 
 // Helper: Decompose a total score (0..100) from Google Sheets into valid PG (0..25), MJ (0..10), Uraian (0..25)
@@ -156,22 +229,54 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
   onLogin,
   onShowAlert,
 }) => {
-  // Konfigurasi Default sesuai spesifikasi SMP Negeri 1 Wedi
-  const [tahunAjaran, setTahunAjaran] = useState<string>('2026/2027');
+  // Konfigurasi Default sesuai spesifikasi SMP Negeri 1 Wedi (Disimpan permanen di localStorage)
+  const savedUiState = useMemo(() => {
+    try {
+      const raw = localStorage.getItem(CALC_UI_STATE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  const [tahunAjaran, setTahunAjaran] = useState<string>(savedUiState?.tahunAjaran || '2026/2027');
   const [satuanPendidikan] = useState<string>('SMP Negeri 1 Wedi');
-  const [kktp, setKktp] = useState<number>(75);
+  const [kktp, setKktp] = useState<number>(savedUiState?.kktp ?? 75);
 
   // Pilihan Evaluasi / Asesmen (Dropdown)
-  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentOptionType>('ASTS Gasal');
+  const [selectedAssessment, setSelectedAssessment] = useState<AssessmentOptionType>(
+    savedUiState?.selectedAssessment || 'ASTS Gasal'
+  );
 
   // Pilihan Tingkat & Kelas (Kelas 7E-7H & Kelas 8A-8H)
-  const [selectedGrade, setSelectedGrade] = useState<'7' | '8'>('8');
-  const [selectedClass, setSelectedClass] = useState<string>('Kelas 8B');
+  const [selectedGrade, setSelectedGrade] = useState<'7' | '8'>(savedUiState?.selectedGrade || '8');
+  const [selectedClass, setSelectedClass] = useState<string>(savedUiState?.selectedClass || 'Kelas 8A');
 
   // Pilihan Mata Pelajaran:
   // Kelas 8: Informatika dan Koding
   // Kelas 7: Hanya Informatika
-  const [selectedSubject, setSelectedSubject] = useState<SubjectOptionType>('Informatika');
+  const [selectedSubject, setSelectedSubject] = useState<SubjectOptionType>(
+    savedUiState?.selectedSubject || 'Informatika'
+  );
+
+  // Simpan preferensi filter UI ke localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem(
+        CALC_UI_STATE_KEY,
+        JSON.stringify({
+          tahunAjaran,
+          kktp,
+          selectedAssessment,
+          selectedGrade,
+          selectedClass,
+          selectedSubject,
+        })
+      );
+    } catch {
+      // ignore
+    }
+  }, [tahunAjaran, kktp, selectedAssessment, selectedGrade, selectedClass, selectedSubject]);
 
   // Pastikan jika tingkat Kelas 7 dipilih, mata pelajaran otomatis menjadi Informatika
   useEffect(() => {
@@ -198,10 +303,23 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
   const [outputFormat, setOutputFormat] = useState<OutputFormatType>('FORMAT_B');
   const [emptyValueSymbol, setEmptyValueSymbol] = useState<'-' | ''>('-');
 
-  // State Data Siswa per Mode (Key: Nomor Absen string '1'..'32')
-  const [modeAData, setModeAData] = useState<Record<string, ModeAStudentRecord>>({});
-  const [modeBData, setModeBData] = useState<Record<string, ModeBStudentRecord>>({});
-  const [standarData, setStandarData] = useState<Record<string, number | null>>({});
+  // State Data Siswa per Mode (Key: Nomor Absen string '1'..'32') - Dimuat awal dari localStorage
+  const initialStored = useMemo(
+    () => loadStoredDataset(selectedClass, selectedSubject, selectedAssessment),
+    []
+  );
+  const [modeAData, setModeAData] = useState<Record<string, ModeAStudentRecord>>(
+    () => initialStored?.modeAData || {}
+  );
+  const [modeBData, setModeBData] = useState<Record<string, ModeBStudentRecord>>(
+    () => initialStored?.modeBData || {}
+  );
+  const [standarData, setStandarData] = useState<Record<string, number | null>>(
+    () => initialStored?.standarData || {}
+  );
+  const [lastSavedAt, setLastSavedAt] = useState<string | null>(
+    () => initialStored?.updatedAt || null
+  );
 
   // Deteksi & Import Kolom dari Google Spreadsheets
   const [sheetDetection, setSheetDetection] = useState<ClassColumnDetectionResult | null>(null);
@@ -259,12 +377,14 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
   };
 
   // Terapkan data dari hasil deteksi Google Spreadsheet ke dalam state Mode A, Mode B, dan Mode Standar
+  // PENTING: Jangan pernah menimpa rincian (Benar PG, Menjodohkan, Skor Uraian, Remedial) yang sudah diisi & disimpan di localStorage!
   const applySheetDataToCalculator = (
     detection: ClassColumnDetectionResult,
     targetColKey: string,
     subject: SubjectOptionType,
     assessment: AssessmentOptionType,
-    showNotification: boolean
+    showNotification: boolean,
+    forceOverwriteManual: boolean = false
   ) => {
     const isGrade7 = selectedGrade === '7' || selectedClass.includes('7');
     const occupied = detection.occupiedColumns || [];
@@ -278,9 +398,15 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
       chosenCol = findBestMatchingColumn(occupied, subject, assessment, isGrade7);
     }
 
-    const nextStandar: Record<string, number | null> = {};
-    const nextModeA: Record<string, ModeAStudentRecord> = {};
-    const nextModeB: Record<string, ModeBStudentRecord> = {};
+    // Muat data permanen yang sudah tersimpan di browser untuk kelas + mapel + asesmen ini
+    const savedLocal = loadStoredDataset(selectedClass, subject, assessment);
+    const prevModeA = savedLocal?.modeAData || {};
+    const prevModeB = savedLocal?.modeBData || {};
+    const prevStandar = savedLocal?.standarData || {};
+
+    const nextStandar: Record<string, number | null> = { ...prevStandar };
+    const nextModeA: Record<string, ModeAStudentRecord> = { ...prevModeA };
+    const nextModeB: Record<string, ModeBStudentRecord> = { ...prevModeB };
 
     // Identifikasi kolom UH/Tugas, ASTS, dan ASAS sesuai mata pelajaran untuk Mode B (Nilai Akhir Rapor)
     const subjectOccupiedCols = occupied.filter(
@@ -298,62 +424,110 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
       null;
 
     let importedCount = 0;
+    let preservedManualCount = 0;
 
     classStudents.forEach((student, idx) => {
       const attNo = student.attendanceNo || String(idx + 1);
       const rawScore = chosenCol?.gradesMap?.[attNo] ?? null;
+      const existingA = prevModeA[attNo];
+      const hasExistingAData =
+        existingA &&
+        (existingA.benarPG !== null ||
+          existingA.benarMJ !== null ||
+          existingA.skorUraian !== null ||
+          existingA.remedialScore !== null);
 
       if (rawScore !== null && rawScore !== undefined && !isNaN(Number(rawScore))) {
         const roundedScore = Math.min(100, Math.max(0, Math.round(Number(rawScore))));
         nextStandar[attNo] = roundedScore;
-        nextModeA[attNo] = decomposeScoreToModeA(roundedScore);
         importedCount++;
+
+        // Cek apakah rincian Mode A sudah diisi oleh guru atau totalnya sudah cocok dengan nilai di Sheet
+        if (hasExistingAData && !forceOverwriteManual) {
+          const existingTotal = Math.min(
+            100,
+            Math.max(
+              0,
+              Math.round(
+                (existingA.benarPG ?? 0) * 2 +
+                  (existingA.benarMJ ?? 0) * 2.5 +
+                  (existingA.skorUraian ?? 0)
+              )
+            )
+          );
+          if (existingA.isManual || existingTotal === roundedScore) {
+            // PERTAHANKAN angka Benar PG, Menjodohkan, Skor Uraian, dan Remedial asli yang diketik guru!
+            nextModeA[attNo] = existingA;
+            preservedManualCount++;
+          } else {
+            nextModeA[attNo] = {
+              ...decomposeScoreToModeA(roundedScore),
+              remedialScore: existingA.remedialScore ?? null,
+            };
+          }
+        } else {
+          nextModeA[attNo] = {
+            ...decomposeScoreToModeA(roundedScore),
+            remedialScore: existingA?.remedialScore ?? null,
+          };
+        }
       }
 
-      // Hitung komponen Mode B (Rerata UH, ASTS, ASAS) dari kolom-kolom spreadsheet
-      const studentUhScores: number[] = [];
-      uhCols.forEach((col) => {
-        const val = col.gradesMap?.[attNo];
-        if (val !== null && val !== undefined && !isNaN(Number(val))) {
-          studentUhScores.push(Number(val));
+      // Hitung komponen Mode B (Rerata UH, ASTS, ASAS) dari kolom-kolom spreadsheet jika belum dikunci manual
+      const existingB = prevModeB[attNo];
+      if (existingB?.isManual && !forceOverwriteManual) {
+        nextModeB[attNo] = existingB;
+      } else {
+        const studentUhScores: number[] = [];
+        uhCols.forEach((col) => {
+          const val = col.gradesMap?.[attNo];
+          if (val !== null && val !== undefined && !isNaN(Number(val))) {
+            studentUhScores.push(Number(val));
+          }
+        });
+
+        const computedUh =
+          studentUhScores.length > 0
+            ? Math.round(
+                (studentUhScores.reduce((a, b) => a + b, 0) / studentUhScores.length) * 10
+              ) / 10
+            : rawScore !== null && rawScore !== undefined
+            ? Math.round(Number(rawScore))
+            : null;
+
+        const sheetAsts =
+          astsCol?.gradesMap?.[attNo] !== undefined && astsCol?.gradesMap?.[attNo] !== null
+            ? Number(astsCol.gradesMap[attNo])
+            : rawScore !== null && rawScore !== undefined
+            ? Math.round(Number(rawScore))
+            : null;
+
+        const sheetAsas =
+          asasCol?.gradesMap?.[attNo] !== undefined && asasCol?.gradesMap?.[attNo] !== null
+            ? Number(asasCol.gradesMap[attNo])
+            : sheetAsts !== null
+            ? sheetAsts
+            : computedUh;
+
+        if (computedUh !== null || sheetAsts !== null || sheetAsas !== null) {
+          nextModeB[attNo] = {
+            rerataUH: computedUh,
+            nilaiASTS: sheetAsts,
+            nilaiASAS: sheetAsas,
+          };
         }
-      });
-
-      const computedUh =
-        studentUhScores.length > 0
-          ? Math.round(
-              (studentUhScores.reduce((a, b) => a + b, 0) / studentUhScores.length) * 10
-            ) / 10
-          : rawScore !== null && rawScore !== undefined
-          ? Math.round(Number(rawScore))
-          : null;
-
-      const sheetAsts =
-        astsCol?.gradesMap?.[attNo] !== undefined && astsCol?.gradesMap?.[attNo] !== null
-          ? Number(astsCol.gradesMap[attNo])
-          : rawScore !== null && rawScore !== undefined
-          ? Math.round(Number(rawScore))
-          : null;
-
-      const sheetAsas =
-        asasCol?.gradesMap?.[attNo] !== undefined && asasCol?.gradesMap?.[attNo] !== null
-          ? Number(asasCol.gradesMap[attNo])
-          : sheetAsts !== null
-          ? sheetAsts
-          : computedUh;
-
-      if (computedUh !== null || sheetAsts !== null || sheetAsas !== null) {
-        nextModeB[attNo] = {
-          rerataUH: computedUh,
-          nilaiASTS: sheetAsts,
-          nilaiASAS: sheetAsas,
-        };
       }
     });
 
     setStandarData(nextStandar);
     setModeAData(nextModeA);
     setModeBData(nextModeB);
+    const savedTime = saveStoredDataset(selectedClass, subject, assessment, {
+      modeAData: nextModeA,
+      modeBData: nextModeB,
+      standarData: nextStandar,
+    });
+    setLastSavedAt(savedTime);
 
     if (chosenCol && importedCount > 0) {
       const colLabel = chosenCol.headerTitle
@@ -365,7 +539,11 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
       if (showNotification) {
         onShowAlert?.(
           'Import Data Google Spreadsheet Berhasil',
-          `Berhasil mengimport ${importedCount} data nilai siswa ${selectedClass} (Mapel: ${subject} — ${colLabel}) dari Google Spreadsheet.`
+          `Berhasil memuat ${importedCount} data nilai siswa ${selectedClass} (Mapel: ${subject} — ${colLabel}).${
+            preservedManualCount > 0
+              ? ` ${preservedManualCount} rincian butir soal yang Anda isi manual tetap dipertahankan.`
+              : ''
+          }`
         );
       }
     } else {
@@ -394,7 +572,8 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
         effectiveCol,
         selectedSubject,
         selectedAssessment,
-        showNotification
+        showNotification,
+        false
       );
     } catch (err: any) {
       if (showNotification) {
@@ -408,11 +587,25 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
     }
   };
 
-  // Otomatis deteksi & import data saat kelas atau mata pelajaran berubah
+  // Saat Kelas, Mata Pelajaran, atau Jenis Asesmen berubah:
+  // 1. Muat langsung data permanen dari localStorage (instan & tidak mengubah rincian PG/MJ/Uraian guru)
+  // 2. Deteksi kolom Google Spreadsheet di latar belakang untuk melengkapi siswa yang belum terisi
   useEffect(() => {
+    const stored = loadStoredDataset(selectedClass, selectedSubject, selectedAssessment);
+    if (stored) {
+      setModeAData(stored.modeAData);
+      setModeBData(stored.modeBData);
+      setStandarData(stored.standarData);
+      setLastSavedAt(stored.updatedAt || null);
+    } else {
+      setModeAData({});
+      setModeBData({});
+      setStandarData({});
+      setLastSavedAt(null);
+    }
     setSelectedImportColumn('AUTO');
     handleImportFromSpreadsheet('AUTO', false);
-  }, [selectedClass, selectedSubject, spreadsheetId, token]);
+  }, [selectedClass, selectedSubject, selectedAssessment, spreadsheetId, token]);
 
   // Fungsi Perhitungan Mode A (Skor Asesmen & Remedial)
   // Rumus: (Benar PG × 2) + (Benar Menjodohkan × 2.5) + Skor Uraian -> Bulatkan ke bilangan bulat terdekat
@@ -530,13 +723,29 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
 
   // Reset Data Kelas Aktif
   const handleClearData = () => {
-    if (calcMode === 'MODE_A') setModeAData({});
-    else if (calcMode === 'MODE_B') setModeBData({});
-    else setStandarData({});
+    let nextA = modeAData;
+    let nextB = modeBData;
+    let nextS = standarData;
+    if (calcMode === 'MODE_A') {
+      nextA = {};
+      setModeAData({});
+    } else if (calcMode === 'MODE_B') {
+      nextB = {};
+      setModeBData({});
+    } else {
+      nextS = {};
+      setStandarData({});
+    }
+    const savedTime = saveStoredDataset(selectedClass, selectedSubject, selectedAssessment, {
+      modeAData: nextA,
+      modeBData: nextB,
+      standarData: nextS,
+    });
+    setLastSavedAt(savedTime);
     setLastImportedInfo(null);
   };
 
-  // Handler Perubahan Inline pada Tabel Mode A
+  // Handler Perubahan Inline pada Tabel Mode A (Langsung tersimpan permanen & dikunci isManual: true)
   const handleModeAChange = (
     attNo: string,
     field: keyof ModeAStudentRecord,
@@ -551,36 +760,45 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
         remedialScore: null,
       };
 
+      let updatedRecord: ModeAStudentRecord;
       if (trimmed === '' || trimmed === '-') {
-        return {
-          ...prev,
-          [attNo]: {
-            ...existing,
-            [field]: null,
-          },
+        updatedRecord = {
+          ...existing,
+          [field]: null,
+          isManual: true,
+        };
+      } else {
+        const num = parseFloat(trimmed.replace(',', '.'));
+        if (isNaN(num)) return prev;
+
+        let clamped = num;
+        if (field === 'benarPG') clamped = Math.min(25, Math.max(0, num));
+        if (field === 'benarMJ') clamped = Math.min(10, Math.max(0, num));
+        if (field === 'skorUraian') clamped = Math.min(25, Math.max(0, num));
+        if (field === 'remedialScore') clamped = Math.min(100, Math.max(0, num));
+
+        updatedRecord = {
+          ...existing,
+          [field]: clamped,
+          isManual: true,
         };
       }
 
-      const num = parseFloat(trimmed.replace(',', '.'));
-      if (isNaN(num)) return prev;
-
-      let clamped = num;
-      if (field === 'benarPG') clamped = Math.min(25, Math.max(0, num));
-      if (field === 'benarMJ') clamped = Math.min(10, Math.max(0, num));
-      if (field === 'skorUraian') clamped = Math.min(25, Math.max(0, num));
-      if (field === 'remedialScore') clamped = Math.min(100, Math.max(0, num));
-
-      return {
+      const next = {
         ...prev,
-        [attNo]: {
-          ...existing,
-          [field]: clamped,
-        },
+        [attNo]: updatedRecord,
       };
+      const savedTime = saveStoredDataset(selectedClass, selectedSubject, selectedAssessment, {
+        modeAData: next,
+        modeBData,
+        standarData,
+      });
+      setLastSavedAt(savedTime);
+      return next;
     });
   };
 
-  // Handler Perubahan Inline pada Tabel Mode B
+  // Handler Perubahan Inline pada Tabel Mode B (Langsung tersimpan permanen & dikunci isManual: true)
   const handleModeBChange = (
     attNo: string,
     field: keyof ModeBStudentRecord,
@@ -594,43 +812,59 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
         nilaiASAS: null,
       };
 
+      let updatedRecord: ModeBStudentRecord;
       if (trimmed === '' || trimmed === '-') {
-        return {
-          ...prev,
-          [attNo]: {
-            ...existing,
-            [field]: null,
-          },
+        updatedRecord = {
+          ...existing,
+          [field]: null,
+          isManual: true,
+        };
+      } else {
+        const num = parseFloat(trimmed.replace(',', '.'));
+        if (isNaN(num)) return prev;
+        const clamped = Math.min(100, Math.max(0, num));
+        updatedRecord = {
+          ...existing,
+          [field]: clamped,
+          isManual: true,
         };
       }
 
-      const num = parseFloat(trimmed.replace(',', '.'));
-      if (isNaN(num)) return prev;
-      const clamped = Math.min(100, Math.max(0, num));
-
-      return {
+      const next = {
         ...prev,
-        [attNo]: {
-          ...existing,
-          [field]: clamped,
-        },
+        [attNo]: updatedRecord,
       };
+      const savedTime = saveStoredDataset(selectedClass, selectedSubject, selectedAssessment, {
+        modeAData,
+        modeBData: next,
+        standarData,
+      });
+      setLastSavedAt(savedTime);
+      return next;
     });
   };
 
-  // Handler Perubahan Inline pada Mode Standar
+  // Handler Perubahan Inline pada Mode Standar (Langsung tersimpan permanen)
   const handleStandarChange = (attNo: string, valueStr: string) => {
     const trimmed = valueStr.trim();
     setStandarData((prev) => {
-      if (trimmed === '' || trimmed === '-') {
-        return { ...prev, [attNo]: null };
+      let nextScore: number | null = null;
+      if (trimmed !== '' && trimmed !== '-') {
+        const num = parseFloat(trimmed.replace(',', '.'));
+        if (isNaN(num)) return prev;
+        nextScore = Math.min(100, Math.max(0, Math.round(num)));
       }
-      const num = parseFloat(trimmed.replace(',', '.'));
-      if (isNaN(num)) return prev;
-      return {
+      const next = {
         ...prev,
-        [attNo]: Math.min(100, Math.max(0, Math.round(num))),
+        [attNo]: nextScore,
       };
+      const savedTime = saveStoredDataset(selectedClass, selectedSubject, selectedAssessment, {
+        modeAData,
+        modeBData,
+        standarData: next,
+      });
+      setLastSavedAt(savedTime);
+      return next;
     });
   };
 
@@ -911,7 +1145,9 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
 
       if (res.success) {
         onShowAlert?.('Sinkronisasi Spreadsheet Berhasil', res.message);
-        handleImportFromSpreadsheet(selectedImportColumn, false);
+        // Perbarui metadata daftar kolom sheet tanpa menimpa rincian PG/Menjodohkan/Uraian yang baru saja diketik
+        const updatedDetection = await detectClassTaskColumns(spreadsheetId, selectedClass, token);
+        setSheetDetection(updatedDetection);
       } else {
         onShowAlert?.('Gagal Sinkronisasi', res.message);
       }
@@ -1424,9 +1660,15 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
               <span className="font-mono-code text-[11px] font-bold bg-amber-100 text-amber-950 px-2.5 py-0.5 border border-[#1a1a1a]">
                 Mapel: {selectedSubject}
               </span>
+              <span className="font-mono-code text-[10px] font-bold bg-emerald-100 text-emerald-900 px-2.5 py-0.5 border border-emerald-600 flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3 text-emerald-700" />
+                <span>
+                  TERSIMPAN OTOMATIS PERMANEN{lastSavedAt ? ` (${lastSavedAt})` : ''}
+                </span>
+              </span>
             </div>
             <p className="font-mono-code text-xs text-slate-600 mt-0.5">
-              Data terhubung dengan Google Spreadsheet. Anda juga dapat mengedit langsung nilai per baris siswa di bawah ini.
+              Setiap angka yang Anda ketik pada kolom di bawah otomatis tersimpan permanen dan terkunci (tidak akan berubah/tertimpa).
             </p>
           </div>
 
@@ -1607,7 +1849,7 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
                             onChange={(e) =>
                               handleModeAChange(attNo, 'remedialScore', e.target.value)
                             }
-                            className="w-20 text-center py-1 px-1.5 bg-amber-50 border-2 border-amber-500 font-bold text-xs text-amber-950 focus:outline-hidden"
+                            className="w-24 text-center py-1 px-2 bg-amber-50 border-2 border-amber-500 font-bold text-xs text-amber-950 focus:outline-hidden"
                           />
                         ) : (
                           <span className="text-slate-400 font-bold">-</span>

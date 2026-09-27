@@ -1206,33 +1206,60 @@ export interface StudentTaskCheckItem {
   columnLetter?: string;
   isCompleted: boolean; // true = 'v', false = 'x'
   score?: number | string | null;
+  showNumericScore?: boolean; // true khusus untuk ASTS Gasal - Informatika (2026/2027) agar menampilkan angka nilai
   submittedAt?: string;
   linkOrDescription?: string;
   notes?: string;
 }
 
-// Standard Task Titles mapped to columns E, F, G
+// Standard Task Titles mapped to columns E, F, G (tanpa Tugas 4/5 fiktif)
 export const STANDARD_TASK_TITLES: { [colLetter: string]: string } = {
   E: 'Tugas 1 - KKA - Algoritma',
   F: 'Tugas 1 - Informatika - Analisis Data',
   G: 'Tugas 2 - KKA - Algoritma Web',
-  H: 'Tugas 4',
-  I: 'Tugas 5',
 };
 
 export const GRADE_7_STANDARD_TASK_TITLES: { [colLetter: string]: string } = {
-  E: 'Tugas 1 - Informatika',
-  F: 'Tugas 2 - Informatika',
-  G: 'Tugas 3 - Informatika',
-  H: 'ASTS - Informatika',
-  I: 'ASAS - Informatika',
+  E: 'Tugas 1 - Informatika - Algoritma',
 };
 
 export function getStandardTaskTitle(rawClass: string, colLetter: string): string {
   if (rawClass.trim().startsWith('7')) {
-    return GRADE_7_STANDARD_TASK_TITLES[colLetter] || `Tugas ${colLetter} - Informatika`;
+    return GRADE_7_STANDARD_TASK_TITLES[colLetter] || '';
   }
   return STANDARD_TASK_TITLES[colLetter] || '';
+}
+
+// Helper untuk menormalisasi judul kolom ASTS Gasal menjadi "ASTS Gasal - Informatika (2026/2027)"
+export function normalizeAssessmentHeaderTitle(rawTitle: string): {
+  title: string;
+  isAstsInformatika: boolean;
+} {
+  const cleaned = (rawTitle || '').trim().replace(/^ASPEK\s*/i, '').trim();
+  const upper = cleaned.toUpperCase();
+
+  // Deteksi apakah kolom ini adalah kolom ASTS Gasal (Informatika)
+  if (upper.includes('ASTS')) {
+    const isKoding = upper.includes('KODING') || upper.includes('KKA');
+    if (!isKoding) {
+      // Normalisasi "ASTS Gasal (2026/2027)" atau "ASTS Gasal - Informatika (2026/2027)" atau "ASTS - Informatika"
+      if (upper === 'ASTS GASAL (2026/2027)' || upper === 'ASTS GASAL' || upper === 'ASTS - INFORMATIKA') {
+        return {
+          title: 'ASTS Gasal - Informatika (2026/2027)',
+          isAstsInformatika: true,
+        };
+      }
+      return {
+        title: cleaned,
+        isAstsInformatika: true,
+      };
+    }
+  }
+
+  return {
+    title: cleaned,
+    isAstsInformatika: false,
+  };
 }
 
 // Fetch all task/grade completion status for an individual student directly from Spreadsheet
@@ -1252,8 +1279,8 @@ export async function fetchStudentAssignmentStatus(
     const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
     const nocache = Date.now();
 
-    // Fetch full GViz json
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(rawClass)}&_nc=${nocache}`;
+    // Fetch full GViz json with headers=5 so Row 5 task/assessment headers are always extracted accurately across all sheets (8A-8H & 7E-7H)
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&headers=5&sheet=${encodeURIComponent(rawClass)}&_nc=${nocache}`;
     const res = await fetch(sheetUrl, { cache: 'no-cache' });
     if (!res.ok) {
       throw new Error(`Gagal menghubungi Google Spreadsheet (Status: ${res.status})`);
@@ -1368,28 +1395,53 @@ export async function fetchStudentAssignmentStatus(
       }
     }
 
-    // 3. Detect task columns: Always include E (4), F (5), G (6) plus any column up to idx 10 with scores/header
-    const maxCols = Math.min(rawRows.reduce((m: number, r: any) => Math.max(m, r.c ? r.c.length : 0), 0), 10);
-    const activeColumns: { colIdx: number; colLetter: string; title: string }[] = [];
+    // 3. Detect task columns: Only include columns that actually have a valid header in the sheet
+    // (or default E..G for Grade 8 / E for Grade 7 if the sheet has no headers at all).
+    // Never fabricate "Tugas 4" for untitled columns!
+    const hasAnyExplicitHeader = Object.keys(taskHeaders).length > 0;
+    const isGrade7 = rawClass.startsWith('7');
+    const maxCols = Math.min(
+      Math.max(
+        cols.length,
+        rawRows.reduce((m: number, r: any) => Math.max(m, r.c ? r.c.length : 0), 0)
+      ),
+      15
+    );
+    const activeColumns: {
+      colIdx: number;
+      colLetter: string;
+      title: string;
+      isAstsInformatika: boolean;
+    }[] = [];
 
-    for (let cIdx = 4; cIdx <= Math.max(6, maxCols - 1); cIdx++) {
+    for (let cIdx = 4; cIdx < maxCols; cIdx++) {
       const colLetter = columnToLetter(cIdx);
-      const title = taskHeaders[cIdx] || getStandardTaskTitle(rawClass, colLetter) || `Tugas Kolom ${colLetter}`;
+      const rawHeader = taskHeaders[cIdx] || '';
 
-      const hasScores = studentRows.some((s) => {
-        const cell = s.cells[cIdx + s.colOffset];
-        if (!cell || cell.v === null || cell.v === undefined) return false;
-        const str = String(cell.v).trim();
-        return str !== '' && str !== '-' && str !== '0';
-      });
-
-      // Always include E, F, G, or any column with header or score
-      if (cIdx <= 6 || taskHeaders[cIdx] || hasScores) {
+      if (hasAnyExplicitHeader) {
+        // Hanya tampilkan kolom yang benar-benar sudah diberi judul tugas/asesmen di baris header Google Spreadsheet
+        if (!rawHeader) continue;
+        const norm = normalizeAssessmentHeaderTitle(rawHeader);
         activeColumns.push({
           colIdx: cIdx,
           colLetter,
-          title,
+          title: norm.title,
+          isAstsInformatika: norm.isAstsInformatika,
         });
+      } else {
+        // Fallback jika seluruh header kosong
+        const defaultMaxIdx = isGrade7 ? 4 : 6;
+        if (cIdx <= defaultMaxIdx) {
+          const fallbackTitle = getStandardTaskTitle(rawClass, colLetter);
+          if (fallbackTitle) {
+            activeColumns.push({
+              colIdx: cIdx,
+              colLetter,
+              title: fallbackTitle,
+              isAstsInformatika: false,
+            });
+          }
+        }
       }
     }
 
@@ -1423,17 +1475,18 @@ export async function fetchStudentAssignmentStatus(
         const cell = matchedStudent.cells[taskCol.colIdx + matchedStudent.colOffset];
         if (cell && cell.v !== null && cell.v !== undefined) {
           const strVal = String(cell.v).trim();
-          if (strVal !== '' && strVal !== '-' && strVal !== '0') {
+          if (strVal !== '' && strVal !== '-') {
             const numVal = Number(strVal.replace(',', '.'));
-            if (!isNaN(numVal) && numVal > 0) {
-              cellScore = numVal;
+            if (!isNaN(numVal) && (numVal > 0 || (taskCol.isAstsInformatika && numVal >= 0))) {
+              cellScore = Math.round(numVal * 10) / 10;
               isDone = true;
             } else if (
-              strVal.toLowerCase() === 'v' ||
-              strVal.toLowerCase() === 'ya' ||
-              strVal.toLowerCase() === 'selesai' ||
-              strVal.toLowerCase() === 'sudah' ||
-              strVal.length > 0
+              strVal !== '0' &&
+              (strVal.toLowerCase() === 'v' ||
+                strVal.toLowerCase() === 'ya' ||
+                strVal.toLowerCase() === 'selesai' ||
+                strVal.toLowerCase() === 'sudah' ||
+                strVal.length > 0)
             ) {
               cellScore = strVal;
               isDone = true;
@@ -1444,15 +1497,18 @@ export async function fetchStudentAssignmentStatus(
 
       taskItems.push({
         id: `task-col-${taskCol.colLetter.toLowerCase()}`,
-        category: 'Koding / KKA',
+        category: taskCol.isAstsInformatika ? 'Informatika' : 'Koding / KKA',
         taskName: taskCol.title,
         columnLetter: taskCol.colLetter,
         isCompleted: isDone,
         score: cellScore,
+        showNumericScore: taskCol.isAstsInformatika,
         notes: isDone
-          ? cellScore && typeof cellScore === 'number'
-            ? `Sudah Mengerjakan (Nilai: ${cellScore})`
+          ? cellScore !== null && cellScore !== undefined && typeof cellScore === 'number'
+            ? `Nilai: ${cellScore}`
             : 'Sudah Mengerjakan'
+          : taskCol.isAstsInformatika
+          ? 'Belum Ada Nilai'
           : 'Belum Mengerjakan',
       });
     }
@@ -1578,12 +1634,19 @@ export async function detectClassTaskColumns(
             }
 
             const hasScores = scoreCount > 0;
-            const isOccupied = !!taskHeaders[c] || hasScores;
+            const hasExplicitTitle = !!taskHeaders[c];
+            // Kolom di atas G (c >= 7) hanya dianggap terisi jika memiliki judul header atau minimal 3 nilai siswa (mencegah 1 sel nyasar tanpa header dianggap Tugas 4)
+            const isOccupied = hasExplicitTitle || (c <= 6 ? hasScores : scoreCount >= 3);
+            const resolvedHeader = taskHeaders[c]
+              ? normalizeAssessmentHeaderTitle(taskHeaders[c]).title
+              : hasScores
+              ? getStandardTaskTitle(rawClass, colLetter) || ''
+              : '';
 
             columns.push({
               colIdx: c,
               colLetter,
-              headerTitle: taskHeaders[c] || (hasScores ? getStandardTaskTitle(rawClass, colLetter) || '' : ''),
+              headerTitle: resolvedHeader,
               hasScores,
               isOccupied,
               scoreCount,
@@ -1619,9 +1682,9 @@ export async function detectClassTaskColumns(
     }
   }
 
-  // 2. Fallback to GViz public endpoint
+  // 2. Fallback to GViz public endpoint (with headers=5 so Row 5 task titles are always preserved)
   try {
-    const sheetUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(rawClass)}&_nc=${nocache}`;
+    const sheetUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&headers=5&sheet=${encodeURIComponent(rawClass)}&_nc=${nocache}`;
     const res = await fetch(sheetUrl, { cache: 'no-cache' });
     if (!res.ok) {
       throw new Error(`Gagal membaca sheet kelas ${rawClass}`);
@@ -1740,12 +1803,18 @@ export async function detectClassTaskColumns(
       }
 
       const hasScores = scoreCount > 0;
-      const isOccupied = !!taskHeaders[c] || hasScores;
+      const hasExplicitTitle = !!taskHeaders[c];
+      const isOccupied = hasExplicitTitle || (c <= 6 ? hasScores : scoreCount >= 3);
+      const resolvedHeader = taskHeaders[c]
+        ? normalizeAssessmentHeaderTitle(taskHeaders[c]).title
+        : hasScores
+        ? getStandardTaskTitle(rawClass, colLetter) || ''
+        : '';
 
       columns.push({
         colIdx: c,
         colLetter,
-        headerTitle: taskHeaders[c] || (hasScores ? getStandardTaskTitle(rawClass, colLetter) || '' : ''),
+        headerTitle: resolvedHeader,
         hasScores,
         isOccupied,
         scoreCount,

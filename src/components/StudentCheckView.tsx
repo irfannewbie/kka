@@ -232,7 +232,11 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
   const totalTasks = taskList.length;
   const completedTasks = taskList.filter((t) => t.isCompleted).length;
   const incompleteTasks = totalTasks - completedTasks;
-  const completionPercentage = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const astsInformatikaTasks = taskList.filter(
+    (t) =>
+      t.showNumericScore ||
+      t.taskName.toUpperCase().includes('ASTS')
+  );
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
@@ -472,6 +476,44 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
             </div>
           </div>
 
+          {/* Hasil Nilai ASTS Gasal - Informatika (2026/2027) Highlight Card (apabila kolom tersedia di sheet kelas) */}
+          {astsInformatikaTasks.length > 0 && (
+            <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#2e59e6] p-4 sm:p-5 font-mono-code">
+              <div className="flex flex-wrap items-center justify-between gap-4">
+                <div>
+                  <span className="inline-block px-2 py-0.5 bg-[#2e59e6] text-white text-[10px] font-bold uppercase tracking-wider border border-[#1a1a1a] mb-1">
+                    HASIL EVALUASI TENGAH SEMESTER
+                  </span>
+                  <h3 className="text-sm sm:text-base font-bold text-[#1a1a1a]">
+                    {astsInformatikaTasks[0].taskName}
+                  </h3>
+                  <p className="text-[11px] text-slate-600 mt-0.5">
+                    Hasil nilai asesmen untuk <strong>{activeStudent.name}</strong> ({activeStudent.className} • Absen {activeStudent.attendanceNo})
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  {astsInformatikaTasks[0].isCompleted &&
+                  astsInformatikaTasks[0].score !== null &&
+                  astsInformatikaTasks[0].score !== undefined ? (
+                    <div className="px-5 py-2.5 bg-[#FAF8F5] border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] text-center">
+                      <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                        NILAI ANDA
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-black text-[#2e59e6]">
+                        {astsInformatikaTasks[0].score}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="px-4 py-2 bg-rose-50 border-2 border-rose-600 text-rose-900 font-bold text-xs">
+                      BELUM ADA NILAI
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Tasks Status Table */}
           <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] overflow-hidden">
             {/* Table Header Controls */}
@@ -479,11 +521,12 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
               <div>
                 <h3 className="font-mono-code text-sm font-bold text-[#1a1a1a] uppercase flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-[#2e59e6]" />
-                  <span>STATUS PENGERJAAN TUGAS SISWA</span>
+                  <span>STATUS PENGERJAAN TUGAS & HASIL NILAI SISWA</span>
                 </h3>
                 <p className="font-mono-code text-[11px] text-slate-600 mt-0.5">
                   Tanda <span className="font-bold text-emerald-700">v</span> = Sudah Mengerjakan • Tanda{' '}
-                  <span className="font-bold text-rose-700">x</span> = Belum Mengerjakan
+                  <span className="font-bold text-rose-700">x</span> = Belum Mengerjakan • Khusus{' '}
+                  <span className="font-bold text-[#2e59e6]">ASTS Gasal - Informatika (2026/2027)</span> menampilkan hasil nilai
                 </p>
               </div>
 
@@ -512,8 +555,8 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                 <thead>
                   <tr className="bg-slate-100 border-b-2 border-[#1a1a1a] text-slate-700 text-[11px] uppercase">
                     <th className="py-3 px-4 border-r border-[#1a1a1a] w-16 text-center">NO</th>
-                    <th className="py-3 px-4 border-r border-[#1a1a1a]">NAMA TUGAS</th>
-                    <th className="py-3 px-4 w-56 text-center">STATUS PENGERJAAN</th>
+                    <th className="py-3 px-4 border-r border-[#1a1a1a]">NAMA TUGAS / ASESMEN</th>
+                    <th className="py-3 px-4 w-64 text-center">STATUS PENGERJAAN / NILAI</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
@@ -526,41 +569,74 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                       </td>
                     </tr>
                   ) : (
-                    taskList.map((task, idx) => (
-                      <tr
-                        key={task.id || idx}
-                        className={`hover:bg-slate-50 transition-colors ${
-                          task.isCompleted ? 'bg-emerald-50/20' : 'bg-rose-50/20'
-                        }`}
-                      >
-                        {/* No */}
-                        <td className="py-3.5 px-4 border-r border-[#1a1a1a] text-center font-bold text-slate-700">
-                          {idx + 1}
-                        </td>
+                    taskList.map((task, idx) => {
+                      const isAstsRow =
+                        Boolean(task.showNumericScore) ||
+                        task.taskName.toUpperCase().includes('ASTS');
 
-                        {/* Task Title */}
-                        <td className="py-3.5 px-4 border-r border-[#1a1a1a]">
-                          <div className="font-bold text-[#1a1a1a] text-xs">
-                            {task.taskName}
-                          </div>
-                        </td>
+                      return (
+                        <tr
+                          key={task.id || idx}
+                          className={`hover:bg-slate-50 transition-colors ${
+                            isAstsRow
+                              ? 'bg-blue-50/40'
+                              : task.isCompleted
+                              ? 'bg-emerald-50/20'
+                              : 'bg-rose-50/20'
+                          }`}
+                        >
+                          {/* No */}
+                          <td className="py-3.5 px-4 border-r border-[#1a1a1a] text-center font-bold text-slate-700">
+                            {idx + 1}
+                          </td>
 
-                        {/* Status (v or x) */}
-                        <td className="py-3.5 px-4 text-center">
-                          {task.isCompleted ? (
-                            <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-emerald-100 text-emerald-900 border-2 border-emerald-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#047857]">
-                              <CheckCircle2 className="h-4 w-4 text-emerald-700 stroke-[2.5]" />
-                              <span>v (SUDAH)</span>
+                          {/* Task Title */}
+                          <td className="py-3.5 px-4 border-r border-[#1a1a1a]">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-bold text-[#1a1a1a] text-xs">
+                                {task.taskName}
+                              </span>
+                              {isAstsRow && (
+                                <span className="px-2 py-0.5 bg-[#2e59e6] text-white text-[10px] font-bold border border-[#1a1a1a]">
+                                  HASIL NILAI ASESMEN
+                                </span>
+                              )}
                             </div>
-                          ) : (
-                            <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-rose-100 text-rose-900 border-2 border-rose-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#be123c]">
-                              <XCircle className="h-4 w-4 text-rose-700 stroke-[2.5]" />
-                              <span>x (BELUM)</span>
-                            </div>
-                          )}
-                        </td>
-                      </tr>
-                    ))
+                          </td>
+
+                          {/* Status (v or x) or Numeric Score for ASTS Gasal - Informatika (2026/2027) */}
+                          <td className="py-3.5 px-4 text-center">
+                            {isAstsRow ? (
+                              task.isCompleted &&
+                              task.score !== null &&
+                              task.score !== undefined ? (
+                                <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 bg-[#2e59e6] text-white border-2 border-[#1a1a1a] font-bold text-xs shadow-[2px_2px_0px_#1a1a1a]">
+                                  <CheckCircle2 className="h-4 w-4 text-amber-300 stroke-[2.5]" />
+                                  <span>
+                                    NILAI: <strong className="text-sm font-black text-white">{task.score}</strong>
+                                  </span>
+                                </div>
+                              ) : (
+                                <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-rose-100 text-rose-900 border-2 border-rose-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#be123c]">
+                                  <XCircle className="h-4 w-4 text-rose-700 stroke-[2.5]" />
+                                  <span>x (BELUM ADA NILAI)</span>
+                                </div>
+                              )
+                            ) : task.isCompleted ? (
+                              <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-emerald-100 text-emerald-900 border-2 border-emerald-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#047857]">
+                                <CheckCircle2 className="h-4 w-4 text-emerald-700 stroke-[2.5]" />
+                                <span>v (SUDAH)</span>
+                              </div>
+                            ) : (
+                              <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-rose-100 text-rose-900 border-2 border-rose-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#be123c]">
+                                <XCircle className="h-4 w-4 text-rose-700 stroke-[2.5]" />
+                                <span>x (BELUM)</span>
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
                   )}
                 </tbody>
               </table>
