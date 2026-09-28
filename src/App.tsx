@@ -844,24 +844,6 @@ export default function App() {
             )}
           </div>
         </main>
-
-        {/* Bottom Corner Anchors matching the design specification */}
-        <footer className="h-9 px-4 sm:px-6 bg-[#F2EFEB] border-t-[1.5px] border-[#1a1a1a] flex items-center justify-between text-[11px] font-mono-code font-bold text-[#1a1a1a] select-none shrink-0">
-          <div className="flex items-center space-x-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse" />
-            <a
-              href={spreadsheetUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-[#2e59e6] transition-colors"
-            >
-              DATA SOURCE: G-SHEET
-            </a>
-          </div>
-          <div className="text-slate-600">
-            © 2026
-          </div>
-        </footer>
       </div>
 
       {/* Task Submission Modal */}
