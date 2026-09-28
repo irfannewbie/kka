@@ -2,6 +2,7 @@ import { Student, TaskSubmission, SubstituteTaskSubmission, StudentSubstituteTar
 import { ALL_255_STUDENTS } from '../data/students255';
 import { ALL_STUDENTS_DATABASE } from '../data/studentsAll';
 import { clearAuthToken } from './firebaseAuth';
+import { fetchStudentMasterCalculatorRecord } from './calculatorMasterStore';
 
 export const DEFAULT_SPREADSHEET_ID = '1JgBhQhZujQp_pTk1jO4oZIY8Er1Y4NcF0CTKFrRVgI4';
 export const DEFAULT_SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${DEFAULT_SPREADSHEET_ID}/edit?usp=sharing`;
@@ -825,6 +826,61 @@ export function columnToLetter(column: number): string {
   return letter;
 }
 
+// Interface for ASTS item breakdown (PG, Menjodohkan, Uraian)
+export interface AstsItemBreakdown {
+  benarPG: number; // 0..25 soal
+  skorPG: number; // benarPG * 2 (Maks 50)
+  benarMJ: number; // 0..10 soal
+  skorMJ: number; // benarMJ * 2.5 (Maks 25)
+  skorUraian: number; // 0..25 (Maks 25)
+  rawTotal: number; // skorPG + skorMJ + skorUraian
+  totalNilai: number; // Math.round(rawTotal)
+  remedialScore?: number | null;
+}
+
+export function computeAstsBreakdown(
+  benarPG: number,
+  benarMJ: number,
+  skorUraian: number,
+  remedialScore: number | null = null
+): AstsItemBreakdown {
+  const pg = Math.min(25, Math.max(0, Math.round(benarPG)));
+  const mj = Math.min(10, Math.max(0, Math.round(benarMJ)));
+  const ur = Math.min(25, Math.max(0, Math.round(skorUraian * 10) / 10));
+  const skorPG = pg * 2;
+  const skorMJ = Math.round(mj * 2.5 * 10) / 10;
+  const rawTotal = Math.round((skorPG + skorMJ + ur) * 10) / 10;
+  const totalNilai = Math.min(100, Math.max(0, Math.round(rawTotal)));
+  return {
+    benarPG: pg,
+    skorPG,
+    benarMJ: mj,
+    skorMJ,
+    skorUraian: ur,
+    rawTotal,
+    totalNilai,
+    remedialScore,
+  };
+}
+
+export function decomposeScoreToAstsBreakdown(score: number): AstsItemBreakdown {
+  const clamped = Math.min(100, Math.max(0, Math.round(score)));
+  let pg = Math.min(25, Math.floor(clamped / 4));
+  let mj = Math.min(10, Math.floor((clamped - pg * 2) / 5) * 2);
+  let ur = clamped - pg * 2 - mj * 2.5;
+
+  while (ur > 25 && pg < 25) {
+    pg += 1;
+    ur -= 2;
+  }
+  while (ur > 25 && mj < 10) {
+    mj += 2;
+    ur -= 5;
+  }
+  ur = Math.max(0, Math.min(25, Math.round(ur * 10) / 10));
+  return computeAstsBreakdown(pg, mj, ur, null);
+}
+
 // Interface for grade item mapping
 export interface StudentGradeItem {
   attendanceNo: string;
@@ -832,6 +888,10 @@ export interface StudentGradeItem {
   name: string;
   gender?: string;
   score: number | null; // null if not graded / pending
+  benarPG?: number | null;
+  benarMJ?: number | null;
+  skorUraian?: number | null;
+  remedialScore?: number | null;
 }
 
 // Direct Sync of Grades to Specific Class Sheet Tab (e.g. '8A', '7A') without creating new duplicate tabs
@@ -1116,6 +1176,72 @@ export async function syncGradesToClassSheet(
       };
     }
 
+    // Jika terdapat rincian butir soal (Benar PG, Menjodohkan, Skor Uraian) untuk ASTS, simpan juga ke Kolom Z (Informatika) atau Kolom Y (KKA) agar halaman /cek siswa dapat menampilkannya di semua perangkat
+    const hasAnyBreakdown = sortedGrades.some(
+      (sg) =>
+        sg.benarPG !== undefined &&
+        sg.benarPG !== null &&
+        sg.benarMJ !== undefined &&
+        sg.benarMJ !== null &&
+        sg.skorUraian !== undefined &&
+        sg.skorUraian !== null
+    );
+    if (hasAnyBreakdown && finalHeaderTitle.toUpperCase().includes('ASTS')) {
+      try {
+        const upperTitle = finalHeaderTitle.toUpperCase();
+        const isKkaAssessment =
+          upperTitle.includes('KKA') ||
+          upperTitle.includes('KODING') ||
+          upperTitle.includes('KECERDASAN ARTIFISIAL');
+        const breakdownColLetter = isKkaAssessment ? 'Y' : 'Z';
+        const breakdownColIdx = isKkaAssessment ? 24 : 25;
+        const breakdownHeaderLabel = isKkaAssessment
+          ? 'RINCIAN_BUTIR_ASTS_KKA'
+          : 'RINCIAN_BUTIR_ASTS';
+
+        const breakdownValues: string[][] = [[breakdownHeaderLabel]];
+        for (let i = 0; i < sortedGrades.length; i++) {
+          const sg = sortedGrades[i];
+          const studentRowIndex = studentStartRowNumber - 1 + i;
+          const existingRow = existingRows[studentRowIndex] || [];
+          const existingCell = String(existingRow[breakdownColIdx] || '').trim();
+
+          if (
+            sg.benarPG !== undefined &&
+            sg.benarPG !== null &&
+            sg.benarMJ !== undefined &&
+            sg.benarMJ !== null &&
+            sg.skorUraian !== undefined &&
+            sg.skorUraian !== null
+          ) {
+            const remStr =
+              sg.remedialScore !== undefined && sg.remedialScore !== null
+                ? String(sg.remedialScore)
+                : '-';
+            breakdownValues.push([`${sg.benarPG}|${sg.benarMJ}|${sg.skorUraian}|${remStr}`]);
+          } else if (existingCell && existingCell.includes('|')) {
+            breakdownValues.push([existingCell]);
+          } else {
+            breakdownValues.push(['']);
+          }
+        }
+        const bRange = `${encodeURIComponent(sheetTitle)}!${breakdownColLetter}${headerRowNumber}:${breakdownColLetter}${endRowNumber}`;
+        await fetch(
+          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${bRange}?valueInputOption=USER_ENTERED`,
+          {
+            method: 'PUT',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ values: breakdownValues }),
+          }
+        );
+      } catch (e) {
+        // ignore optional breakdown column write error
+      }
+    }
+
     const startStudentCell = `${targetColLetter}${studentStartRowNumber}`;
 
     return {
@@ -1206,7 +1332,9 @@ export interface StudentTaskCheckItem {
   columnLetter?: string;
   isCompleted: boolean; // true = 'v', false = 'x'
   score?: number | string | null;
-  showNumericScore?: boolean; // true khusus untuk ASTS Gasal - Informatika (2026/2027) agar menampilkan angka nilai
+  showNumericScore?: boolean; // true untuk ASTS Gasal (Informatika & KKA) agar menampilkan card hasil evaluasi
+  astsSubject?: 'Informatika' | 'KKA';
+  astsBreakdown?: AstsItemBreakdown;
   submittedAt?: string;
   linkOrDescription?: string;
   notes?: string;
@@ -1230,28 +1358,45 @@ export function getStandardTaskTitle(rawClass: string, colLetter: string): strin
   return STANDARD_TASK_TITLES[colLetter] || '';
 }
 
-// Helper untuk menormalisasi judul kolom ASTS Gasal menjadi "ASTS Gasal - Informatika (2026/2027)"
+// Helper untuk menormalisasi judul kolom ASTS Gasal menjadi "ASTS Gasal - Informatika (2026/2027)" atau "ASTS Gasal - Koding dan Kecerdasan Artifisial (KKA) (2026/2027)"
 export function normalizeAssessmentHeaderTitle(rawTitle: string): {
   title: string;
   isAstsInformatika: boolean;
+  isAstsKka: boolean;
 } {
   const cleaned = (rawTitle || '').trim().replace(/^ASPEK\s*/i, '').trim();
   const upper = cleaned.toUpperCase();
 
-  // Deteksi apakah kolom ini adalah kolom ASTS Gasal (Informatika)
+  // Deteksi apakah kolom ini adalah kolom ASTS Gasal (Informatika atau KKA)
   if (upper.includes('ASTS')) {
-    const isKoding = upper.includes('KODING') || upper.includes('KKA');
-    if (!isKoding) {
+    const isKoding =
+      upper.includes('KODING') ||
+      upper.includes('KKA') ||
+      upper.includes('KECERDASAN ARTIFISIAL');
+    if (isKoding) {
+      return {
+        title: 'ASTS Gasal - Koding dan Kecerdasan Artifisial (KKA) (2026/2027)',
+        isAstsInformatika: false,
+        isAstsKka: true,
+      };
+    } else {
       // Normalisasi "ASTS Gasal (2026/2027)" atau "ASTS Gasal - Informatika (2026/2027)" atau "ASTS - Informatika"
-      if (upper === 'ASTS GASAL (2026/2027)' || upper === 'ASTS GASAL' || upper === 'ASTS - INFORMATIKA') {
+      if (
+        upper === 'ASTS GASAL (2026/2027)' ||
+        upper === 'ASTS GASAL' ||
+        upper === 'ASTS - INFORMATIKA' ||
+        upper.includes('INFORMATIKA')
+      ) {
         return {
           title: 'ASTS Gasal - Informatika (2026/2027)',
           isAstsInformatika: true,
+          isAstsKka: false,
         };
       }
       return {
         title: cleaned,
         isAstsInformatika: true,
+        isAstsKka: false,
       };
     }
   }
@@ -1259,6 +1404,7 @@ export function normalizeAssessmentHeaderTitle(rawTitle: string): {
   return {
     title: cleaned,
     isAstsInformatika: false,
+    isAstsKka: false,
   };
 }
 
@@ -1412,6 +1558,7 @@ export async function fetchStudentAssignmentStatus(
       colLetter: string;
       title: string;
       isAstsInformatika: boolean;
+      isAstsKka: boolean;
     }[] = [];
 
     for (let cIdx = 4; cIdx < maxCols; cIdx++) {
@@ -1427,6 +1574,7 @@ export async function fetchStudentAssignmentStatus(
           colLetter,
           title: norm.title,
           isAstsInformatika: norm.isAstsInformatika,
+          isAstsKka: norm.isAstsKka,
         });
       } else {
         // Fallback jika seluruh header kosong
@@ -1439,6 +1587,7 @@ export async function fetchStudentAssignmentStatus(
               colLetter,
               title: fallbackTitle,
               isAstsInformatika: false,
+              isAstsKka: false,
             });
           }
         }
@@ -1464,12 +1613,52 @@ export async function fetchStudentAssignmentStatus(
       return false;
     });
 
-    // 5. Construct task completion items
+    // 5. Ambil data asli dari halaman Kalkulator Master terlebih dahulu (karena Google Spreadsheets hanya menyimpan nilai akhir)
+    const attKey = String(matchedStudent?.attNum || targetAttNum || attendanceNo);
+    const masterRec = await fetchStudentMasterCalculatorRecord(
+      rawClass,
+      attKey,
+      'Informatika',
+      'ASTS Gasal'
+    );
+    const masterBreakdown: AstsItemBreakdown | undefined =
+      masterRec &&
+      (masterRec.benarPG !== null ||
+        masterRec.benarMJ !== null ||
+        masterRec.skorUraian !== null)
+        ? computeAstsBreakdown(
+            masterRec.benarPG ?? 0,
+            masterRec.benarMJ ?? 0,
+            masterRec.skorUraian ?? 0,
+            masterRec.remedialScore ?? null
+          )
+        : undefined;
+
+    // Untuk Kelas 8, ambil juga data ASTS Gasal mata pelajaran Koding dan Kecerdasan Artifisial (KKA) dari Kalkulator Master
+    const masterRecKka = !isGrade7
+      ? (await fetchStudentMasterCalculatorRecord(rawClass, attKey, 'Koding', 'ASTS Gasal')) ||
+        (await fetchStudentMasterCalculatorRecord(rawClass, attKey, 'KKA', 'ASTS Gasal'))
+      : null;
+    const masterBreakdownKka: AstsItemBreakdown | undefined =
+      masterRecKka &&
+      (masterRecKka.benarPG !== null ||
+        masterRecKka.benarMJ !== null ||
+        masterRecKka.skorUraian !== null)
+        ? computeAstsBreakdown(
+            masterRecKka.benarPG ?? 0,
+            masterRecKka.benarMJ ?? 0,
+            masterRecKka.skorUraian ?? 0,
+            masterRecKka.remedialScore ?? null
+          )
+        : undefined;
+
+    // 6. Construct task completion items
     const taskItems: StudentTaskCheckItem[] = [];
 
     for (const taskCol of activeColumns) {
       let cellScore: any = null;
       let isDone = false;
+      const isAstsAssessment = taskCol.isAstsInformatika || taskCol.isAstsKka;
 
       if (matchedStudent) {
         const cell = matchedStudent.cells[taskCol.colIdx + matchedStudent.colOffset];
@@ -1477,7 +1666,7 @@ export async function fetchStudentAssignmentStatus(
           const strVal = String(cell.v).trim();
           if (strVal !== '' && strVal !== '-') {
             const numVal = Number(strVal.replace(',', '.'));
-            if (!isNaN(numVal) && (numVal > 0 || (taskCol.isAstsInformatika && numVal >= 0))) {
+            if (!isNaN(numVal) && (numVal > 0 || (isAstsAssessment && numVal >= 0))) {
               cellScore = Math.round(numVal * 10) / 10;
               isDone = true;
             } else if (
@@ -1495,6 +1684,70 @@ export async function fetchStudentAssignmentStatus(
         }
       }
 
+      // Jika kolom ini adalah ASTS (Informatika atau KKA), ambil nilai & rincian Benar PG, Menjodohkan, dan Skor Uraian dari halaman Kalkulator Master
+      let astsBreakdown: AstsItemBreakdown | undefined = undefined;
+      if (taskCol.isAstsInformatika) {
+        // 1. Prioritas Utama: Ambil langsung dari Halaman Kalkulator Master (Informatika)
+        if (masterBreakdown) {
+          astsBreakdown = masterBreakdown;
+          cellScore = masterBreakdown.totalNilai;
+          isDone = true;
+        }
+
+        // 2. Fallback: Cek apakah ada rincian hasil sinkronisasi Kalkulator Master di Kolom Z pada baris siswa di Google Spreadsheet
+        if (!astsBreakdown && matchedStudent) {
+          const zCell = matchedStudent.cells[25 + matchedStudent.colOffset];
+          const zStr = zCell && zCell.v !== null && zCell.v !== undefined ? String(zCell.v).trim() : '';
+          if (zStr && zStr.includes('|')) {
+            const parts = zStr.split('|');
+            const pPg = parseFloat(parts[0]);
+            const pMj = parseFloat(parts[1]);
+            const pUr = parseFloat(parts[2]);
+            const pRem = parts[3] && parts[3] !== '-' ? parseFloat(parts[3]) : null;
+            if (!isNaN(pPg) && !isNaN(pMj) && !isNaN(pUr)) {
+              astsBreakdown = computeAstsBreakdown(
+                pPg,
+                pMj,
+                pUr,
+                pRem !== null && !isNaN(pRem) ? pRem : null
+              );
+              cellScore = astsBreakdown.totalNilai;
+              isDone = true;
+            }
+          }
+        }
+      } else if (taskCol.isAstsKka) {
+        // 1. Prioritas Utama: Ambil langsung dari Halaman Kalkulator Master (Koding / KKA)
+        if (masterBreakdownKka) {
+          astsBreakdown = masterBreakdownKka;
+          cellScore = masterBreakdownKka.totalNilai;
+          isDone = true;
+        }
+
+        // 2. Fallback: Cek apakah ada rincian hasil sinkronisasi Kalkulator Master di Kolom Y pada baris siswa di Google Spreadsheet
+        if (!astsBreakdown && matchedStudent) {
+          const yCell = matchedStudent.cells[24 + matchedStudent.colOffset];
+          const yStr = yCell && yCell.v !== null && yCell.v !== undefined ? String(yCell.v).trim() : '';
+          if (yStr && yStr.includes('|')) {
+            const parts = yStr.split('|');
+            const pPg = parseFloat(parts[0]);
+            const pMj = parseFloat(parts[1]);
+            const pUr = parseFloat(parts[2]);
+            const pRem = parts[3] && parts[3] !== '-' ? parseFloat(parts[3]) : null;
+            if (!isNaN(pPg) && !isNaN(pMj) && !isNaN(pUr)) {
+              astsBreakdown = computeAstsBreakdown(
+                pPg,
+                pMj,
+                pUr,
+                pRem !== null && !isNaN(pRem) ? pRem : null
+              );
+              cellScore = astsBreakdown.totalNilai;
+              isDone = true;
+            }
+          }
+        }
+      }
+
       taskItems.push({
         id: `task-col-${taskCol.colLetter.toLowerCase()}`,
         category: taskCol.isAstsInformatika ? 'Informatika' : 'Koding / KKA',
@@ -1502,14 +1755,53 @@ export async function fetchStudentAssignmentStatus(
         columnLetter: taskCol.colLetter,
         isCompleted: isDone,
         score: cellScore,
-        showNumericScore: taskCol.isAstsInformatika,
+        showNumericScore: isAstsAssessment,
+        astsSubject: taskCol.isAstsInformatika
+          ? 'Informatika'
+          : taskCol.isAstsKka
+          ? 'KKA'
+          : undefined,
+        astsBreakdown,
         notes: isDone
           ? cellScore !== null && cellScore !== undefined && typeof cellScore === 'number'
             ? `Nilai: ${cellScore}`
             : 'Sudah Mengerjakan'
-          : taskCol.isAstsInformatika
+          : isAstsAssessment
           ? 'Belum Ada Nilai'
           : 'Belum Mengerjakan',
+      });
+    }
+
+    // Jika siswa sudah memiliki data nilai Informatika di halaman Kalkulator Master tetapi sheet kelas belum memiliki kolom ASTS Informatika, tetap tampilkan card ASTS Gasal - Informatika
+    if (masterBreakdown && !taskItems.some((t) => t.astsSubject === 'Informatika')) {
+      taskItems.push({
+        id: 'task-col-master-asts-inf',
+        category: 'Informatika',
+        taskName: 'ASTS Gasal - Informatika (2026/2027)',
+        columnLetter: 'MASTER',
+        isCompleted: true,
+        score: masterBreakdown.totalNilai,
+        showNumericScore: true,
+        astsSubject: 'Informatika',
+        astsBreakdown: masterBreakdown,
+        notes: `Nilai: ${masterBreakdown.totalNilai}`,
+      });
+    }
+
+    // Untuk Kelas 8, tambahkan juga card evaluasi ASTS Gasal - Koding dan Kecerdasan Artifisial (KKA) di bawah card Informatika
+    if (!isGrade7 && !taskItems.some((t) => t.astsSubject === 'KKA')) {
+      const hasKkaScore = !!masterBreakdownKka;
+      taskItems.push({
+        id: 'task-col-master-asts-kka',
+        category: 'Koding / KKA',
+        taskName: 'ASTS Gasal - Koding dan Kecerdasan Artifisial (KKA) (2026/2027)',
+        columnLetter: 'KKA',
+        isCompleted: hasKkaScore,
+        score: hasKkaScore ? masterBreakdownKka!.totalNilai : null,
+        showNumericScore: true,
+        astsSubject: 'KKA',
+        astsBreakdown: masterBreakdownKka,
+        notes: hasKkaScore ? `Nilai: ${masterBreakdownKka!.totalNilai}` : 'Belum Ada Nilai',
       });
     }
 

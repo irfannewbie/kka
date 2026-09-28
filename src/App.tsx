@@ -20,6 +20,7 @@ import {
   syncAllStudentsToSheet,
 } from './services/sheetsService';
 import { playNotificationChime } from './services/sound';
+import { syncAllCalculatorMasterWithServer } from './services/calculatorMasterStore';
 import { Student, TaskSubmission, AppNotification } from './types';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
@@ -220,6 +221,9 @@ export default function App() {
 
   // Fetch initial spreadsheet data upon application mount (even before login)
   useEffect(() => {
+    syncAllCalculatorMasterWithServer().catch(() => {
+      // ignore
+    });
     async function fetchInitialData() {
       try {
         const remoteData = await loadSpreadsheetData(null, spreadsheetId);

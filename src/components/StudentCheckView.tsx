@@ -228,15 +228,37 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
     }
   };
 
-  // Stats calculation
-  const totalTasks = taskList.length;
-  const completedTasks = taskList.filter((t) => t.isCompleted).length;
-  const incompleteTasks = totalTasks - completedTasks;
-  const astsInformatikaTasks = taskList.filter(
+  // Separate ASTS evaluation from regular assignments (Nilai Tugas)
+  // Pastikan card Informatika tampil paling atas dan card Koding dan Kecerdasan Artifisial (KKA) tampil tepat di bawahnya
+  const astsInformatikaTasks = taskList
+    .filter(
+      (t) =>
+        t.showNumericScore ||
+        t.taskName.toUpperCase().includes('ASTS')
+    )
+    .sort((a, b) => {
+      const aIsKka =
+        a.astsSubject === 'KKA' ||
+        a.taskName.toUpperCase().includes('KKA') ||
+        a.taskName.toUpperCase().includes('KODING');
+      const bIsKka =
+        b.astsSubject === 'KKA' ||
+        b.taskName.toUpperCase().includes('KKA') ||
+        b.taskName.toUpperCase().includes('KODING');
+      if (aIsKka === bIsKka) return 0;
+      return aIsKka ? 1 : -1;
+    });
+  const regularTasks = taskList.filter(
     (t) =>
-      t.showNumericScore ||
-      t.taskName.toUpperCase().includes('ASTS')
+      !t.showNumericScore &&
+      !t.taskName.toUpperCase().includes('ASTS')
   );
+
+  // Stats calculation (exclusively for regular tasks, excluding ASTS Gasal)
+  const totalTasks = regularTasks.length;
+  const completedTasks = regularTasks.filter((t) => t.isCompleted).length;
+  const incompleteTasks = totalTasks - completedTasks;
+  const kktpAsts = 75;
 
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
@@ -476,43 +498,223 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
             </div>
           </div>
 
-          {/* Hasil Nilai ASTS Gasal - Informatika (2026/2027) Highlight Card (apabila kolom tersedia di sheet kelas) */}
-          {astsInformatikaTasks.length > 0 && (
-            <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#2e59e6] p-4 sm:p-5 font-mono-code">
-              <div className="flex flex-wrap items-center justify-between gap-4">
-                <div>
-                  <span className="inline-block px-2 py-0.5 bg-[#2e59e6] text-white text-[10px] font-bold uppercase tracking-wider border border-[#1a1a1a] mb-1">
-                    HASIL EVALUASI TENGAH SEMESTER
-                  </span>
-                  <h3 className="text-sm sm:text-base font-bold text-[#1a1a1a]">
-                    {astsInformatikaTasks[0].taskName}
-                  </h3>
-                  <p className="text-[11px] text-slate-600 mt-0.5">
-                    Hasil nilai asesmen untuk <strong>{activeStudent.name}</strong> ({activeStudent.className} • Absen {activeStudent.attendanceNo})
-                  </p>
-                </div>
+          {/* Hasil Nilai ASTS Gasal - Informatika & Koding dan Kecerdasan Artifisial (KKA) (2026/2027) */}
+          {astsInformatikaTasks.length > 0 &&
+            astsInformatikaTasks.map((astsTask, astsIdx) => {
+              const rawScore = astsTask.score;
+              const numScore =
+                rawScore !== null && rawScore !== undefined && rawScore !== ''
+                  ? Number(rawScore)
+                  : NaN;
+              const hasValidScore = astsTask.isCompleted && !isNaN(numScore);
+              const isTuntas = hasValidScore && numScore >= kktpAsts;
+              const isKkaCard =
+                astsTask.astsSubject === 'KKA' ||
+                astsTask.taskName.toUpperCase().includes('KKA') ||
+                astsTask.taskName.toUpperCase().includes('KODING');
+              // Data rincian PG, Menjodohkan, dan Uraian diambil murni dari Halaman Kalkulator Master
+              const breakdown = astsTask.astsBreakdown || null;
 
-                <div className="flex items-center gap-3">
-                  {astsInformatikaTasks[0].isCompleted &&
-                  astsInformatikaTasks[0].score !== null &&
-                  astsInformatikaTasks[0].score !== undefined ? (
-                    <div className="px-5 py-2.5 bg-[#FAF8F5] border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] text-center">
-                      <span className="text-[10px] font-bold text-slate-500 uppercase block">
-                        NILAI ANDA
-                      </span>
-                      <span className="text-2xl sm:text-3xl font-black text-[#2e59e6]">
-                        {astsInformatikaTasks[0].score}
-                      </span>
+              return (
+                <div
+                  key={astsTask.id || astsIdx}
+                  className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#2e59e6] p-4 sm:p-5 font-mono-code space-y-4"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-4">
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <span className="inline-block px-2 py-0.5 bg-[#2e59e6] text-white text-[10px] font-bold uppercase tracking-wider border border-[#1a1a1a]">
+                          HASIL EVALUASI TENGAH SEMESTER
+                        </span>
+                        <span className="inline-block px-2 py-0.5 bg-slate-100 text-[#1a1a1a] text-[10px] font-bold uppercase border border-[#1a1a1a]">
+                          {isKkaCard ? 'MAPEL: KKA' : 'MAPEL: INFORMATIKA'}
+                        </span>
+                        <span className="inline-block px-2 py-0.5 bg-amber-100 text-amber-900 text-[10px] font-bold uppercase border border-amber-500">
+                          KKTP: {kktpAsts}
+                        </span>
+                      </div>
+                      <h3 className="text-sm sm:text-base font-bold text-[#1a1a1a]">
+                        {astsTask.taskName}
+                      </h3>
+                      <p className="text-[11px] text-slate-600 mt-0.5">
+                        Hasil nilai asesmen untuk <strong>{activeStudent.name}</strong> ({activeStudent.className} • Absen {activeStudent.attendanceNo})
+                      </p>
                     </div>
-                  ) : (
-                    <div className="px-4 py-2 bg-rose-50 border-2 border-rose-600 text-rose-900 font-bold text-xs">
-                      BELUM ADA NILAI
+
+                    <div className="flex flex-wrap items-stretch gap-3">
+                      {hasValidScore ? (
+                        <>
+                          {/* Box Nilai Anda */}
+                          <div className="px-5 py-2.5 bg-[#FAF8F5] border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] text-center flex flex-col justify-center">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase block">
+                              NILAI ANDA
+                            </span>
+                            <span className="text-2xl sm:text-3xl font-black text-[#2e59e6]">
+                              {numScore}
+                            </span>
+                          </div>
+
+                          {/* Box Keterangan (TUNTAS >=75 / REMEDIAL <75) */}
+                          <div className="px-4 py-2.5 bg-[#FAF8F5] border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] text-center flex flex-col justify-center">
+                            <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
+                              KETERANGAN
+                            </span>
+                            {isTuntas ? (
+                              <span className="px-2.5 py-1 bg-emerald-100 text-emerald-900 border-2 border-emerald-600 text-xs font-black uppercase tracking-wide">
+                                TUNTAS (≥{kktpAsts})
+                              </span>
+                            ) : (
+                              <span className="px-2.5 py-1 bg-rose-100 text-rose-900 border-2 border-rose-600 text-xs font-black uppercase tracking-wide">
+                                REMEDIAL (&lt;{kktpAsts})
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="px-4 py-2 bg-rose-50 border-2 border-rose-600 text-rose-900 font-bold text-xs flex items-center gap-1.5">
+                          <XCircle className="h-4 w-4 text-rose-600" />
+                          <span>BELUM ADA NILAI</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Rincian Jumlah Benar PG, Menjodohkan, Uraian & Perhitungan Penilaian (Dari Kalkulator Master) */}
+                  {hasValidScore && (
+                    <div className="bg-[#FAF8F5] border-2 border-[#1a1a1a] p-3.5 sm:p-4 space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-300 pb-2">
+                        <span className="text-[11px] font-bold text-[#1a1a1a] uppercase tracking-wider">
+                          RINCIAN PEROLEHAN NILAI & BOBOT PENILAIAN (DATA KALKULATOR MASTER):
+                        </span>
+                        <span className="text-[10px] font-bold text-[#2e59e6] bg-blue-50 px-2 py-0.5 border border-blue-300">
+                          Rumus: (Benar PG × 2) + (Menjodohkan × 2,5) + Skor Uraian
+                        </span>
+                      </div>
+
+                      {breakdown ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                          {/* 1. Pilihan Ganda (PG) */}
+                          <div className="bg-white border-2 border-[#1a1a1a] p-3 shadow-[2px_2px_0px_#1a1a1a] flex flex-col justify-between">
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-bold text-slate-600 uppercase">
+                                  1. PILIHAN GANDA (PG)
+                                </span>
+                                <span className="text-[9px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 border border-slate-300">
+                                  Maks 25 Soal
+                                </span>
+                              </div>
+                              <div className="text-lg font-black text-[#1a1a1a]">
+                                {breakdown.benarPG}{' '}
+                                <span className="text-xs font-bold text-slate-500">
+                                  / 25 Benar
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-dashed border-slate-200 text-[11px]">
+                              <div className="text-slate-500">
+                                Penilaian: <strong>Benar × 2</strong> (Maks 50)
+                              </div>
+                              <div className="font-bold text-[#2e59e6] mt-0.5">
+                                Skor: {breakdown.benarPG} × 2 = {breakdown.skorPG} Poin
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 2. Menjodohkan */}
+                          <div className="bg-white border-2 border-[#1a1a1a] p-3 shadow-[2px_2px_0px_#1a1a1a] flex flex-col justify-between">
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-bold text-slate-600 uppercase">
+                                  2. MENJODOHKAN
+                                </span>
+                                <span className="text-[9px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 border border-slate-300">
+                                  Maks 10 Soal
+                                </span>
+                              </div>
+                              <div className="text-lg font-black text-[#1a1a1a]">
+                                {breakdown.benarMJ}{' '}
+                                <span className="text-xs font-bold text-slate-500">
+                                  / 10 Benar
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-dashed border-slate-200 text-[11px]">
+                              <div className="text-slate-500">
+                                Penilaian: <strong>Benar × 2,5</strong> (Maks 25)
+                              </div>
+                              <div className="font-bold text-[#2e59e6] mt-0.5">
+                                Skor: {breakdown.benarMJ} × 2,5 = {breakdown.skorMJ} Poin
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 3. Uraian */}
+                          <div className="bg-white border-2 border-[#1a1a1a] p-3 shadow-[2px_2px_0px_#1a1a1a] flex flex-col justify-between">
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-bold text-slate-600 uppercase">
+                                  3. SKOR URAIAN
+                                </span>
+                                <span className="text-[9px] font-bold bg-slate-100 text-slate-700 px-1.5 py-0.5 border border-slate-300">
+                                  Maks 25 Poin
+                                </span>
+                              </div>
+                              <div className="text-lg font-black text-[#1a1a1a]">
+                                {breakdown.skorUraian}{' '}
+                                <span className="text-xs font-bold text-slate-500">
+                                  / 25 Poin
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-dashed border-slate-200 text-[11px]">
+                              <div className="text-slate-500">
+                                Penilaian: <strong>Skor Uraian Langsung</strong>
+                              </div>
+                              <div className="font-bold text-[#2e59e6] mt-0.5">
+                                Skor: {breakdown.skorUraian} Poin
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 4. Total Perhitungan Nilai */}
+                          <div className="bg-blue-50/70 border-2 border-[#2e59e6] p-3 shadow-[2px_2px_0px_#1a1a1a] flex flex-col justify-between">
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="text-[10px] font-bold text-[#2e59e6] uppercase">
+                                  4. TOTAL NILAI AKHIR
+                                </span>
+                                <span className="text-[9px] font-bold bg-[#2e59e6] text-white px-1.5 py-0.5">
+                                  Skala 0-100
+                                </span>
+                              </div>
+                              <div className="text-lg font-black text-[#2e59e6]">
+                                {numScore}{' '}
+                                <span className="text-[11px] font-bold text-slate-600">
+                                  (Bulat: {breakdown.rawTotal})
+                                </span>
+                              </div>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-dashed border-blue-300 text-[11px]">
+                              <div className="text-slate-600">
+                                Hitungan: <strong>{breakdown.skorPG} + {breakdown.skorMJ} + {breakdown.skorUraian}</strong>
+                              </div>
+                              <div className="font-bold text-[#1a1a1a] mt-0.5">
+                                Total Akhir = {numScore}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-3 bg-white border border-slate-300 text-xs text-slate-600">
+                          Rincian jumlah benar Pilihan Ganda (PG), Menjodohkan, dan Skor Uraian untuk siswa ini belum diinput pada halaman <strong>Kalkulator Master</strong> (saat ini baru tersedia nilai akhir <strong>{numScore}</strong> dari Google Spreadsheets).
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              </div>
-            </div>
-          )}
+              );
+            })}
 
           {/* Tasks Status Table */}
           <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] overflow-hidden">
@@ -521,12 +723,11 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
               <div>
                 <h3 className="font-mono-code text-sm font-bold text-[#1a1a1a] uppercase flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-[#2e59e6]" />
-                  <span>STATUS PENGERJAAN TUGAS & HASIL NILAI SISWA</span>
+                  <span>STATUS PENGERJAAN TUGAS SISWA</span>
                 </h3>
                 <p className="font-mono-code text-[11px] text-slate-600 mt-0.5">
                   Tanda <span className="font-bold text-emerald-700">v</span> = Sudah Mengerjakan • Tanda{' '}
-                  <span className="font-bold text-rose-700">x</span> = Belum Mengerjakan • Khusus{' '}
-                  <span className="font-bold text-[#2e59e6]">ASTS Gasal - Informatika (2026/2027)</span> menampilkan hasil nilai
+                  <span className="font-bold text-rose-700">x</span> = Belum Mengerjakan
                 </p>
               </div>
 
@@ -555,12 +756,12 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                 <thead>
                   <tr className="bg-slate-100 border-b-2 border-[#1a1a1a] text-slate-700 text-[11px] uppercase">
                     <th className="py-3 px-4 border-r border-[#1a1a1a] w-16 text-center">NO</th>
-                    <th className="py-3 px-4 border-r border-[#1a1a1a]">NAMA TUGAS / ASESMEN</th>
-                    <th className="py-3 px-4 w-64 text-center">STATUS PENGERJAAN / NILAI</th>
+                    <th className="py-3 px-4 border-r border-[#1a1a1a]">NAMA TUGAS</th>
+                    <th className="py-3 px-4 w-64 text-center">STATUS PENGERJAAN</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-200">
-                  {taskList.length === 0 ? (
+                  {regularTasks.length === 0 ? (
                     <tr>
                       <td colSpan={3} className="py-8 text-center text-slate-500 font-mono-code text-xs">
                         {isLoadingTasks
@@ -569,74 +770,41 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                       </td>
                     </tr>
                   ) : (
-                    taskList.map((task, idx) => {
-                      const isAstsRow =
-                        Boolean(task.showNumericScore) ||
-                        task.taskName.toUpperCase().includes('ASTS');
+                    regularTasks.map((task, idx) => (
+                      <tr
+                        key={task.id || idx}
+                        className={`hover:bg-slate-50 transition-colors ${
+                          task.isCompleted ? 'bg-emerald-50/20' : 'bg-rose-50/20'
+                        }`}
+                      >
+                        {/* No */}
+                        <td className="py-3.5 px-4 border-r border-[#1a1a1a] text-center font-bold text-slate-700">
+                          {idx + 1}
+                        </td>
 
-                      return (
-                        <tr
-                          key={task.id || idx}
-                          className={`hover:bg-slate-50 transition-colors ${
-                            isAstsRow
-                              ? 'bg-blue-50/40'
-                              : task.isCompleted
-                              ? 'bg-emerald-50/20'
-                              : 'bg-rose-50/20'
-                          }`}
-                        >
-                          {/* No */}
-                          <td className="py-3.5 px-4 border-r border-[#1a1a1a] text-center font-bold text-slate-700">
-                            {idx + 1}
-                          </td>
+                        {/* Task Title */}
+                        <td className="py-3.5 px-4 border-r border-[#1a1a1a]">
+                          <span className="font-bold text-[#1a1a1a] text-xs">
+                            {task.taskName}
+                          </span>
+                        </td>
 
-                          {/* Task Title */}
-                          <td className="py-3.5 px-4 border-r border-[#1a1a1a]">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-bold text-[#1a1a1a] text-xs">
-                                {task.taskName}
-                              </span>
-                              {isAstsRow && (
-                                <span className="px-2 py-0.5 bg-[#2e59e6] text-white text-[10px] font-bold border border-[#1a1a1a]">
-                                  HASIL NILAI ASESMEN
-                                </span>
-                              )}
+                        {/* Status (v or x) */}
+                        <td className="py-3.5 px-4 text-center">
+                          {task.isCompleted ? (
+                            <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-emerald-100 text-emerald-900 border-2 border-emerald-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#047857]">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-700 stroke-[2.5]" />
+                              <span>v (SUDAH)</span>
                             </div>
-                          </td>
-
-                          {/* Status (v or x) or Numeric Score for ASTS Gasal - Informatika (2026/2027) */}
-                          <td className="py-3.5 px-4 text-center">
-                            {isAstsRow ? (
-                              task.isCompleted &&
-                              task.score !== null &&
-                              task.score !== undefined ? (
-                                <div className="inline-flex items-center justify-center gap-2 px-4 py-1.5 bg-[#2e59e6] text-white border-2 border-[#1a1a1a] font-bold text-xs shadow-[2px_2px_0px_#1a1a1a]">
-                                  <CheckCircle2 className="h-4 w-4 text-amber-300 stroke-[2.5]" />
-                                  <span>
-                                    NILAI: <strong className="text-sm font-black text-white">{task.score}</strong>
-                                  </span>
-                                </div>
-                              ) : (
-                                <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-rose-100 text-rose-900 border-2 border-rose-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#be123c]">
-                                  <XCircle className="h-4 w-4 text-rose-700 stroke-[2.5]" />
-                                  <span>x (BELUM ADA NILAI)</span>
-                                </div>
-                              )
-                            ) : task.isCompleted ? (
-                              <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-emerald-100 text-emerald-900 border-2 border-emerald-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#047857]">
-                                <CheckCircle2 className="h-4 w-4 text-emerald-700 stroke-[2.5]" />
-                                <span>v (SUDAH)</span>
-                              </div>
-                            ) : (
-                              <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-rose-100 text-rose-900 border-2 border-rose-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#be123c]">
-                                <XCircle className="h-4 w-4 text-rose-700 stroke-[2.5]" />
-                                <span>x (BELUM)</span>
-                              </div>
-                            )}
-                          </td>
-                        </tr>
-                      );
-                    })
+                          ) : (
+                            <div className="inline-flex items-center justify-center gap-1.5 px-3.5 py-1 bg-rose-100 text-rose-900 border-2 border-rose-600 font-bold text-xs shadow-[1.5px_1.5px_0px_#be123c]">
+                              <XCircle className="h-4 w-4 text-rose-700 stroke-[2.5]" />
+                              <span>x (BELUM)</span>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    ))
                   )}
                 </tbody>
               </table>

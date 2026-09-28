@@ -31,6 +31,12 @@ import {
   DetectedColumnDetail,
   StudentGradeItem,
 } from '../services/sheetsService';
+import {
+  loadLocalCalculatorDataset,
+  saveCalculatorDatasetEverywhere,
+  syncAllCalculatorMasterWithServer,
+  getDatasetShortKey,
+} from '../services/calculatorMasterStore';
 
 interface AcademicCalculatorViewProps {
   spreadsheetId: string;
@@ -98,44 +104,14 @@ export interface ModeBStudentRecord {
   isManual?: boolean;
 }
 
-const CALC_STORAGE_PREFIX = 'smpn1wedi_calc_permanent_v2';
 const CALC_UI_STATE_KEY = 'smpn1wedi_calc_ui_state_v2';
-
-function getStorageKey(className: string, subject: SubjectOptionType, assessment: AssessmentOptionType): string {
-  const cleanClass = className.replace(/\s+/g, '_').toUpperCase();
-  const cleanSubj = subject.toUpperCase();
-  const cleanAssess = assessment.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
-  return `${CALC_STORAGE_PREFIX}_${cleanClass}_${cleanSubj}_${cleanAssess}`;
-}
-
-interface StoredCalculatorDataset {
-  modeAData: Record<string, ModeAStudentRecord>;
-  modeBData: Record<string, ModeBStudentRecord>;
-  standarData: Record<string, number | null>;
-  updatedAt: string;
-}
 
 function loadStoredDataset(
   className: string,
   subject: SubjectOptionType,
   assessment: AssessmentOptionType
-): StoredCalculatorDataset | null {
-  try {
-    const raw = localStorage.getItem(getStorageKey(className, subject, assessment));
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (parsed && typeof parsed === 'object') {
-      return {
-        modeAData: parsed.modeAData || {},
-        modeBData: parsed.modeBData || {},
-        standarData: parsed.standarData || {},
-        updatedAt: parsed.updatedAt || '',
-      };
-    }
-  } catch (e) {
-    // ignore storage parse error
-  }
-  return null;
+) {
+  return loadLocalCalculatorDataset(className, subject, assessment);
 }
 
 function saveStoredDataset(
@@ -148,60 +124,17 @@ function saveStoredDataset(
     standarData: Record<string, number | null>;
   }
 ): string {
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  });
-  try {
-    const payload: StoredCalculatorDataset = {
-      ...data,
-      updatedAt: timeStr,
-    };
-    localStorage.setItem(
-      getStorageKey(className, subject, assessment),
-      JSON.stringify(payload)
-    );
-  } catch (e) {
-    // ignore quota error
-  }
-  return timeStr;
+  return saveCalculatorDatasetEverywhere(className, subject, assessment, data);
 }
 
-// Helper: Decompose a total score (0..100) from Google Sheets into valid PG (0..25), MJ (0..10), Uraian (0..25)
-// such that Math.round(PG * 2 + MJ * 2.5 + Uraian) === Math.round(score)
-function decomposeScoreToModeA(score: number): ModeAStudentRecord {
-  const clamped = Math.min(100, Math.max(0, Math.round(score)));
-  let pg = Math.min(25, Math.floor(clamped / 4));
-  let mj = Math.min(10, Math.floor((clamped - pg * 2) / 5) * 2);
-  let ur = clamped - pg * 2 - mj * 2.5;
-
-  while (ur > 25 && pg < 25) {
-    pg += 1;
-    ur -= 2;
-  }
-  while (ur > 25 && mj < 10) {
-    mj += 2;
-    ur -= 5;
-  }
-  ur = Math.max(0, Math.min(25, Math.round(ur * 10) / 10));
-
-  return {
-    benarPG: pg,
-    benarMJ: mj,
-    skorUraian: ur,
-    remedialScore: null,
-  };
-}
-
-// Helper: Check if a spreadsheet column title belongs to Koding vs Informatika
+// Helper: Check if a spreadsheet column title belongs to Koding (KKA) vs Informatika
 function isColumnMatchingSubject(headerTitle: string, subject: SubjectOptionType, isGrade7: boolean): boolean {
   if (isGrade7) return true; // Kelas 7 hanya untuk Informatika
   const upper = (headerTitle || '').toUpperCase();
   const isKodingCol =
     upper.includes('KKA') ||
     upper.includes('KODING') ||
+    upper.includes('KECERDASAN ARTIFISIAL') ||
     upper.includes('ALGORITMA') ||
     upper.includes('FLOWCHART');
   const isInformatikaCol =
@@ -210,10 +143,7 @@ function isColumnMatchingSubject(headerTitle: string, subject: SubjectOptionType
     upper.includes('SISTEM BILANGAN');
 
   if (subject === 'Koding') {
-    if (isKodingCol) return true;
-    if (isInformatikaCol) return false;
-    // General assessment column (e.g. ASTS / ASAS) matches if it doesn't explicitly belong to the other subject
-    return upper.includes('ASTS') || upper.includes('ASAS');
+    return isKodingCol;
   } else {
     // Informatika
     if (isInformatikaCol) return true;
@@ -294,7 +224,7 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
     }
     return [
       { id: 'Informatika', label: 'Informatika' },
-      { id: 'Koding', label: 'Koding' },
+      { id: 'Koding', label: 'Koding dan Kecerdasan Artifisial (KKA)' },
     ];
   }, [selectedGrade, selectedClass]);
 
@@ -352,7 +282,7 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
     isGrade7: boolean
   ): DetectedColumnDetail | null => {
     const withScores = occupied.filter((c) => c.hasScores && c.scoreCount > 0);
-    if (withScores.length === 0) return occupied[0] || null;
+    if (withScores.length === 0) return null;
 
     const assessKey = assessment.split(' ')[0].toUpperCase(); // 'ASTS' atau 'ASAS'
 
@@ -363,17 +293,20 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
     });
     if (exactAssessmentAndSubject) return exactAssessmentAndSubject;
 
-    // 2. Cari kolom yang cocok dengan mata pelajaran (Informatika / Koding)
+    // Jika untuk Koding (KKA) belum ada kolom ASTS/ASAS di Google Spreadsheet, jangan mengambil nilai tugas harian atau nilai Informatika
+    if (subject === 'Koding') {
+      return null;
+    }
+
+    // 2. Cari kolom yang cocok dengan mata pelajaran Informatika
     const subjectColumns = withScores.filter((c) =>
       isColumnMatchingSubject(c.headerTitle || '', subject, isGrade7)
     );
     if (subjectColumns.length > 0) {
-      // Ambil kolom terakhir yang memiliki nilai untuk mata pelajaran tersebut
       return subjectColumns[subjectColumns.length - 1];
     }
 
-    // 3. Fallback ke kolom terakhir yang berisi nilai di sheet kelas
-    return withScores[withScores.length - 1];
+    return null;
   };
 
   // Terapkan data dari hasil deteksi Google Spreadsheet ke dalam state Mode A, Mode B, dan Mode Standar
@@ -442,34 +375,11 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
         nextStandar[attNo] = roundedScore;
         importedCount++;
 
-        // Cek apakah rincian Mode A sudah diisi oleh guru atau totalnya sudah cocok dengan nilai di Sheet
-        if (hasExistingAData && !forceOverwriteManual) {
-          const existingTotal = Math.min(
-            100,
-            Math.max(
-              0,
-              Math.round(
-                (existingA.benarPG ?? 0) * 2 +
-                  (existingA.benarMJ ?? 0) * 2.5 +
-                  (existingA.skorUraian ?? 0)
-              )
-            )
-          );
-          if (existingA.isManual || existingTotal === roundedScore) {
-            // PERTAHANKAN angka Benar PG, Menjodohkan, Skor Uraian, dan Remedial asli yang diketik guru!
-            nextModeA[attNo] = existingA;
-            preservedManualCount++;
-          } else {
-            nextModeA[attNo] = {
-              ...decomposeScoreToModeA(roundedScore),
-              remedialScore: existingA.remedialScore ?? null,
-            };
-          }
-        } else {
-          nextModeA[attNo] = {
-            ...decomposeScoreToModeA(roundedScore),
-            remedialScore: existingA?.remedialScore ?? null,
-          };
+        // PENTING: Google Spreadsheets hanya menyimpan nilai akhir bulat, bukan rincian PG/Menjodohkan/Uraian.
+        // Rincian Mode A (Benar PG, Menjodohkan, Skor Uraian) HANYA diambil dari input Kalkulator Master!
+        if (hasExistingAData && existingA?.isManual) {
+          nextModeA[attNo] = existingA;
+          preservedManualCount++;
         }
       }
 
@@ -588,23 +498,33 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
   };
 
   // Saat Kelas, Mata Pelajaran, atau Jenis Asesmen berubah:
-  // 1. Muat langsung data permanen dari localStorage (instan & tidak mengubah rincian PG/MJ/Uraian guru)
-  // 2. Deteksi kolom Google Spreadsheet di latar belakang untuk melengkapi siswa yang belum terisi
+  // 1. Muat langsung data permanen dari Kalkulator Master (localStorage + Server)
+  // 2. Deteksi kolom Google Spreadsheet di latar belakang untuk melengkapi nilai akhir Mode Standar & Mode B
   useEffect(() => {
+    let isMounted = true;
     const stored = loadStoredDataset(selectedClass, selectedSubject, selectedAssessment);
-    if (stored) {
-      setModeAData(stored.modeAData);
-      setModeBData(stored.modeBData);
-      setStandarData(stored.standarData);
-      setLastSavedAt(stored.updatedAt || null);
-    } else {
-      setModeAData({});
-      setModeBData({});
-      setStandarData({});
-      setLastSavedAt(null);
-    }
+    setModeAData(stored.modeAData || {});
+    setModeBData(stored.modeBData || {});
+    setStandarData(stored.standarData || {});
+    setLastSavedAt(stored.updatedAt || null);
+
+    syncAllCalculatorMasterWithServer().then((allServerDatasets) => {
+      if (!isMounted) return;
+      const shortKey = getDatasetShortKey(selectedClass, selectedSubject, selectedAssessment);
+      const serverDs = allServerDatasets[shortKey];
+      if (serverDs) {
+        setModeAData(serverDs.modeAData || {});
+        setModeBData((prev) => ({ ...prev, ...(serverDs.modeBData || {}) }));
+        setStandarData((prev) => ({ ...prev, ...(serverDs.standarData || {}) }));
+        if (serverDs.updatedAt) setLastSavedAt(serverDs.updatedAt);
+      }
+    });
+
     setSelectedImportColumn('AUTO');
     handleImportFromSpreadsheet('AUTO', false);
+    return () => {
+      isMounted = false;
+    };
   }, [selectedClass, selectedSubject, selectedAssessment, spreadsheetId, token]);
 
   // Fungsi Perhitungan Mode A (Skor Asesmen & Remedial)
@@ -1130,9 +1050,17 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
         name: r.name,
         gender: r.student.gender,
         score: r.primaryScore,
+        benarPG: r.modeA.pg,
+        benarMJ: r.modeA.mj,
+        skorUraian: r.modeA.uraian,
+        remedialScore: modeAData[r.attNo]?.remedialScore ?? null,
       }));
 
-      const taskTitle = `${selectedAssessment} - ${selectedSubject} (${tahunAjaran})`;
+      const subjectTitleLabel =
+        selectedSubject === 'Koding'
+          ? 'Koding dan Kecerdasan Artifisial (KKA)'
+          : selectedSubject;
+      const taskTitle = `${selectedAssessment} - ${subjectTitleLabel} (${tahunAjaran})`;
       const targetCol = selectedImportColumn !== 'AUTO' ? selectedImportColumn : 'AUTO';
       const res = await syncGradesToClassSheet(
         token,
@@ -1169,7 +1097,7 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
                 {satuanPendidikan.toUpperCase()}
               </span>
               <span className="font-mono-code text-[11px] font-bold uppercase tracking-wider bg-amber-100 text-amber-900 px-2 py-0.5 border border-amber-400">
-                [ MAPEL: {selectedSubject.toUpperCase()} ]
+                [ MAPEL: {selectedSubject === 'Koding' ? 'KODING DAN KECERDASAN ARTIFISIAL (KKA)' : selectedSubject.toUpperCase()} ]
               </span>
               <span className="font-mono-code text-[11px] font-bold text-emerald-900 bg-emerald-100 px-2 py-0.5 border border-emerald-400">
                 TAHUN AJARAN {tahunAjaran} • KKTP: {kktp}
@@ -1327,7 +1255,7 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
                     : 'bg-white text-slate-700 border-[#1a1a1a] hover:bg-slate-100'
                 }`}
               >
-                KELAS 8 (8A - 8H) • INFORMATIKA & KODING
+                KELAS 8 (8A - 8H) • INFORMATIKA &amp; KKA
               </button>
             </div>
           </div>
