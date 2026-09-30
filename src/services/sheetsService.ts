@@ -1,13 +1,36 @@
 import { Student, TaskSubmission, SubstituteTaskSubmission, StudentSubstituteTarget } from '../types';
 import { ALL_255_STUDENTS } from '../data/students255';
-import { ALL_STUDENTS_DATABASE } from '../data/studentsAll';
+import { ALL_STUDENTS_DATABASE, getStudentsByClass } from '../data/studentsAll';
 import { clearAuthToken } from './firebaseAuth';
-import { fetchStudentMasterCalculatorRecord } from './calculatorMasterStore';
+import {
+  fetchStudentMasterCalculatorRecord,
+  getDatasetShortKey,
+  getAllLocalCalculatorDatasets,
+  mergeSheetBreakdownsIntoLocalStore,
+  MasterModeARecord,
+} from './calculatorMasterStore';
 
 export const DEFAULT_SPREADSHEET_ID = '1JgBhQhZujQp_pTk1jO4oZIY8Er1Y4NcF0CTKFrRVgI4';
 export const DEFAULT_SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${DEFAULT_SPREADSHEET_ID}/edit?usp=sharing`;
 
 export const SUBSTITUTE_TASK_SHEET_NAME = 'Pengganti KKA 2';
+export const CALCULATOR_BREAKDOWN_SHEET_NAME = 'Rincian_Kalkulator';
+export const CALCULATOR_BREAKDOWN_HEADERS = [
+  'KODE_DATA',
+  'KELAS',
+  'MATA_PELAJARAN',
+  'JENIS_ASESMEN',
+  'NO_ABSEN',
+  'NIPD',
+  'NAMA_SISWA',
+  'BENAR_PG',
+  'BENAR_MENJODOHKAN',
+  'SKOR_URAIAN',
+  'TOTAL_NILAI',
+  'NILAI_REMEDIAL',
+  'WAKTU_UPDATE',
+];
+export const UNUSED_SHEET_NAMES_TO_REMOVE = ['Konfigurasi_Halaman', 'Log_Aktivitas'];
 
 const SHEET_NAMES = {
   TASKS: 'Tugas_Siswa',
@@ -1176,7 +1199,7 @@ export async function syncGradesToClassSheet(
       };
     }
 
-    // Jika terdapat rincian butir soal (Benar PG, Menjodohkan, Skor Uraian) untuk ASTS, simpan juga ke Kolom Z (Informatika) atau Kolom Y (KKA) agar halaman /cek siswa dapat menampilkannya di semua perangkat
+    // Jika terdapat rincian butir soal (Benar PG, Menjodohkan, Skor Uraian), simpan ke Sheet Khusus 'Rincian_Kalkulator' (dan bersihkan sheet yang tidak terpakai)
     const hasAnyBreakdown = sortedGrades.some(
       (sg) =>
         sg.benarPG !== undefined &&
@@ -1186,26 +1209,18 @@ export async function syncGradesToClassSheet(
         sg.skorUraian !== undefined &&
         sg.skorUraian !== null
     );
-    if (hasAnyBreakdown && finalHeaderTitle.toUpperCase().includes('ASTS')) {
+    if (hasAnyBreakdown) {
       try {
         const upperTitle = finalHeaderTitle.toUpperCase();
         const isKkaAssessment =
           upperTitle.includes('KKA') ||
           upperTitle.includes('KODING') ||
           upperTitle.includes('KECERDASAN ARTIFISIAL');
-        const breakdownColLetter = isKkaAssessment ? 'Y' : 'Z';
-        const breakdownColIdx = isKkaAssessment ? 24 : 25;
-        const breakdownHeaderLabel = isKkaAssessment
-          ? 'RINCIAN_BUTIR_ASTS_KKA'
-          : 'RINCIAN_BUTIR_ASTS';
+        const resolvedSubject = isKkaAssessment ? 'Koding' : 'Informatika';
+        const resolvedAssessment = upperTitle.includes('ASAS') ? 'ASAS Gasal' : 'ASTS Gasal';
 
-        const breakdownValues: string[][] = [[breakdownHeaderLabel]];
-        for (let i = 0; i < sortedGrades.length; i++) {
-          const sg = sortedGrades[i];
-          const studentRowIndex = studentStartRowNumber - 1 + i;
-          const existingRow = existingRows[studentRowIndex] || [];
-          const existingCell = String(existingRow[breakdownColIdx] || '').trim();
-
+        const modeAMapForClass: Record<string, MasterModeARecord> = {};
+        for (const sg of sortedGrades) {
           if (
             sg.benarPG !== undefined &&
             sg.benarPG !== null &&
@@ -1214,31 +1229,25 @@ export async function syncGradesToClassSheet(
             sg.skorUraian !== undefined &&
             sg.skorUraian !== null
           ) {
-            const remStr =
-              sg.remedialScore !== undefined && sg.remedialScore !== null
-                ? String(sg.remedialScore)
-                : '-';
-            breakdownValues.push([`${sg.benarPG}|${sg.benarMJ}|${sg.skorUraian}|${remStr}`]);
-          } else if (existingCell && existingCell.includes('|')) {
-            breakdownValues.push([existingCell]);
-          } else {
-            breakdownValues.push(['']);
+            const attKey = String(parseInt(sg.attendanceNo || '0', 10) || sg.attendanceNo);
+            modeAMapForClass[attKey] = {
+              benarPG: sg.benarPG,
+              benarMJ: sg.benarMJ,
+              skorUraian: sg.skorUraian,
+              remedialScore: sg.remedialScore ?? null,
+              isManual: true,
+            };
           }
         }
-        const bRange = `${encodeURIComponent(sheetTitle)}!${breakdownColLetter}${headerRowNumber}:${breakdownColLetter}${endRowNumber}`;
-        await fetch(
-          `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${bRange}?valueInputOption=USER_ENTERED`,
-          {
-            method: 'PUT',
-            headers: {
-              Authorization: `Bearer ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ values: breakdownValues }),
-          }
-        );
+
+        await syncCalculatorBreakdownToSheet(accessToken, spreadsheetId, {
+          className: `Kelas ${rawClass}`,
+          subject: resolvedSubject,
+          assessment: resolvedAssessment,
+          modeAData: modeAMapForClass,
+        });
       } catch (e) {
-        // ignore optional breakdown column write error
+        console.warn('Error syncing to Rincian_Kalkulator:', e);
       }
     }
 
@@ -1248,7 +1257,7 @@ export async function syncGradesToClassSheet(
       success: true,
       columnLetter: targetColLetter,
       startCell: startStudentCell,
-      message: `Sukses! Nilai "${finalHeaderTitle}" berhasil disimpan ke sheet '${sheetTitle}' pada Kolom ${targetColLetter} (${updatedCount} nilai diperbarui, ${preservedCount} nilai tersimpan dipertahankan).`,
+      message: `Sukses! Nilai "${finalHeaderTitle}" berhasil disimpan ke sheet '${sheetTitle}' (Kolom ${targetColLetter}) serta rincian PG, Menjodohkan & Uraian tersimpan di sheet khusus '${CALCULATOR_BREAKDOWN_SHEET_NAME}'.`,
     };
   } catch (err: any) {
     console.error('Error syncing grades to class sheet:', err);
@@ -1613,14 +1622,27 @@ export async function fetchStudentAssignmentStatus(
       return false;
     });
 
-    // 5. Ambil data asli dari halaman Kalkulator Master terlebih dahulu (karena Google Spreadsheets hanya menyimpan nilai akhir)
+    // 5. Ambil data rincian (Benar PG, Menjodohkan, Skor Uraian) dari Sheet Khusus 'Rincian_Kalkulator' di Google Spreadsheet terlebih dahulu
     const attKey = String(matchedStudent?.attNum || targetAttNum || attendanceNo);
-    const masterRec = await fetchStudentMasterCalculatorRecord(
-      rawClass,
-      attKey,
-      'Informatika',
-      'ASTS Gasal'
-    );
+    const dedicatedBreakdowns = await fetchCalculatorBreakdownFromSheet(targetSpreadsheetId);
+    const infShortKey = getDatasetShortKey(rawClass, 'Informatika', 'ASTS Gasal');
+    const kodingShortKey = getDatasetShortKey(rawClass, 'Koding', 'ASTS Gasal');
+    const kkaShortKey = getDatasetShortKey(rawClass, 'KKA', 'ASTS Gasal');
+
+    const sheetInfRec = dedicatedBreakdowns[infShortKey]?.[attKey] || null;
+    const sheetKkaRec =
+      dedicatedBreakdowns[kodingShortKey]?.[attKey] ||
+      dedicatedBreakdowns[kkaShortKey]?.[attKey] ||
+      null;
+
+    const masterRec =
+      sheetInfRec ||
+      (await fetchStudentMasterCalculatorRecord(
+        rawClass,
+        attKey,
+        'Informatika',
+        'ASTS Gasal'
+      ));
     const masterBreakdown: AstsItemBreakdown | undefined =
       masterRec &&
       (masterRec.benarPG !== null ||
@@ -1634,9 +1656,10 @@ export async function fetchStudentAssignmentStatus(
           )
         : undefined;
 
-    // Untuk Kelas 8, ambil juga data ASTS Gasal mata pelajaran Koding dan Kecerdasan Artifisial (KKA) dari Kalkulator Master
+    // Untuk Kelas 8, ambil juga data ASTS Gasal mata pelajaran Koding dan Kecerdasan Artifisial (KKA) dari Sheet Khusus 'Rincian_Kalkulator' / Kalkulator Master
     const masterRecKka = !isGrade7
-      ? (await fetchStudentMasterCalculatorRecord(rawClass, attKey, 'Koding', 'ASTS Gasal')) ||
+      ? sheetKkaRec ||
+        (await fetchStudentMasterCalculatorRecord(rawClass, attKey, 'Koding', 'ASTS Gasal')) ||
         (await fetchStudentMasterCalculatorRecord(rawClass, attKey, 'KKA', 'ASTS Gasal'))
       : null;
     const masterBreakdownKka: AstsItemBreakdown | undefined =
@@ -1837,7 +1860,460 @@ export interface ClassColumnDetectionResult {
   nextAvailableColumn: string; // e.g. 'F'
   nextTaskNumber: number; // e.g. 2
   lastTaskTitle?: string;
+  breakdownBySubject?: Record<string, Record<string, MasterModeARecord>>;
   message?: string;
+}
+
+// In-memory cache for Rincian_Kalkulator GViz fetch so parallel calls are fast
+let cachedBreakdownSheetData: Record<string, Record<string, MasterModeARecord>> | null = null;
+let cachedBreakdownTimestamp = 0;
+let activeBreakdownFetchPromise: Promise<Record<string, Record<string, MasterModeARecord>>> | null = null;
+
+// Fetch all student item breakdowns (Benar PG, Menjodohkan, Skor Uraian, Remedial) from the dedicated 'Rincian_Kalkulator' sheet
+export async function fetchCalculatorBreakdownFromSheet(
+  spreadsheetId: string,
+  forceRefresh: boolean = false
+): Promise<Record<string, Record<string, MasterModeARecord>>> {
+  const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
+  const now = Date.now();
+
+  if (!forceRefresh && cachedBreakdownSheetData && now - cachedBreakdownTimestamp < 6000) {
+    return cachedBreakdownSheetData;
+  }
+
+  if (!forceRefresh && activeBreakdownFetchPromise) {
+    return activeBreakdownFetchPromise;
+  }
+
+  activeBreakdownFetchPromise = (async () => {
+    const result: Record<string, Record<string, MasterModeARecord>> = {};
+    try {
+      const sheetUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&headers=1&sheet=${encodeURIComponent(CALCULATOR_BREAKDOWN_SHEET_NAME)}&_nc=${now}`;
+      const res = await fetch(sheetUrl, { cache: 'no-cache' });
+      if (!res.ok) return result;
+
+      const text = await res.text();
+      const fb = text.indexOf('{');
+      const lb = text.lastIndexOf('}');
+      if (fb === -1 || lb === -1) return result;
+
+      const gData = JSON.parse(text.substring(fb, lb + 1));
+      if (gData.status !== 'ok' || !gData.table) return result;
+
+      const cols = gData.table.cols || [];
+      const rows = gData.table.rows || [];
+
+      // Pastikan sheet yang dikembalikan oleh GViz benar-benar sheet 'Rincian_Kalkulator'
+      // (karena GViz mengembalikan sheet pertama '8A' jika nama sheet belum dibuat)
+      const colLabels = cols.map((c: any) => String(c?.label || '').toUpperCase()).join(' ');
+      const firstRowVals = (rows[0]?.c || [])
+        .map((cell: any) => String(cell?.v || '').toUpperCase())
+        .join(' ');
+      const isGenuineBreakdownSheet =
+        colLabels.includes('KODE_DATA') ||
+        colLabels.includes('BENAR_PG') ||
+        firstRowVals.includes('KODE_DATA') ||
+        firstRowVals.includes('KELAS_');
+
+      if (!isGenuineBreakdownSheet) {
+        return result;
+      }
+
+      const parseCellNum = (cell: any): number | null => {
+        if (!cell || cell.v === null || cell.v === undefined) return null;
+        const s = String(cell.v).trim();
+        if (s === '' || s === '-') return null;
+        const n = parseFloat(s.replace(',', '.'));
+        return isNaN(n) ? null : n;
+      };
+
+      for (const r of rows) {
+        if (!r || !r.c) continue;
+        const rawCode = String(r.c[0]?.v || '').trim();
+        const rawClass = String(r.c[1]?.v || '').trim();
+        const rawSubj = String(r.c[2]?.v || '').trim();
+        const rawAssess = String(r.c[3]?.v || '').trim() || 'ASTS Gasal';
+        const rawAtt = r.c[4]?.v !== null && r.c[4]?.v !== undefined ? String(r.c[4].v).trim() : '';
+
+        if (!rawClass && !rawCode) continue;
+        if (rawCode.toUpperCase() === 'KODE_DATA' || rawClass.toUpperCase() === 'KELAS') continue;
+
+        const attNum = parseInt(rawAtt, 10);
+        if (isNaN(attNum) || attNum < 1 || attNum > 50) continue;
+
+        const pg = parseCellNum(r.c[7]);
+        const mj = parseCellNum(r.c[8]);
+        const ur = parseCellNum(r.c[9]);
+        const rem = parseCellNum(r.c[11]);
+
+        if (pg === null && mj === null && ur === null && rem === null) continue;
+
+        const normSubj =
+          rawSubj.toUpperCase().includes('KKA') || rawSubj.toUpperCase().includes('KODING')
+            ? 'Koding'
+            : 'Informatika';
+        const shortKey = getDatasetShortKey(rawClass, normSubj, rawAssess);
+
+        if (!result[shortKey]) {
+          result[shortKey] = {};
+        }
+        result[shortKey][String(attNum)] = {
+          benarPG: pg,
+          benarMJ: mj,
+          skorUraian: ur,
+          remedialScore: rem,
+          isManual: true,
+        };
+      }
+
+      if (Object.keys(result).length > 0) {
+        mergeSheetBreakdownsIntoLocalStore(result, false);
+        cachedBreakdownSheetData = result;
+        cachedBreakdownTimestamp = Date.now();
+      }
+    } catch (e) {
+      console.warn('Error fetching Rincian_Kalkulator sheet:', e);
+    } finally {
+      activeBreakdownFetchPromise = null;
+    }
+    return result;
+  })();
+
+  return activeBreakdownFetchPromise;
+}
+
+// Create/Sync all classes' PG, Menjodohkan, Uraian & Remedial records into the dedicated 'Rincian_Kalkulator' sheet
+// and automatically delete unused sheets ('Konfigurasi_Halaman', 'Log_Aktivitas')
+export async function syncCalculatorBreakdownToSheet(
+  accessToken: string,
+  spreadsheetId: string,
+  overrideDataset?: {
+    className: string;
+    subject: string;
+    assessment: string;
+    modeAData: Record<string, MasterModeARecord>;
+  }
+): Promise<{
+  success: boolean;
+  isAuthError?: boolean;
+  isPermissionError?: boolean;
+  totalRows: number;
+  classesCount: number;
+  deletedUnusedSheets: string[];
+  message: string;
+}> {
+  const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
+  if (!accessToken) {
+    return {
+      success: false,
+      isAuthError: true,
+      totalRows: 0,
+      classesCount: 0,
+      deletedUnusedSheets: [],
+      message: 'Silakan klik LOGIN GOOGLE terlebih dahulu untuk menyinkronkan ke sheet Rincian_Kalkulator.',
+    };
+  }
+
+  try {
+    // 1. Read spreadsheet metadata to find existing sheets & delete unused sheets
+    const metaRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${targetSpreadsheetId}`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      }
+    );
+
+    if (metaRes.status === 401) {
+      clearAuthToken();
+      return {
+        success: false,
+        isAuthError: true,
+        totalRows: 0,
+        classesCount: 0,
+        deletedUnusedSheets: [],
+        message: 'Sesi Google Anda telah kedaluwarsa. Silakan login kembali.',
+      };
+    }
+
+    if (!metaRes.ok) {
+      const errText = await metaRes.text();
+      const parsed = parseGoogleApiError(metaRes.status, errText, 'membaca metadata spreadsheet');
+      return {
+        success: false,
+        isAuthError: parsed.isAuthError,
+        isPermissionError: parsed.isPermissionError,
+        totalRows: 0,
+        classesCount: 0,
+        deletedUnusedSheets: [],
+        message: parsed.message,
+      };
+    }
+
+    const meta = await metaRes.json();
+    const existingSheets: any[] = meta.sheets || [];
+    const batchRequests: any[] = [];
+    const deletedUnusedSheets: string[] = [];
+
+    // Check if unused sheets ('Konfigurasi_Halaman', 'Log_Aktivitas') exist and delete them
+    for (const s of existingSheets) {
+      const title = String(s.properties?.title || '').trim();
+      const sheetId = s.properties?.sheetId;
+      if (
+        sheetId !== undefined &&
+        UNUSED_SHEET_NAMES_TO_REMOVE.some(
+          (unused) => unused.toLowerCase() === title.toLowerCase()
+        )
+      ) {
+        batchRequests.push({
+          deleteSheet: { sheetId },
+        });
+        deletedUnusedSheets.push(title);
+      }
+    }
+
+    // Check if dedicated sheet 'Rincian_Kalkulator' exists
+    const cleanTargetName = CALCULATOR_BREAKDOWN_SHEET_NAME.replace(/[\s_]/g, '').toLowerCase();
+    const existingBreakdownSheet = existingSheets.find((s: any) => {
+      const t = String(s.properties?.title || '').replace(/[\s_]/g, '').toLowerCase();
+      return t === cleanTargetName;
+    });
+
+    const resolvedSheetTitle = existingBreakdownSheet
+      ? existingBreakdownSheet.properties.title
+      : CALCULATOR_BREAKDOWN_SHEET_NAME;
+
+    if (!existingBreakdownSheet) {
+      batchRequests.push({
+        addSheet: {
+          properties: {
+            title: CALCULATOR_BREAKDOWN_SHEET_NAME,
+            gridProperties: {
+              rowCount: 1500,
+              columnCount: 15,
+              frozenRowCount: 1,
+            },
+          },
+        },
+      });
+    }
+
+    if (batchRequests.length > 0) {
+      await fetch(
+        `https://sheets.googleapis.com/v4/spreadsheets/${targetSpreadsheetId}:batchUpdate`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ requests: batchRequests }),
+        }
+      );
+    }
+
+    // 2. Read existing rows from 'Rincian_Kalkulator' so no other class's data is lost
+    const existingFromSheet = await fetchCalculatorBreakdownFromSheet(targetSpreadsheetId, true);
+
+    // 3. Collect all datasets from localStorage + Seed + existing sheet + overrideDataset
+    const allLocalDatasets = getAllLocalCalculatorDatasets();
+    const combinedMap: Record<string, Record<string, MasterModeARecord>> = {};
+
+    // Start with existing sheet data
+    Object.entries(existingFromSheet).forEach(([shortKey, mapA]) => {
+      combinedMap[shortKey] = { ...mapA };
+    });
+
+    // Merge local datasets on top
+    Object.entries(allLocalDatasets).forEach(([shortKey, ds]) => {
+      if (ds.modeAData && Object.keys(ds.modeAData).length > 0) {
+        combinedMap[shortKey] = {
+          ...(combinedMap[shortKey] || {}),
+          ...ds.modeAData,
+        };
+      }
+    });
+
+    // Apply current active overrideDataset if provided
+    if (overrideDataset) {
+      const overKey = getDatasetShortKey(
+        overrideDataset.className,
+        overrideDataset.subject,
+        overrideDataset.assessment
+      );
+      combinedMap[overKey] = {
+        ...(combinedMap[overKey] || {}),
+        ...overrideDataset.modeAData,
+      };
+    }
+
+    // Save merged back to local store as well
+    mergeSheetBreakdownsIntoLocalStore(combinedMap, false);
+
+    // 4. Build structured rows for 'Rincian_Kalkulator'
+    const nowStr = new Date().toLocaleString('id-ID');
+    const allClassCodes = ['7E', '7F', '7G', '7H', '8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H'];
+    const subjects = ['Informatika', 'Koding'];
+    const assessments = ['ASTS Gasal', 'ASAS Gasal', 'ASTS Genap', 'ASAS Genap'];
+
+    const rowsToWrite: (string | number)[][] = [];
+    const classesWithData = new Set<string>();
+
+    for (const clsCode of allClassCodes) {
+      const fullClassName = `Kelas ${clsCode}`;
+      const roster = getStudentsByClass(fullClassName);
+
+      for (const subj of subjects) {
+        if (clsCode.startsWith('7') && subj === 'Koding') continue;
+
+        for (const assess of assessments) {
+          const shortKey = getDatasetShortKey(fullClassName, subj, assess);
+          const classModeA = combinedMap[shortKey];
+          if (!classModeA || Object.keys(classModeA).length === 0) continue;
+
+          // Check if at least one student has non-null data
+          const hasAnyStudent = Object.values(classModeA).some(
+            (r) =>
+              r &&
+              (r.benarPG !== null ||
+                r.benarMJ !== null ||
+                r.skorUraian !== null ||
+                r.remedialScore !== null)
+          );
+          if (!hasAnyStudent) continue;
+
+          classesWithData.add(`${clsCode} (${subj})`);
+
+          const maxAtt = Math.max(
+            roster.length || 32,
+            ...Object.keys(classModeA)
+              .map((k) => parseInt(k, 10))
+              .filter((n) => !isNaN(n))
+          );
+
+          for (let att = 1; att <= maxAtt; att++) {
+            const attStr = String(att);
+            const rec = classModeA[attStr];
+            if (
+              !rec ||
+              (rec.benarPG === null &&
+                rec.benarMJ === null &&
+                rec.skorUraian === null &&
+                rec.remedialScore === null)
+            ) {
+              continue;
+            }
+
+            const studentObj = roster.find((s) => String(s.attendanceNo) === attStr);
+            const nipd = studentObj?.nis || '-';
+            const studentName = studentObj?.name || `Siswa Absen ${attStr}`;
+
+            const pgVal = rec.benarPG !== null && rec.benarPG !== undefined ? Number(rec.benarPG) : '';
+            const mjVal = rec.benarMJ !== null && rec.benarMJ !== undefined ? Number(rec.benarMJ) : '';
+            const urVal =
+              rec.skorUraian !== null && rec.skorUraian !== undefined ? Number(rec.skorUraian) : '';
+
+            const computed = computeAstsBreakdown(
+              rec.benarPG ?? 0,
+              rec.benarMJ ?? 0,
+              rec.skorUraian ?? 0,
+              rec.remedialScore ?? null
+            );
+
+            const remVal =
+              rec.remedialScore !== null && rec.remedialScore !== undefined
+                ? Number(rec.remedialScore)
+                : '';
+
+            rowsToWrite.push([
+              `${shortKey}_${attStr}`,
+              fullClassName,
+              subj,
+              assess,
+              att,
+              nipd,
+              studentName,
+              pgVal,
+              mjVal,
+              urVal,
+              computed.totalNilai,
+              remVal,
+              nowStr,
+            ]);
+          }
+        }
+      }
+    }
+
+    // 5. Clear old values and write fresh table to 'Rincian_Kalkulator'
+    const clearRange = `${encodeURIComponent(resolvedSheetTitle)}!A1:M1500`;
+    await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${targetSpreadsheetId}/values/${clearRange}:clear`,
+      {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const finalValues = [CALCULATOR_BREAKDOWN_HEADERS, ...rowsToWrite];
+    const writeRange = `${encodeURIComponent(resolvedSheetTitle)}!A1:M${finalValues.length}`;
+    const putRes = await fetch(
+      `https://sheets.googleapis.com/v4/spreadsheets/${targetSpreadsheetId}/values/${writeRange}?valueInputOption=USER_ENTERED`,
+      {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ values: finalValues }),
+      }
+    );
+
+    if (!putRes.ok) {
+      const errText = await putRes.text();
+      const parsed = parseGoogleApiError(
+        putRes.status,
+        errText,
+        `menulis ke sheet '${resolvedSheetTitle}'`
+      );
+      return {
+        success: false,
+        isAuthError: parsed.isAuthError,
+        isPermissionError: parsed.isPermissionError,
+        totalRows: 0,
+        classesCount: 0,
+        deletedUnusedSheets,
+        message: parsed.message,
+      };
+    }
+
+    cachedBreakdownSheetData = combinedMap;
+    cachedBreakdownTimestamp = Date.now();
+
+    const deletedInfo =
+      deletedUnusedSheets.length > 0
+        ? ` Sheet tidak terpakai (${deletedUnusedSheets.join(', ')}) telah dihapus.`
+        : '';
+
+    return {
+      success: true,
+      totalRows: rowsToWrite.length,
+      classesCount: classesWithData.size,
+      deletedUnusedSheets,
+      message: `Berhasil menyimpan ${rowsToWrite.length} rincian nilai siswa (${classesWithData.size} kelas/mapel) ke sheet khusus '${resolvedSheetTitle}'!${deletedInfo}`,
+    };
+  } catch (err: any) {
+    console.error('Error syncing calculator breakdown sheet:', err);
+    return {
+      success: false,
+      totalRows: 0,
+      classesCount: 0,
+      deletedUnusedSheets: [],
+      message: `Error koneksi Google Sheets: ${err?.message || err}`,
+    };
+  }
 }
 
 // Detect existing task columns and find the next available column for a class sheet
@@ -1958,6 +2434,64 @@ export async function detectClassTaskColumns(
           };
           const lastOccupied = occupiedColumns[occupiedColumns.length - 1];
 
+          // Also load breakdowns from Rincian_Kalkulator and legacy Column Y/Z in this sheet
+          const breakdownBySubject = await fetchCalculatorBreakdownFromSheet(targetSpreadsheetId);
+          const legacyInfMap: Record<string, MasterModeARecord> = {};
+          const legacyKkaMap: Record<string, MasterModeARecord> = {};
+
+          for (let r = studentStartRow; r < Math.min(rows.length, studentStartRow + 40); r++) {
+            const row = rows[r] || [];
+            const attNo = String(r - studentStartRow + 1);
+            const yStr = String(row[24] || '').trim();
+            const zStr = String(row[25] || '').trim();
+            if (yStr.includes('|')) {
+              const [pPg, pMj, pUr, pRem] = yStr.split('|');
+              const nPg = parseFloat(pPg);
+              const nMj = parseFloat(pMj);
+              const nUr = parseFloat(pUr);
+              if (!isNaN(nPg) && !isNaN(nMj) && !isNaN(nUr)) {
+                legacyKkaMap[attNo] = {
+                  benarPG: nPg,
+                  benarMJ: nMj,
+                  skorUraian: nUr,
+                  remedialScore: pRem && pRem !== '-' ? parseFloat(pRem) : null,
+                  isManual: true,
+                };
+              }
+            }
+            if (zStr.includes('|')) {
+              const [pPg, pMj, pUr, pRem] = zStr.split('|');
+              const nPg = parseFloat(pPg);
+              const nMj = parseFloat(pMj);
+              const nUr = parseFloat(pUr);
+              if (!isNaN(nPg) && !isNaN(nMj) && !isNaN(nUr)) {
+                legacyInfMap[attNo] = {
+                  benarPG: nPg,
+                  benarMJ: nMj,
+                  skorUraian: nUr,
+                  remedialScore: pRem && pRem !== '-' ? parseFloat(pRem) : null,
+                  isManual: true,
+                };
+              }
+            }
+          }
+
+          const infKey = getDatasetShortKey(rawClass, 'Informatika', 'ASTS Gasal');
+          const kodingKey = getDatasetShortKey(rawClass, 'Koding', 'ASTS Gasal');
+          if (Object.keys(legacyInfMap).length > 0) {
+            breakdownBySubject[infKey] = {
+              ...legacyInfMap,
+              ...(breakdownBySubject[infKey] || {}),
+            };
+          }
+          if (Object.keys(legacyKkaMap).length > 0) {
+            breakdownBySubject[kodingKey] = {
+              ...legacyKkaMap,
+              ...(breakdownBySubject[kodingKey] || {}),
+            };
+          }
+          mergeSheetBreakdownsIntoLocalStore(breakdownBySubject, false);
+
           return {
             success: true,
             className: rawClass,
@@ -1966,6 +2500,7 @@ export async function detectClassTaskColumns(
             nextAvailableColumn: nextCol.colLetter,
             nextTaskNumber: occupiedColumns.length + 1,
             lastTaskTitle: lastOccupied?.headerTitle || (lastOccupied ? `Tugas Kolom ${lastOccupied.colLetter}` : undefined),
+            breakdownBySubject,
           };
         }
       }
@@ -2126,6 +2661,65 @@ export async function detectClassTaskColumns(
     };
     const lastOccupied = occupiedColumns[occupiedColumns.length - 1];
 
+    // Also load breakdowns from Rincian_Kalkulator and legacy Column Y/Z in this sheet
+    const breakdownBySubject = await fetchCalculatorBreakdownFromSheet(targetSpreadsheetId);
+    const legacyInfMap: Record<string, MasterModeARecord> = {};
+    const legacyKkaMap: Record<string, MasterModeARecord> = {};
+
+    for (const s of studentRows) {
+      const attNo = String(s.attNum);
+      const yCell = s.cells[24 + s.colOffset];
+      const zCell = s.cells[25 + s.colOffset];
+      const yStr = yCell && yCell.v !== null && yCell.v !== undefined ? String(yCell.v).trim() : '';
+      const zStr = zCell && zCell.v !== null && zCell.v !== undefined ? String(zCell.v).trim() : '';
+      if (yStr.includes('|')) {
+        const [pPg, pMj, pUr, pRem] = yStr.split('|');
+        const nPg = parseFloat(pPg);
+        const nMj = parseFloat(pMj);
+        const nUr = parseFloat(pUr);
+        if (!isNaN(nPg) && !isNaN(nMj) && !isNaN(nUr)) {
+          legacyKkaMap[attNo] = {
+            benarPG: nPg,
+            benarMJ: nMj,
+            skorUraian: nUr,
+            remedialScore: pRem && pRem !== '-' ? parseFloat(pRem) : null,
+            isManual: true,
+          };
+        }
+      }
+      if (zStr.includes('|')) {
+        const [pPg, pMj, pUr, pRem] = zStr.split('|');
+        const nPg = parseFloat(pPg);
+        const nMj = parseFloat(pMj);
+        const nUr = parseFloat(pUr);
+        if (!isNaN(nPg) && !isNaN(nMj) && !isNaN(nUr)) {
+          legacyInfMap[attNo] = {
+            benarPG: nPg,
+            benarMJ: nMj,
+            skorUraian: nUr,
+            remedialScore: pRem && pRem !== '-' ? parseFloat(pRem) : null,
+            isManual: true,
+          };
+        }
+      }
+    }
+
+    const infKey = getDatasetShortKey(rawClass, 'Informatika', 'ASTS Gasal');
+    const kodingKey = getDatasetShortKey(rawClass, 'Koding', 'ASTS Gasal');
+    if (Object.keys(legacyInfMap).length > 0) {
+      breakdownBySubject[infKey] = {
+        ...legacyInfMap,
+        ...(breakdownBySubject[infKey] || {}),
+      };
+    }
+    if (Object.keys(legacyKkaMap).length > 0) {
+      breakdownBySubject[kodingKey] = {
+        ...legacyKkaMap,
+        ...(breakdownBySubject[kodingKey] || {}),
+      };
+    }
+    mergeSheetBreakdownsIntoLocalStore(breakdownBySubject, false);
+
     return {
       success: true,
       className: rawClass,
@@ -2134,6 +2728,7 @@ export async function detectClassTaskColumns(
       nextAvailableColumn: nextCol.colLetter,
       nextTaskNumber: occupiedColumns.length + 1,
       lastTaskTitle: lastOccupied?.headerTitle || (lastOccupied ? `Tugas Kolom ${lastOccupied.colLetter}` : undefined),
+      breakdownBySubject,
     };
   } catch (err: any) {
     console.error('Error detecting class task columns:', err);
@@ -2805,6 +3400,442 @@ export async function loadStudentsMissingColumnG(
     totalUnsubmitted,
   };
 }
+
+export interface ClassPerformanceStat {
+  classCode: string; // e.g. '8A'
+  className: string; // e.g. 'Kelas 8A'
+  totalStudents: number;
+  gradedCount: number;
+  averageScore: number | null; // Overall primary numeric average
+  astsInformatikaAvg: number | null;
+  astsInformatikaCount: number;
+  astsInformatikaHighest: number | null;
+  astsInformatikaLowest: number | null;
+  astsInformatikaTuntasCount: number;
+  astsKkaAvg: number | null;
+  astsKkaCount: number;
+  astsKkaHighest: number | null;
+  astsKkaLowest: number | null;
+  astsKkaTuntasCount: number;
+  regularTaskNumericAvg: number | null;
+  taskCompletionRate: number; // 0..100%
+  highestScore: number | null;
+  lowestScore: number | null;
+  tuntasCount: number; // Students >= 75 KKTP
+  tuntasRate: number; // 0..100% of graded students
+}
+
+export async function fetchClassAverageStatistics(
+  spreadsheetId: string,
+  gradeLevel: '7' | '8' = '8'
+): Promise<{
+  success: boolean;
+  stats: ClassPerformanceStat[];
+  overallAverage: number | null;
+}> {
+  const targetClasses =
+    gradeLevel === '7'
+      ? ['7E', '7F', '7G', '7H']
+      : ['8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H'];
+  const targetSpreadsheetId = spreadsheetId || DEFAULT_SPREADSHEET_ID;
+  const kktp = 75;
+
+  // Sync Calculator Master & dedicated Rincian_Kalkulator sheet datasets once so all classes get accurate scores
+  let masterDatasets: Record<string, any> = {};
+  try {
+    await fetchCalculatorBreakdownFromSheet(targetSpreadsheetId);
+    const { syncAllCalculatorMasterWithServer } = await import('./calculatorMasterStore');
+    masterDatasets = await syncAllCalculatorMasterWithServer();
+  } catch {
+    // fallback if offline
+  }
+
+  const nocache = Date.now();
+
+  const statsPromises = targetClasses.map(async (rawClass): Promise<ClassPerformanceStat> => {
+    const cleanClassName = `Kelas ${rawClass}`;
+    const fallbackRoster = ALL_STUDENTS_DATABASE.filter(
+      (s) =>
+        s.className
+          .toUpperCase()
+          .replace(/^KELAS\s*/i, '')
+          .replace(/[^0-9A-Z]/g, '') === rawClass
+    );
+    const totalStudents = fallbackRoster.length || (rawClass === '7H' ? 31 : 32);
+
+    // Calculator Master maps for this class
+    const infMasterKey = `KELAS_${rawClass}_INFORMATIKA_ASTS_GASAL`;
+    const kodingMasterKey = `KELAS_${rawClass}_KODING_ASTS_GASAL`;
+    const kkaMasterKey = `KELAS_${rawClass}_KKA_ASTS_GASAL`;
+
+    const infMasterMap = masterDatasets[infMasterKey]?.modeAData || {};
+    const kkaMasterMap = {
+      ...(masterDatasets[kodingMasterKey]?.modeAData || {}),
+      ...(masterDatasets[kkaMasterKey]?.modeAData || {}),
+    };
+
+    try {
+      const sheetUrl = `https://docs.google.com/spreadsheets/d/${targetSpreadsheetId}/gviz/tq?tqx=out:json&headers=5&sheet=${encodeURIComponent(rawClass)}&_nc=${nocache}`;
+      const res = await fetch(sheetUrl, { cache: 'no-cache' });
+      let cols: any[] = [];
+      let rawRows: any[] = [];
+
+      if (res.ok) {
+        const text = await res.text();
+        const fb = text.indexOf('{');
+        const lb = text.lastIndexOf('}');
+        if (fb !== -1 && lb !== -1) {
+          const gData = JSON.parse(text.substring(fb, lb + 1));
+          if (gData.status === 'ok' && gData.table) {
+            cols = gData.table.cols || [];
+            rawRows = gData.table.rows || [];
+          }
+        }
+      }
+
+      // 1. Extract task headers from cols and first 6 non-student rows
+      const taskHeaders: { [colIdx: number]: string } = {};
+      cols.forEach((col: any, idx: number) => {
+        if (idx >= 4 && col && col.label) {
+          const l = String(col.label).trim().replace(/^ASPEK\s*/i, '').trim();
+          if (
+            l &&
+            l !== '-' &&
+            l.toUpperCase() !== 'ASPEK' &&
+            l.toUpperCase() !== rawClass.toUpperCase() &&
+            !/^\d+$/.test(l) &&
+            !l.includes('Guru Mapel') &&
+            !l.includes('Wedi')
+          ) {
+            taskHeaders[idx] = l;
+          }
+        }
+      });
+
+      for (let rIdx = 0; rIdx < Math.min(6, rawRows.length); rIdx++) {
+        const r = rawRows[rIdx];
+        if (!r || !r.c) continue;
+        const firstVal = r.c[0] ? String(r.c[0].v || '').trim() : '';
+        const isStudentNum =
+          !isNaN(parseInt(firstVal, 10)) &&
+          parseInt(firstVal, 10) >= 1 &&
+          parseInt(firstVal, 10) <= 50;
+        if (!isStudentNum) {
+          r.c.forEach((cell: any, cIdx: number) => {
+            if (cIdx >= 4 && cell && cell.v) {
+              const val = String(cell.v).trim().replace(/^ASPEK\s*/i, '').trim();
+              if (
+                val &&
+                val !== '-' &&
+                val.toUpperCase() !== 'ASPEK' &&
+                val.toUpperCase() !== rawClass.toUpperCase() &&
+                !/^\d+$/.test(val) &&
+                !val.includes('Guru Mapel') &&
+                !val.includes('Wedi')
+              ) {
+                if (!taskHeaders[cIdx] || val.length > taskHeaders[cIdx].length) {
+                  taskHeaders[cIdx] = val;
+                }
+              }
+            }
+          });
+        }
+      }
+
+      // 2. Parse student rows from sheet
+      const studentRowsMap = new Map<number, { cells: any[]; colOffset: number }>();
+      for (const r of rawRows) {
+        if (!r || !r.c) continue;
+        let colOffset = 0;
+        let attNum = parseInt(String(r.c[0]?.v || '').trim(), 10);
+        let nameVal = String(r.c[3]?.v || '').trim();
+
+        if (isNaN(attNum) || attNum < 1 || attNum > 50) {
+          const shifted = parseInt(String(r.c[1]?.v || '').trim(), 10);
+          if (!isNaN(shifted) && shifted >= 1 && shifted <= 50) {
+            attNum = shifted;
+            nameVal = String(r.c[4]?.v || '').trim();
+            colOffset = 1;
+          }
+        }
+
+        if (
+          !isNaN(attNum) &&
+          attNum >= 1 &&
+          attNum <= 50 &&
+          nameVal &&
+          !nameVal.toUpperCase().includes('ASPEK') &&
+          !nameVal.toUpperCase().includes('NAMA')
+        ) {
+          studentRowsMap.set(attNum, { cells: r.c, colOffset });
+        }
+      }
+
+      // 3. Identify active columns
+      const hasAnyExplicitHeader = Object.keys(taskHeaders).length > 0;
+      const isGrade7 = rawClass.startsWith('7');
+      const maxCols = Math.min(
+        Math.max(
+          cols.length,
+          rawRows.reduce((m: number, r: any) => Math.max(m, r.c ? r.c.length : 0), 0)
+        ),
+        15
+      );
+
+      const astsInfCols: number[] = [];
+      const astsKkaCols: number[] = [];
+      const regularCols: number[] = [];
+
+      for (let cIdx = 4; cIdx < maxCols; cIdx++) {
+        const colLetter = columnToLetter(cIdx);
+        const rawHeader = taskHeaders[cIdx] || '';
+        if (hasAnyExplicitHeader) {
+          if (!rawHeader) continue;
+          const norm = normalizeAssessmentHeaderTitle(rawHeader);
+          if (norm.isAstsInformatika) astsInfCols.push(cIdx);
+          else if (norm.isAstsKka) astsKkaCols.push(cIdx);
+          else regularCols.push(cIdx);
+        } else {
+          const defaultMaxIdx = isGrade7 ? 4 : 6;
+          if (cIdx <= defaultMaxIdx && getStandardTaskTitle(rawClass, colLetter)) {
+            regularCols.push(cIdx);
+          }
+        }
+      }
+
+      // 4. Collect per-student scores across the class
+      const astsInfScores: number[] = [];
+      const astsKkaScores: number[] = [];
+      const regularNumericScores: number[] = [];
+      const studentPrimaryScores: number[] = [];
+
+      let totalRegularTaskSlots = 0;
+      let completedRegularTaskSlots = 0;
+
+      for (let att = 1; att <= totalStudents; att++) {
+        const attStr = String(att);
+        const sheetRow = studentRowsMap.get(att);
+
+        // A. ASTS Informatika score for this student
+        let infScore: number | null = null;
+        const masterInfRec = infMasterMap[attStr];
+        if (
+          masterInfRec &&
+          (masterInfRec.benarPG !== null ||
+            masterInfRec.benarMJ !== null ||
+            masterInfRec.skorUraian !== null)
+        ) {
+          infScore = computeAstsBreakdown(
+            masterInfRec.benarPG ?? 0,
+            masterInfRec.benarMJ ?? 0,
+            masterInfRec.skorUraian ?? 0,
+            masterInfRec.remedialScore ?? null
+          ).totalNilai;
+        } else if (sheetRow) {
+          // Check column Z breakdown
+          const zCell = sheetRow.cells[25 + sheetRow.colOffset];
+          const zStr = zCell && zCell.v !== null && zCell.v !== undefined ? String(zCell.v).trim() : '';
+          if (zStr && zStr.includes('|')) {
+            const parts = zStr.split('|');
+            const pPg = parseFloat(parts[0]);
+            const pMj = parseFloat(parts[1]);
+            const pUr = parseFloat(parts[2]);
+            if (!isNaN(pPg) && !isNaN(pMj) && !isNaN(pUr)) {
+              infScore = computeAstsBreakdown(pPg, pMj, pUr).totalNilai;
+            }
+          }
+          // Check ASTS Informatika column cell in sheet
+          if (infScore === null && astsInfCols.length > 0) {
+            const cCell = sheetRow.cells[astsInfCols[0] + sheetRow.colOffset];
+            if (cCell && cCell.v !== null && cCell.v !== undefined) {
+              const numVal = Number(String(cCell.v).trim().replace(',', '.'));
+              if (!isNaN(numVal) && numVal >= 0 && String(cCell.v).trim() !== '' && String(cCell.v).trim() !== '-') {
+                infScore = Math.round(numVal * 10) / 10;
+              }
+            }
+          }
+        }
+
+        if (infScore !== null) {
+          astsInfScores.push(infScore);
+        }
+
+        // B. ASTS KKA score for this student (Grade 8)
+        let kkaScore: number | null = null;
+        if (!isGrade7) {
+          const masterKkaRec = kkaMasterMap[attStr];
+          if (
+            masterKkaRec &&
+            (masterKkaRec.benarPG !== null ||
+              masterKkaRec.benarMJ !== null ||
+              masterKkaRec.skorUraian !== null)
+          ) {
+            kkaScore = computeAstsBreakdown(
+              masterKkaRec.benarPG ?? 0,
+              masterKkaRec.benarMJ ?? 0,
+              masterKkaRec.skorUraian ?? 0,
+              masterKkaRec.remedialScore ?? null
+            ).totalNilai;
+          } else if (sheetRow) {
+            const yCell = sheetRow.cells[24 + sheetRow.colOffset];
+            const yStr = yCell && yCell.v !== null && yCell.v !== undefined ? String(yCell.v).trim() : '';
+            if (yStr && yStr.includes('|')) {
+              const parts = yStr.split('|');
+              const pPg = parseFloat(parts[0]);
+              const pMj = parseFloat(parts[1]);
+              const pUr = parseFloat(parts[2]);
+              if (!isNaN(pPg) && !isNaN(pMj) && !isNaN(pUr)) {
+                kkaScore = computeAstsBreakdown(pPg, pMj, pUr).totalNilai;
+              }
+            }
+            if (kkaScore === null && astsKkaCols.length > 0) {
+              const cCell = sheetRow.cells[astsKkaCols[0] + sheetRow.colOffset];
+              if (cCell && cCell.v !== null && cCell.v !== undefined) {
+                const numVal = Number(String(cCell.v).trim().replace(',', '.'));
+                if (!isNaN(numVal) && numVal >= 0 && String(cCell.v).trim() !== '' && String(cCell.v).trim() !== '-') {
+                  kkaScore = Math.round(numVal * 10) / 10;
+                }
+              }
+            }
+          }
+        }
+
+        if (kkaScore !== null) {
+          astsKkaScores.push(kkaScore);
+        }
+
+        // C. Regular task completion & numeric scores
+        const studentTaskNums: number[] = [];
+        for (const rColIdx of regularCols) {
+          totalRegularTaskSlots++;
+          if (sheetRow) {
+            const cell = sheetRow.cells[rColIdx + sheetRow.colOffset];
+            if (cell && cell.v !== null && cell.v !== undefined) {
+              const strVal = String(cell.v).trim();
+              if (strVal !== '' && strVal !== '-' && strVal !== '0') {
+                const numVal = Number(strVal.replace(',', '.'));
+                if (!isNaN(numVal) && numVal > 0) {
+                  completedRegularTaskSlots++;
+                  studentTaskNums.push(numVal);
+                  regularNumericScores.push(numVal);
+                } else if (strVal.length > 0) {
+                  completedRegularTaskSlots++;
+                }
+              }
+            }
+          }
+        }
+
+        // Determine student's primary evaluation score for overall class average
+        const availableEvalScores: number[] = [];
+        if (infScore !== null) availableEvalScores.push(infScore);
+        if (kkaScore !== null) availableEvalScores.push(kkaScore);
+        if (availableEvalScores.length === 0 && studentTaskNums.length > 0) {
+          const avgT = studentTaskNums.reduce((a, b) => a + b, 0) / studentTaskNums.length;
+          availableEvalScores.push(avgT);
+        }
+
+        if (availableEvalScores.length > 0) {
+          const stuAvg =
+            availableEvalScores.reduce((a, b) => a + b, 0) / availableEvalScores.length;
+          studentPrimaryScores.push(Math.round(stuAvg * 10) / 10);
+        }
+      }
+
+      const calcAvg = (arr: number[]): number | null =>
+        arr.length > 0
+          ? Math.round((arr.reduce((a, b) => a + b, 0) / arr.length) * 10) / 10
+          : null;
+
+      const astsInformatikaAvg = calcAvg(astsInfScores);
+      const astsKkaAvg = calcAvg(astsKkaScores);
+      const regularTaskNumericAvg = calcAvg(regularNumericScores);
+      const averageScore = calcAvg(studentPrimaryScores);
+
+      const taskCompletionRate =
+        totalRegularTaskSlots > 0
+          ? Math.round((completedRegularTaskSlots / totalRegularTaskSlots) * 1000) / 10
+          : 0;
+
+      const highestScore =
+        studentPrimaryScores.length > 0 ? Math.max(...studentPrimaryScores) : null;
+      const lowestScore =
+        studentPrimaryScores.length > 0 ? Math.min(...studentPrimaryScores) : null;
+      const tuntasCount = studentPrimaryScores.filter((s) => s >= kktp).length;
+      const tuntasRate =
+        studentPrimaryScores.length > 0
+          ? Math.round((tuntasCount / studentPrimaryScores.length) * 1000) / 10
+          : 0;
+
+      return {
+        classCode: rawClass,
+        className: cleanClassName,
+        totalStudents,
+        gradedCount: studentPrimaryScores.length,
+        averageScore,
+        astsInformatikaAvg,
+        astsInformatikaCount: astsInfScores.length,
+        astsInformatikaHighest: astsInfScores.length > 0 ? Math.max(...astsInfScores) : null,
+        astsInformatikaLowest: astsInfScores.length > 0 ? Math.min(...astsInfScores) : null,
+        astsInformatikaTuntasCount: astsInfScores.filter((s) => s >= kktp).length,
+        astsKkaAvg,
+        astsKkaCount: astsKkaScores.length,
+        astsKkaHighest: astsKkaScores.length > 0 ? Math.max(...astsKkaScores) : null,
+        astsKkaLowest: astsKkaScores.length > 0 ? Math.min(...astsKkaScores) : null,
+        astsKkaTuntasCount: astsKkaScores.filter((s) => s >= kktp).length,
+        regularTaskNumericAvg,
+        taskCompletionRate,
+        highestScore,
+        lowestScore,
+        tuntasCount,
+        tuntasRate,
+      };
+    } catch (err) {
+      console.warn(`Failed to compute stats for class ${rawClass}:`, err);
+      return {
+        classCode: rawClass,
+        className: cleanClassName,
+        totalStudents,
+        gradedCount: 0,
+        averageScore: null,
+        astsInformatikaAvg: null,
+        astsInformatikaCount: 0,
+        astsInformatikaHighest: null,
+        astsInformatikaLowest: null,
+        astsInformatikaTuntasCount: 0,
+        astsKkaAvg: null,
+        astsKkaCount: 0,
+        astsKkaHighest: null,
+        astsKkaLowest: null,
+        astsKkaTuntasCount: 0,
+        regularTaskNumericAvg: null,
+        taskCompletionRate: 0,
+        highestScore: null,
+        lowestScore: null,
+        tuntasCount: 0,
+        tuntasRate: 0,
+      };
+    }
+  });
+
+  const stats = await Promise.all(statsPromises);
+  const validClassAvgs = stats
+    .map((s) => s.averageScore)
+    .filter((v): v is number => v !== null && !isNaN(v));
+  const overallAverage =
+    validClassAvgs.length > 0
+      ? Math.round(
+          (validClassAvgs.reduce((a, b) => a + b, 0) / validClassAvgs.length) * 10
+        ) / 10
+      : null;
+
+  return {
+    success: true,
+    stats,
+    overallAverage,
+  };
+}
+
 
 
 

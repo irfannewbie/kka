@@ -18,6 +18,8 @@ import {
   syncNewTaskToSheet,
   syncAllTasksToSheet,
   syncAllStudentsToSheet,
+  fetchCalculatorBreakdownFromSheet,
+  syncCalculatorBreakdownToSheet,
 } from './services/sheetsService';
 import { playNotificationChime } from './services/sound';
 import { syncAllCalculatorMasterWithServer } from './services/calculatorMasterStore';
@@ -65,8 +67,9 @@ try {
 }
 
 // Helper to determine route tab from pathname
-const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks' => {
+const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' => {
   const cleanPath = (path || '/').toLowerCase().replace(/\/$/, '') || '/';
+  if (cleanPath === '/kelas7' || cleanPath === '/kelas-7' || cleanPath === '/cek-kelas7' || cleanPath === '/cek7') return 'kelas7';
   if (cleanPath === '/cek' || cleanPath === '/check' || cleanPath === '/login-siswa') return 'cek';
   if (cleanPath === '/pengganti' || cleanPath === '/tugas-pengganti' || cleanPath === '/pengganti-kka2' || cleanPath === '/kka2') return 'pengganti';
   if (cleanPath === '/master') return 'master';
@@ -81,7 +84,7 @@ const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'studen
 
 export default function App() {
   // Navigation state initialized based on current URL pathname
-  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks'>(() => {
+  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks'>(() => {
     return getTabFromPath(window.location.pathname);
   });
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
@@ -98,12 +101,13 @@ export default function App() {
   }, []);
 
   // Programmatic navigation that updates the browser URL
-  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks', targetPath?: string) => {
+  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks', targetPath?: string) => {
     setActiveTab(tab);
     let resolvedPath = targetPath;
     if (!resolvedPath) {
       if (tab === 'showcase') resolvedPath = '/';
       else if (tab === 'cek') resolvedPath = '/cek';
+      else if (tab === 'kelas7') resolvedPath = '/kelas7';
       else if (tab === 'pengganti') resolvedPath = '/pengganti';
       else if (tab === 'substitute_tasks') resolvedPath = '/master/substitute';
       else resolvedPath = `/master${tab === 'master' ? '' : `/${tab}`}`;
@@ -224,6 +228,9 @@ export default function App() {
     syncAllCalculatorMasterWithServer().catch(() => {
       // ignore
     });
+    fetchCalculatorBreakdownFromSheet(spreadsheetId, true).catch(() => {
+      // ignore
+    });
     async function fetchInitialData() {
       try {
         const remoteData = await loadSpreadsheetData(null, spreadsheetId);
@@ -319,6 +326,15 @@ export default function App() {
   const performSyncWithSheet = async (accessToken: string | null, isBackground: boolean = false) => {
     if (!isBackground) setIsSyncing(true);
     try {
+      if (accessToken && !isBackground) {
+        syncCalculatorBreakdownToSheet(accessToken, spreadsheetId).catch(() => {
+          // ignore
+        });
+      } else {
+        fetchCalculatorBreakdownFromSheet(spreadsheetId, true).catch(() => {
+          // ignore
+        });
+      }
       const remoteData = await loadSpreadsheetData(accessToken, spreadsheetId);
       
       // Check if new tasks arrived from sheet
@@ -643,7 +659,7 @@ export default function App() {
   return (
     <div className="flex h-screen w-full bg-[#F2EFEB] font-sans overflow-hidden text-[#1a1a1a]">
       {/* High Density Left Sidebar (Mounted ONLY for Master Admin Views) */}
-      {activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'pengganti' && (
+      {activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && (
         <Sidebar
           activeTab={activeTab}
           onNavigate={handleNavigate}
@@ -685,7 +701,7 @@ export default function App() {
         />
 
         {/* Real-time Toast Floating Alert (Only in Master Mode) */}
-        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'pengganti' && (
+        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && (
           <div className="fixed top-16 right-4 z-50 max-w-sm bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-3 font-mono-code animate-in slide-in-from-top-4 duration-200">
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
@@ -730,11 +746,26 @@ export default function App() {
 
             {activeTab === 'cek' && (
               <StudentCheckView
+                key="cek-kelas8"
+                gradeLevel="8"
                 students={students}
                 spreadsheetId={spreadsheetId}
                 spreadsheetUrl={spreadsheetUrl}
                 onNavigateHome={() => handleNavigate('showcase', '/')}
                 onNavigatePengganti={() => handleNavigate('pengganti', '/pengganti')}
+                onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
+              />
+            )}
+
+            {activeTab === 'kelas7' && (
+              <StudentCheckView
+                key="cek-kelas7"
+                gradeLevel="7"
+                students={students}
+                spreadsheetId={spreadsheetId}
+                spreadsheetUrl={spreadsheetUrl}
+                onNavigateHome={() => handleNavigate('showcase', '/')}
+                onNavigateCek={() => handleNavigate('cek', '/cek')}
               />
             )}
 

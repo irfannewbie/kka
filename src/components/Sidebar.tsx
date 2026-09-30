@@ -19,8 +19,8 @@ import { User } from 'firebase/auth';
 import { ADMIN_EMAILS } from '../services/firebaseAuth';
 
 interface SidebarProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks', path?: string) => void;
   onOpenSubmitModal: () => void;
   user: User | null;
   token: string | null;
@@ -132,9 +132,23 @@ export const Sidebar: React.FC<SidebarProps> = ({
           >
             <span className="flex items-center gap-1.5">
               <CheckSquare className="h-3 w-3 text-blue-400" />
-              <span>PORTAL CEK SISWA</span>
+              <span>PORTAL CEK KELAS 8</span>
             </span>
             <span className="text-[10px] text-blue-300 font-mono-code">/cek</span>
+          </button>
+
+          <button
+            onClick={() => {
+              onNavigate('kelas7', '/kelas7');
+              onCloseMobile();
+            }}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-emerald-500/20 hover:bg-emerald-500 hover:text-[#1a1a1a] text-emerald-300 border border-emerald-500/30 transition-all cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5">
+              <CheckSquare className="h-3 w-3 text-emerald-400" />
+              <span>PORTAL CEK KELAS 7</span>
+            </span>
+            <span className="text-[10px] text-emerald-300 font-mono-code">/kelas7</span>
           </button>
 
           <button

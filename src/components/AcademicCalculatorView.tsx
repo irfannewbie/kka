@@ -1,8 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Calculator,
   FileSpreadsheet,
-  Copy,
   Download,
   UploadCloud,
   DownloadCloud,
@@ -14,9 +13,10 @@ import {
   ExternalLink,
   RotateCcw,
   Table,
-  FileText,
   Award,
   Layers,
+  Database,
+  Sparkles,
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import {
@@ -30,12 +30,17 @@ import {
   ClassColumnDetectionResult,
   DetectedColumnDetail,
   StudentGradeItem,
+  fetchCalculatorBreakdownFromSheet,
+  syncCalculatorBreakdownToSheet,
+  CALCULATOR_BREAKDOWN_SHEET_NAME,
+  CALCULATOR_BREAKDOWN_HEADERS,
 } from '../services/sheetsService';
 import {
   loadLocalCalculatorDataset,
   saveCalculatorDatasetEverywhere,
   syncAllCalculatorMasterWithServer,
   getDatasetShortKey,
+  getAllLocalCalculatorDatasets,
 } from '../services/calculatorMasterStore';
 
 interface AcademicCalculatorViewProps {
@@ -260,6 +265,11 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [copyFeedback, setCopyFeedback] = useState<string | null>(null);
   const [isSyncingSheet, setIsSyncingSheet] = useState<boolean>(false);
+  const [isSyncingBreakdownSheet, setIsSyncingBreakdownSheet] = useState<boolean>(false);
+  const [breakdownSyncStatus, setBreakdownSyncStatus] = useState<string | null>(null);
+  const [allDatasetsVersion, setAllDatasetsVersion] = useState<number>(0);
+  const autoSyncTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hasInitialAutoSyncedRef = useRef<boolean>(false);
 
   // Daftar siswa kelas aktif dari database (7E-7H atau 8A-8H)
   const classStudents = useMemo(() => {
@@ -332,13 +342,25 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
     }
 
     // Muat data permanen yang sudah tersimpan di browser untuk kelas + mapel + asesmen ini
+    const shortKey = getDatasetShortKey(selectedClass, subject, assessment);
     const savedLocal = loadStoredDataset(selectedClass, subject, assessment);
     const prevModeA = savedLocal?.modeAData || {};
     const prevModeB = savedLocal?.modeBData || {};
     const prevStandar = savedLocal?.standarData || {};
 
+    // Ambil juga data rincian dari sheet khusus 'Rincian_Kalkulator' (atau kolom Y/Z lama)
+    const sheetBreakdownForClass =
+      detection.breakdownBySubject?.[shortKey] ||
+      (subject === 'Koding'
+        ? detection.breakdownBySubject?.[getDatasetShortKey(selectedClass, 'KKA', assessment)]
+        : undefined) ||
+      {};
+
     const nextStandar: Record<string, number | null> = { ...prevStandar };
-    const nextModeA: Record<string, ModeAStudentRecord> = { ...prevModeA };
+    const nextModeA: Record<string, ModeAStudentRecord> = {
+      ...sheetBreakdownForClass,
+      ...prevModeA,
+    };
     const nextModeB: Record<string, ModeBStudentRecord> = { ...prevModeB };
 
     // Identifikasi kolom UH/Tugas, ASTS, dan ASAS sesuai mata pelajaran untuk Mode B (Nilai Akhir Rapor)
@@ -362,7 +384,7 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
     classStudents.forEach((student, idx) => {
       const attNo = student.attendanceNo || String(idx + 1);
       const rawScore = chosenCol?.gradesMap?.[attNo] ?? null;
-      const existingA = prevModeA[attNo];
+      const existingA = prevModeA[attNo] || sheetBreakdownForClass[attNo];
       const hasExistingAData =
         existingA &&
         (existingA.benarPG !== null ||
@@ -370,17 +392,18 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
           existingA.skorUraian !== null ||
           existingA.remedialScore !== null);
 
+      if (hasExistingAData) {
+        nextModeA[attNo] = {
+          ...existingA,
+          isManual: true,
+        };
+        preservedManualCount++;
+      }
+
       if (rawScore !== null && rawScore !== undefined && !isNaN(Number(rawScore))) {
         const roundedScore = Math.min(100, Math.max(0, Math.round(Number(rawScore))));
         nextStandar[attNo] = roundedScore;
         importedCount++;
-
-        // PENTING: Google Spreadsheets hanya menyimpan nilai akhir bulat, bukan rincian PG/Menjodohkan/Uraian.
-        // Rincian Mode A (Benar PG, Menjodohkan, Skor Uraian) HANYA diambil dari input Kalkulator Master!
-        if (hasExistingAData && existingA?.isManual) {
-          nextModeA[attNo] = existingA;
-          preservedManualCount++;
-        }
       }
 
       // Hitung komponen Mode B (Rerata UH, ASTS, ASAS) dari kolom-kolom spreadsheet jika belum dikunci manual
@@ -498,26 +521,42 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
   };
 
   // Saat Kelas, Mata Pelajaran, atau Jenis Asesmen berubah:
-  // 1. Muat langsung data permanen dari Kalkulator Master (localStorage + Server)
-  // 2. Deteksi kolom Google Spreadsheet di latar belakang untuk melengkapi nilai akhir Mode Standar & Mode B
+  // 1. Muat langsung data permanen dari Kalkulator Master (localStorage + Seed)
+  // 2. Tarik rincian PG/Menjodohkan/Uraian dari Sheet Khusus 'Rincian_Kalkulator' di Google Spreadsheet
+  // 3. Deteksi kolom Google Spreadsheet di latar belakang untuk melengkapi nilai akhir
   useEffect(() => {
     let isMounted = true;
+    const shortKey = getDatasetShortKey(selectedClass, selectedSubject, selectedAssessment);
     const stored = loadStoredDataset(selectedClass, selectedSubject, selectedAssessment);
     setModeAData(stored.modeAData || {});
     setModeBData(stored.modeBData || {});
     setStandarData(stored.standarData || {});
     setLastSavedAt(stored.updatedAt || null);
 
-    syncAllCalculatorMasterWithServer().then((allServerDatasets) => {
+    // Tarik dari Sheet Khusus 'Rincian_Kalkulator' dan Server tanpa pernah menimpa input manual dengan objek kosong
+    Promise.all([
+      fetchCalculatorBreakdownFromSheet(spreadsheetId),
+      syncAllCalculatorMasterWithServer(),
+    ]).then(([sheetBreakdowns, allServerDatasets]) => {
       if (!isMounted) return;
-      const shortKey = getDatasetShortKey(selectedClass, selectedSubject, selectedAssessment);
-      const serverDs = allServerDatasets[shortKey];
-      if (serverDs) {
-        setModeAData(serverDs.modeAData || {});
-        setModeBData((prev) => ({ ...prev, ...(serverDs.modeBData || {}) }));
-        setStandarData((prev) => ({ ...prev, ...(serverDs.standarData || {}) }));
-        if (serverDs.updatedAt) setLastSavedAt(serverDs.updatedAt);
+      const sheetMap = sheetBreakdowns?.[shortKey] || {};
+      const serverDs = allServerDatasets?.[shortKey];
+      const latestLocal = loadStoredDataset(selectedClass, selectedSubject, selectedAssessment);
+
+      setModeAData((prev) => ({
+        ...sheetMap,
+        ...(serverDs?.modeAData || {}),
+        ...(latestLocal?.modeAData || {}),
+        ...prev,
+      }));
+      if (serverDs?.modeBData) {
+        setModeBData((prev) => ({ ...(serverDs.modeBData || {}), ...prev }));
       }
+      if (serverDs?.standarData) {
+        setStandarData((prev) => ({ ...(serverDs.standarData || {}), ...prev }));
+      }
+      if (serverDs?.updatedAt) setLastSavedAt(serverDs.updatedAt);
+      setAllDatasetsVersion((v) => v + 1);
     });
 
     setSelectedImportColumn('AUTO');
@@ -526,6 +565,21 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
       isMounted = false;
     };
   }, [selectedClass, selectedSubject, selectedAssessment, spreadsheetId, token]);
+
+  // Otomatis sinkronkan seluruh data lokal ke Sheet Khusus 'Rincian_Kalkulator' saat token Google aktif pertama kali
+  useEffect(() => {
+    if (token && !hasInitialAutoSyncedRef.current) {
+      hasInitialAutoSyncedRef.current = true;
+      syncCalculatorBreakdownToSheet(token, spreadsheetId).then((res) => {
+        if (res.success && res.totalRows > 0) {
+          setBreakdownSyncStatus(
+            `Tersinkronisasi otomatis ke sheet '${CALCULATOR_BREAKDOWN_SHEET_NAME}' (${res.totalRows} baris siswa)`
+          );
+          setAllDatasetsVersion((v) => v + 1);
+        }
+      });
+    }
+  }, [token, spreadsheetId]);
 
   // Fungsi Perhitungan Mode A (Skor Asesmen & Remedial)
   // Rumus: (Benar PG × 2) + (Benar Menjodohkan × 2.5) + Skor Uraian -> Bulatkan ke bilangan bulat terdekat
@@ -714,6 +768,37 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
         standarData,
       });
       setLastSavedAt(savedTime);
+      setAllDatasetsVersion((v) => v + 1);
+
+      // Jika sudah login Google, otomatis jadwalkan penyimpanan ke sheet khusus 'Rincian_Kalkulator' (debounce 2 detik)
+      if (token) {
+        if (autoSyncTimerRef.current) {
+          clearTimeout(autoSyncTimerRef.current);
+        }
+        const clsSnap = selectedClass;
+        const subjSnap = selectedSubject;
+        const assessSnap = selectedAssessment;
+        autoSyncTimerRef.current = setTimeout(() => {
+          setIsSyncingBreakdownSheet(true);
+          syncCalculatorBreakdownToSheet(token, spreadsheetId, {
+            className: clsSnap,
+            subject: subjSnap,
+            assessment: assessSnap,
+            modeAData: next,
+          })
+            .then((res) => {
+              if (res.success) {
+                setBreakdownSyncStatus(
+                  `Tersimpan otomatis di sheet '${CALCULATOR_BREAKDOWN_SHEET_NAME}' (${res.totalRows} siswa)`
+                );
+              }
+            })
+            .finally(() => {
+              setIsSyncingBreakdownSheet(false);
+            });
+        }, 2000);
+      }
+
       return next;
     });
   };
@@ -796,9 +881,9 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
       const modeBRes = computeModeBRow(modeBData[attNo]);
       const stdScore = standarData[attNo] ?? null;
 
-      // Nilai utama untuk Format A (mengambil dari mode yang sedang aktif)
+      // Nilai utama untuk Format A (mengambil dari mode yang sedang aktif, atau fallback ke nilai sheet jika rincian PG/MJ/Uraian belum diisi)
       let primaryScore: number | null = null;
-      if (calcMode === 'MODE_A') primaryScore = modeARes.totalNilai;
+      if (calcMode === 'MODE_A') primaryScore = modeARes.totalNilai ?? stdScore;
       else if (calcMode === 'MODE_B') primaryScore = modeBRes.nilaiAkhir;
       else primaryScore = stdScore;
 
@@ -973,39 +1058,116 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
     return lines.join('\n');
   }, [outputTableMatrix]);
 
-  // Salin Tabel TSV (Siap Paste ke Google Sheets / Excel)
-  const handleCopyTSV = (includeHeaders = true) => {
-    const content = includeHeaders
-      ? tsvOutputText
-      : outputTableMatrix.rows.map((row) => row.join('\t')).join('\n');
-    navigator.clipboard.writeText(content);
-    const msg = includeHeaders
-      ? `Tabel TSV (${outputFormat.replace('_', ' ')}) lengkap dengan header berhasil disalin! Siap paste (Ctrl+V) ke Google Sheets / Excel.`
-      : `Baris data TSV tanpa header berhasil disalin!`;
-    setCopyFeedback(msg);
-    setTimeout(() => setCopyFeedback(null), 4000);
-    onShowAlert?.('Disalin ke Clipboard (TSV)', msg);
+  // Ringkasan status pengisian rincian PG, Menjodohkan & Uraian seluruh kelas untuk Sheet Khusus 'Rincian_Kalkulator'
+  const allClassesBreakdownSummary = useMemo(() => {
+    const allLocal = getAllLocalCalculatorDatasets();
+    const items: {
+      className: string;
+      shortClass: string;
+      grade: '7' | '8';
+      subject: SubjectOptionType;
+      filledCount: number;
+      totalStudents: number;
+    }[] = [];
+
+    GRADE_7_CLASSES.forEach((cls) => {
+      const shortKey = getDatasetShortKey(cls, 'Informatika', selectedAssessment);
+      const mapA = allLocal[shortKey]?.modeAData || {};
+      const filled = Object.values(mapA).filter(
+        (r) => r && (r.benarPG !== null || r.benarMJ !== null || r.skorUraian !== null)
+      ).length;
+      items.push({
+        className: cls,
+        shortClass: cls.replace(/^Kelas\s*/i, ''),
+        grade: '7',
+        subject: 'Informatika',
+        filledCount: filled,
+        totalStudents: getStudentsByClass(cls).length,
+      });
+    });
+
+    GRADE_8_CLASSES.forEach((cls) => {
+      (['Informatika', 'Koding'] as SubjectOptionType[]).forEach((subj) => {
+        const shortKey = getDatasetShortKey(cls, subj, selectedAssessment);
+        const mapA = allLocal[shortKey]?.modeAData || {};
+        const filled = Object.values(mapA).filter(
+          (r) => r && (r.benarPG !== null || r.benarMJ !== null || r.skorUraian !== null)
+        ).length;
+        items.push({
+          className: cls,
+          shortClass: cls.replace(/^Kelas\s*/i, ''),
+          grade: '8',
+          subject: subj,
+          filledCount: filled,
+          totalStudents: getStudentsByClass(cls).length,
+        });
+      });
+    });
+
+    return items;
+  }, [selectedAssessment, modeAData, allDatasetsVersion]);
+
+  // Sinkronkan seluruh kelas sekaligus ke Sheet Khusus 'Rincian_Kalkulator'
+  const handleSyncAllToBreakdownSheet = async () => {
+    if (!token) {
+      onShowAlert?.(
+        'Autentikasi Diperlukan',
+        `Silakan klik LOGIN GOOGLE terlebih dahulu untuk membuat dan menyimpan rincian nilai ke sheet khusus '${CALCULATOR_BREAKDOWN_SHEET_NAME}'.`
+      );
+      onLogin();
+      return;
+    }
+
+    setIsSyncingBreakdownSheet(true);
+    try {
+      const res = await syncCalculatorBreakdownToSheet(token, spreadsheetId, {
+        className: selectedClass,
+        subject: selectedSubject,
+        assessment: selectedAssessment,
+        modeAData,
+      });
+      if (res.success) {
+        setBreakdownSyncStatus(res.message);
+        setCopyFeedback(res.message);
+        setTimeout(() => setCopyFeedback(null), 6000);
+        onShowAlert?.(`Sheet '${CALCULATOR_BREAKDOWN_SHEET_NAME}' Diperbarui`, res.message);
+        setAllDatasetsVersion((v) => v + 1);
+      } else {
+        onShowAlert?.('Gagal Menyinkronkan Sheet Khusus', res.message);
+      }
+    } catch (err: any) {
+      onShowAlert?.('Error Koneksi', err?.message || 'Gagal menghubungi Google Sheets API.');
+    } finally {
+      setIsSyncingBreakdownSheet(false);
+    }
   };
 
-  // Salin Format CSV
-  const handleCopyCSV = () => {
-    navigator.clipboard.writeText(csvOutputText);
-    const msg = `Tabel format CSV (${outputFormat.replace('_', ' ')}) berhasil disalin ke clipboard!`;
-    setCopyFeedback(msg);
-    setTimeout(() => setCopyFeedback(null), 4000);
-    onShowAlert?.('Disalin ke Clipboard (CSV)', msg);
-  };
-
-  // Salin Kolom Nilai Akhir Saja
-  const handleCopyScoresOnly = () => {
-    const lines = processedRows.map((r) =>
-      r.primaryScore !== null ? String(r.primaryScore) : emptyValueSymbol
-    );
-    navigator.clipboard.writeText(lines.join('\n'));
-    const msg = `Kolom nilai (${processedRows.length} baris) berhasil disalin! Siap ditempel langsung ke kolom nilai Google Sheets.`;
-    setCopyFeedback(msg);
-    setTimeout(() => setCopyFeedback(null), 4000);
-    onShowAlert?.('Kolom Nilai Disalin', msg);
+  // Tarik ulang data rincian seluruh kelas dari Sheet Khusus 'Rincian_Kalkulator'
+  const handlePullFromBreakdownSheet = async () => {
+    setIsImportingSheet(true);
+    try {
+      const allBreakdowns = await fetchCalculatorBreakdownFromSheet(spreadsheetId, true);
+      const shortKey = getDatasetShortKey(selectedClass, selectedSubject, selectedAssessment);
+      const classMap = allBreakdowns[shortKey] || {};
+      if (Object.keys(classMap).length > 0) {
+        setModeAData((prev) => ({
+          ...classMap,
+          ...prev,
+        }));
+      }
+      setAllDatasetsVersion((v) => v + 1);
+      const totalClasses = Object.keys(allBreakdowns).length;
+      const msg =
+        totalClasses > 0
+          ? `Berhasil memuat rincian PG, Menjodohkan & Uraian dari sheet '${CALCULATOR_BREAKDOWN_SHEET_NAME}' (${totalClasses} kelas/mapel ditemukan).`
+          : `Sheet '${CALCULATOR_BREAKDOWN_SHEET_NAME}' belum berisi data atau belum disinkronkan. Klik tombol "SIMPAN SEMUA KELAS KE SHEET '${CALCULATOR_BREAKDOWN_SHEET_NAME}'" untuk menyimpannya.`;
+      setBreakdownSyncStatus(msg);
+      onShowAlert?.('Tarik Data Sheet Khusus', msg);
+    } catch (err: any) {
+      onShowAlert?.('Gagal Menarik Data', err?.message || 'Tidak dapat memuat sheet Rincian_Kalkulator.');
+    } finally {
+      setIsImportingSheet(false);
+    }
   };
 
   // Unduh File Excel (.xlsx)
@@ -1762,6 +1924,17 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
                           >
                             {modeA.totalNilai}
                           </span>
+                        ) : standarScore !== null && standarScore !== undefined ? (
+                          <span
+                            className={`inline-block px-2 py-0.5 font-bold text-[11px] border ${
+                              standarScore >= kktp
+                                ? 'bg-blue-50 text-blue-900 border-blue-400'
+                                : 'bg-amber-50 text-amber-900 border-amber-400'
+                            }`}
+                            title="Nilai akhir dari kolom Google Sheet kelas (isi Benar PG, Menjodohkan & Uraian untuk merinci)"
+                          >
+                            {standarScore}
+                          </span>
                         ) : (
                           <span className="text-slate-400 font-bold">{emptyValueSymbol}</span>
                         )}
@@ -1909,118 +2082,94 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
         </div>
       </div>
 
-      {/* 5. PANEL OUTPUT TABEL CSV / TSV SIAP COPY-PASTE KE GOOGLE SHEETS / EXCEL */}
+      {/* 5. PANEL SHEET KHUSUS PENYIMPANAN RINCIAN NILAI ('Rincian_Kalkulator') DI GOOGLE SPREADSHEET */}
       <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-5 sm:p-6 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3 border-b-2 border-[#1a1a1a] pb-4">
           <div>
-            <div className="flex items-center gap-2">
-              <Table className="h-5 w-5 text-[#2e59e6]" />
+            <div className="flex items-center gap-2 flex-wrap">
+              <Database className="h-5 w-5 text-[#2e59e6]" />
               <h3 className="font-serif-display font-bold text-xl text-[#1a1a1a]">
-                Output Tabel Terstruktur (CSV / TSV) — Siap Copy-Paste ke Google Sheets & Excel
+                Sheet Khusus Penyimpanan Rincian Butir Soal — Tab <code>'{CALCULATOR_BREAKDOWN_SHEET_NAME}'</code>
               </h3>
+              <span className="font-mono-code text-[10px] font-bold bg-emerald-100 text-emerald-900 px-2.5 py-0.5 border border-emerald-600">
+                TERHUBUNG KE HALAMAN /CEK &amp; /KELAS7
+              </span>
             </div>
-            <p className="font-mono-code text-xs text-slate-600 mt-0.5">
-              Pilih salah satu dari 3 Format Kolom Output standar di bawah ini:
+            <p className="font-mono-code text-xs text-slate-600 mt-1">
+              Menyimpan jumlah <strong>Benar PG</strong>, <strong>Benar Menjodohkan</strong>, <strong>Skor Uraian</strong>, <strong>Total Nilai</strong>, dan <strong>Remedial</strong> dari masing-masing kelas di dalam kolom terpisah pada Google Spreadsheet agar rincian nilai siswa selalu tampil di semua perangkat.
             </p>
           </div>
 
-          {/* Pilihan Format Kolom Output A, B, C */}
-          <div className="flex flex-wrap items-center gap-1.5 font-mono-code text-xs">
+          <div className="flex flex-wrap items-center gap-2 font-mono-code text-xs shrink-0">
             <button
               type="button"
-              onClick={() => setOutputFormat('FORMAT_A')}
-              className={`px-3 py-2 font-bold border-2 transition-all cursor-pointer ${
-                outputFormat === 'FORMAT_A'
-                  ? 'bg-[#2e59e6] text-white border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
-                  : 'bg-[#FAF8F5] text-[#1a1a1a] border-[#1a1a1a] hover:bg-slate-100'
-              }`}
+              onClick={handlePullFromBreakdownSheet}
+              disabled={isImportingSheet}
+              className="px-3.5 py-2.5 bg-[#FAF8F5] hover:bg-slate-100 text-[#1a1a1a] font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
             >
-              A. Format Standar (Cepat / Rekap)
+              <RefreshCw className={`h-3.5 w-3.5 text-[#2e59e6] ${isImportingSheet ? 'animate-spin' : ''}`} />
+              <span>TARIK DARI SHEET '{CALCULATOR_BREAKDOWN_SHEET_NAME}'</span>
             </button>
+
             <button
               type="button"
-              onClick={() => setOutputFormat('FORMAT_B')}
-              className={`px-3 py-2 font-bold border-2 transition-all cursor-pointer ${
-                outputFormat === 'FORMAT_B'
-                  ? 'bg-[#2e59e6] text-white border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
-                  : 'bg-[#FAF8F5] text-[#1a1a1a] border-[#1a1a1a] hover:bg-slate-100'
-              }`}
+              onClick={handleSyncAllToBreakdownSheet}
+              disabled={isSyncingBreakdownSheet}
+              className="px-4 py-2.5 bg-[#2e59e6] hover:bg-[#1d4ed8] text-white font-bold border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] flex items-center gap-2 cursor-pointer disabled:opacity-50"
             >
-              B. Format Rincian Asesmen Ujian
+              <Sparkles className={`h-4 w-4 text-amber-300 ${isSyncingBreakdownSheet ? 'animate-spin' : ''}`} />
+              <span>
+                {isSyncingBreakdownSheet
+                  ? `MENYIMPAN KE '${CALCULATOR_BREAKDOWN_SHEET_NAME}'...`
+                  : `SIMPAN SEMUA KELAS KE SHEET '${CALCULATOR_BREAKDOWN_SHEET_NAME}'`}
+              </span>
             </button>
+
             <button
               type="button"
-              onClick={() => setOutputFormat('FORMAT_C')}
-              className={`px-3 py-2 font-bold border-2 transition-all cursor-pointer ${
-                outputFormat === 'FORMAT_C'
-                  ? 'bg-[#2e59e6] text-white border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
-                  : 'bg-[#FAF8F5] text-[#1a1a1a] border-[#1a1a1a] hover:bg-slate-100'
-              }`}
+              onClick={handleDownloadExcel}
+              className="px-3.5 py-2.5 bg-[#059669] hover:bg-[#047857] text-white font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] flex items-center gap-1.5 cursor-pointer"
             >
-              C. Format Rincian Nilai Akhir Rapor
+              <Download className="h-4 w-4" />
+              <span>UNDUH EXCEL (.XLSX)</span>
             </button>
           </div>
         </div>
 
-        {/* Informasi Struktur Kolom Aktif */}
-        <div className="bg-[#FAF8F5] border-2 border-[#1a1a1a] p-3 font-mono-code text-xs flex flex-wrap items-center justify-between gap-2">
-          <div>
-            <span className="font-bold text-slate-600 uppercase mr-2">STRUKTUR KOLOM OUTPUT:</span>
-            <code className="font-bold text-[#2e59e6]">
-              {outputTableMatrix.headers.map((h) => `[${h}]`).join(' | ')}
-            </code>
+        {/* Informasi Struktur Kolom pada Sheet Khusus Rincian_Kalkulator */}
+        <div className="bg-[#FAF8F5] border-2 border-[#1a1a1a] p-3.5 font-mono-code text-xs space-y-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-bold text-slate-700 uppercase">
+              STRUKTUR KOLOM TERPISAH PADA TAB SHEET <code>'{CALCULATOR_BREAKDOWN_SHEET_NAME}'</code> (KOLOM A s.d. M):
+            </span>
+            {breakdownSyncStatus && (
+              <span className="text-[11px] font-bold text-emerald-800 bg-emerald-100 px-2 py-0.5 border border-emerald-500">
+                ✓ {breakdownSyncStatus}
+              </span>
+            )}
           </div>
-          <span className="text-[11px] font-bold text-slate-600">
-            {selectedClass} • Mapel {selectedSubject} • {selectedAssessment}
-          </span>
-        </div>
-
-        {/* Tombol Salin & Ekspor */}
-        <div className="flex flex-wrap items-center gap-2.5 font-mono-code text-xs">
-          <button
-            type="button"
-            onClick={() => handleCopyTSV(true)}
-            className="px-4 py-2.5 bg-[#1a1a1a] hover:bg-[#2e59e6] text-white font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#2e59e6] flex items-center gap-2 cursor-pointer"
-          >
-            <Copy className="h-4 w-4 text-amber-400" />
-            <span>SALIN TABEL TSV (LENGKAP HEADER)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleCopyTSV(false)}
-            className="px-3.5 py-2.5 bg-white hover:bg-slate-100 text-[#1a1a1a] font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] flex items-center gap-1.5 cursor-pointer"
-          >
-            <Copy className="h-3.5 w-3.5 text-[#2e59e6]" />
-            <span>SALIN DATA TSV (TANPA HEADER)</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCopyCSV}
-            className="px-3.5 py-2.5 bg-white hover:bg-slate-100 text-[#1a1a1a] font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] flex items-center gap-1.5 cursor-pointer"
-          >
-            <FileText className="h-3.5 w-3.5 text-emerald-700" />
-            <span>SALIN FORMAT CSV</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleCopyScoresOnly}
-            className="px-3.5 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-950 font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] flex items-center gap-1.5 cursor-pointer"
-          >
-            <Copy className="h-3.5 w-3.5 text-amber-700" />
-            <span>SALIN KOLOM NILAI SAJA</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleDownloadExcel}
-            className="px-4 py-2.5 bg-[#059669] hover:bg-[#047857] text-white font-bold border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] flex items-center gap-1.5 cursor-pointer"
-          >
-            <Download className="h-4 w-4" />
-            <span>UNDUH EXCEL (.XLSX)</span>
-          </button>
+          <div className="flex flex-wrap gap-1.5 pt-0.5">
+            {CALCULATOR_BREAKDOWN_HEADERS.map((colName, i) => {
+              const colLetter = String.fromCharCode(65 + i);
+              const isHighlight =
+                colName === 'BENAR_PG' ||
+                colName === 'BENAR_MENJODOHKAN' ||
+                colName === 'SKOR_URAIAN' ||
+                colName === 'TOTAL_NILAI';
+              return (
+                <span
+                  key={colName}
+                  className={`px-2 py-1 text-[10px] font-bold border border-[#1a1a1a] ${
+                    isHighlight
+                      ? 'bg-[#2e59e6] text-white'
+                      : 'bg-white text-[#1a1a1a]'
+                  }`}
+                >
+                  Kolom {colLetter}: {colName}
+                </span>
+              );
+            })}
+          </div>
         </div>
 
         {copyFeedback && (
@@ -2030,18 +2179,74 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
           </div>
         )}
 
-        {/* Area Teks TSV / CSV Siap Salin */}
-        <div>
-          <label className="block font-mono-code text-[11px] font-bold text-slate-600 uppercase mb-1">
-            PRATINJAU OUTPUT TABEL TSV (SIAP COPY-PASTE KE GOOGLE SHEETS / EXCEL):
-          </label>
-          <textarea
-            readOnly
-            rows={10}
-            value={tsvOutputText}
-            onClick={(e) => (e.target as HTMLTextAreaElement).select()}
-            className="w-full bg-[#1a1a1a] text-emerald-300 border-2 border-[#1a1a1a] p-3.5 font-mono-code text-xs leading-relaxed focus:outline-hidden"
-          />
+        {/* Status Ketersediaan Rincian PG, Menjodohkan & Uraian Per Kelas */}
+        <div className="space-y-2.5 font-mono-code">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-slate-700 uppercase">
+              STATUS DATA RINCIAN (PG, MENJODOHKAN &amp; URAIAN) PER KELAS — KLIK KELAS UNTUK MEMBUKA TABEL:
+            </span>
+            <span className="text-[11px] text-slate-500 font-bold">
+              Asesmen: {selectedAssessment}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5">
+            {allClassesBreakdownSummary.map((item) => {
+              const isCurrent =
+                selectedClass === item.className && selectedSubject === item.subject;
+              const hasFilled = item.filledCount > 0;
+              return (
+                <button
+                  key={`${item.className}-${item.subject}`}
+                  type="button"
+                  onClick={() => {
+                    setSelectedGrade(item.grade);
+                    setSelectedClass(item.className);
+                    setSelectedSubject(item.subject);
+                    setCalcMode('MODE_A');
+                  }}
+                  className={`p-2.5 text-left border-2 transition-all cursor-pointer ${
+                    isCurrent
+                      ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-[3px_3px_0px_#2e59e6]'
+                      : hasFilled
+                      ? 'bg-emerald-50/70 hover:bg-emerald-100/80 text-[#1a1a1a] border-emerald-700'
+                      : 'bg-[#FAF8F5] hover:bg-slate-100 text-slate-700 border-[#1a1a1a]'
+                  }`}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <span className="text-xs font-black">Kelas {item.shortClass}</span>
+                    <span
+                      className={`text-[9px] font-bold px-1.5 py-0.2 border ${
+                        isCurrent
+                          ? 'bg-[#2e59e6] text-white border-white/30'
+                          : item.subject === 'Koding'
+                          ? 'bg-amber-100 text-amber-900 border-amber-400'
+                          : 'bg-blue-100 text-blue-900 border-blue-400'
+                      }`}
+                    >
+                      {item.subject === 'Koding' ? 'KKA' : 'INF'}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 flex items-center justify-between text-[10px]">
+                    <span className={isCurrent ? 'text-slate-300' : 'text-slate-600'}>
+                      Rincian Terisi:
+                    </span>
+                    <span
+                      className={`font-black ${
+                        isCurrent
+                          ? 'text-emerald-300'
+                          : hasFilled
+                          ? 'text-emerald-800'
+                          : 'text-slate-400'
+                      }`}
+                    >
+                      {item.filledCount}/{item.totalStudents} Siswa
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

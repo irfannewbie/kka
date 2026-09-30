@@ -10,8 +10,8 @@ import { User } from 'firebase/auth';
 import { ADMIN_EMAILS } from '../services/firebaseAuth';
 
 interface HeaderProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'pengganti' | 'substitute_tasks', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks', path?: string) => void;
   user: User | null;
   token: string | null;
   onLogin: () => void;
@@ -50,8 +50,13 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenMobileSidebar,
   onOpenSubmitModal,
 }) => {
-  const isMasterMode = activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'pengganti';
+  const isMasterMode =
+    activeTab !== 'showcase' &&
+    activeTab !== 'cek' &&
+    activeTab !== 'kelas7' &&
+    activeTab !== 'pengganti';
   const isCekMode = activeTab === 'cek';
+  const isKelas7Mode = activeTab === 'kelas7';
   const isPenggantiMode = activeTab === 'pengganti';
 
   return (
@@ -77,14 +82,19 @@ export const Header: React.FC<HeaderProps> = ({
           className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-1.5 sm:gap-2 shrink-0"
         >
           <span>[ SISWAHUB v2.0 ]</span>
-          {!isMasterMode && !isCekMode && !isPenggantiMode && (
+          {!isMasterMode && !isCekMode && !isKelas7Mode && !isPenggantiMode && (
             <span className="hidden sm:inline-block text-[11px] font-normal text-slate-500 font-mono-code border-l border-[#1a1a1a] pl-2">
               SHOWCASE KARYA SISWA
             </span>
           )}
           {isCekMode && (
             <span className="hidden sm:inline-block text-[11px] font-bold text-[#2e59e6] font-mono-code border-l border-[#1a1a1a] pl-2">
-              CEK STATUS TUGAS SISWA
+              CEK STATUS TUGAS SISWA (KELAS 8)
+            </span>
+          )}
+          {isKelas7Mode && (
+            <span className="hidden sm:inline-block text-[11px] font-bold text-[#2e59e6] font-mono-code border-l border-[#1a1a1a] pl-2">
+              CEK NILAI & TUGAS KELAS 7 (7E - 7H)
             </span>
           )}
           {isPenggantiMode && (

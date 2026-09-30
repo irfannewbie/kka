@@ -176,13 +176,20 @@ export function saveCalculatorDatasetEverywhere(
   return timeStr;
 }
 
-// Tarik seluruh data Kalkulator Master dari server & sinkronkan dengan localStorage browser
-export async function syncAllCalculatorMasterWithServer(): Promise<
-  Record<string, StoredCalculatorDataset>
-> {
+export function getAllLocalCalculatorDatasets(): Record<string, StoredCalculatorDataset> {
   const localBulk: Record<string, StoredCalculatorDataset> = {};
 
-  // 1. Kumpulkan seluruh data manual yang ada di localStorage browser ini
+  // 1. Masukkan data seed awal terlebih dahulu
+  Object.entries(INITIAL_CALCULATOR_MASTER_SEED).forEach(([shortKey, seedMap]) => {
+    localBulk[shortKey] = {
+      modeAData: sanitizeManualModeAData(null, seedMap),
+      modeBData: {},
+      standarData: {},
+      updatedAt: '',
+    };
+  });
+
+  // 2. Kumpulkan seluruh data manual yang ada di localStorage browser ini
   if (typeof window !== 'undefined') {
     try {
       for (let i = 0; i < localStorage.length; i++) {
@@ -198,10 +205,14 @@ export async function syncAllCalculatorMasterWithServer(): Promise<
             );
             if (
               Object.keys(cleanA).length > 0 ||
-              Object.keys(parsed?.modeBData || {}).length > 0
+              Object.keys(parsed?.modeBData || {}).length > 0 ||
+              Object.keys(parsed?.standarData || {}).length > 0
             ) {
               localBulk[shortKey] = {
-                modeAData: cleanA,
+                modeAData: {
+                  ...(localBulk[shortKey]?.modeAData || {}),
+                  ...cleanA,
+                },
                 modeBData: parsed?.modeBData || {},
                 standarData: parsed?.standarData || {},
                 updatedAt: parsed?.updatedAt || '',
@@ -215,16 +226,80 @@ export async function syncAllCalculatorMasterWithServer(): Promise<
     }
   }
 
-  // Pastikan data seed juga masuk
-  Object.entries(INITIAL_CALCULATOR_MASTER_SEED).forEach(([shortKey, seedMap]) => {
-    const existing = localBulk[shortKey];
-    localBulk[shortKey] = {
-      modeAData: sanitizeManualModeAData(existing?.modeAData, seedMap),
-      modeBData: existing?.modeBData || {},
-      standarData: existing?.standarData || {},
-      updatedAt: existing?.updatedAt || '',
+  return localBulk;
+}
+
+// Gabungkan data rincian dari Google Sheet khusus (Rincian_Kalkulator) ke dalam localStorage & Server
+export function mergeSheetBreakdownsIntoLocalStore(
+  sheetDatasets: Record<string, Record<string, MasterModeARecord>>,
+  preferSheet: boolean = false
+): void {
+  if (typeof window === 'undefined' || !sheetDatasets) return;
+
+  const bulkToSync: Record<string, StoredCalculatorDataset> = {};
+
+  Object.entries(sheetDatasets).forEach(([shortKey, sheetModeAMap]) => {
+    if (!sheetModeAMap || Object.keys(sheetModeAMap).length === 0) return;
+    const fullKey = `${CALC_STORAGE_PREFIX}_${shortKey}`;
+    let existing: StoredCalculatorDataset = {
+      modeAData: sanitizeManualModeAData(null, INITIAL_CALCULATOR_MASTER_SEED[shortKey]),
+      modeBData: {},
+      standarData: {},
+      updatedAt: '',
     };
+
+    try {
+      const raw = localStorage.getItem(fullKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        existing = {
+          modeAData: sanitizeManualModeAData(
+            parsed?.modeAData,
+            INITIAL_CALCULATOR_MASTER_SEED[shortKey]
+          ),
+          modeBData: parsed?.modeBData || {},
+          standarData: parsed?.standarData || {},
+          updatedAt: parsed?.updatedAt || '',
+        };
+      }
+    } catch {
+      // ignore
+    }
+
+    const mergedModeA: Record<string, MasterModeARecord> = preferSheet
+      ? { ...existing.modeAData, ...sheetModeAMap }
+      : { ...sheetModeAMap, ...existing.modeAData };
+
+    const updated: StoredCalculatorDataset = {
+      ...existing,
+      modeAData: mergedModeA,
+      updatedAt: existing.updatedAt || new Date().toLocaleTimeString('id-ID'),
+    };
+
+    try {
+      localStorage.setItem(fullKey, JSON.stringify(updated));
+    } catch {
+      // ignore
+    }
+    bulkToSync[shortKey] = updated;
   });
+
+  if (Object.keys(bulkToSync).length > 0) {
+    fetch('/api/calculator-master/bulk', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ datasets: bulkToSync }),
+    }).catch(() => {
+      // ignore
+    });
+  }
+}
+
+// Tarik seluruh data Kalkulator Master dari server & sinkronkan dengan localStorage browser
+export async function syncAllCalculatorMasterWithServer(): Promise<
+  Record<string, StoredCalculatorDataset>
+> {
+  const localBulk = getAllLocalCalculatorDatasets();
 
   try {
     const res = await fetch('/api/calculator-master/bulk', {
@@ -235,18 +310,37 @@ export async function syncAllCalculatorMasterWithServer(): Promise<
     if (res.ok) {
       const json = await res.json();
       const serverDatasets: Record<string, StoredCalculatorDataset> = json.datasets || {};
+      const mergedResult: Record<string, StoredCalculatorDataset> = { ...localBulk };
 
-      // Simpan kembali gabungan data server ke localStorage browser ini
+      // Simpan kembali gabungan data server + lokal ke localStorage tanpa pernah menghapus input lokal terbaru
       if (typeof window !== 'undefined') {
         Object.entries(serverDatasets).forEach(([shortKey, ds]) => {
+          const currentLocal = getAllLocalCalculatorDatasets()[shortKey];
+          const mergedModeA: Record<string, MasterModeARecord> = {
+            ...(ds?.modeAData || {}),
+            ...(currentLocal?.modeAData || {}),
+          };
+          const mergedDs: StoredCalculatorDataset = {
+            modeAData: mergedModeA,
+            modeBData: {
+              ...(ds?.modeBData || {}),
+              ...(currentLocal?.modeBData || {}),
+            },
+            standarData: {
+              ...(ds?.standarData || {}),
+              ...(currentLocal?.standarData || {}),
+            },
+            updatedAt: currentLocal?.updatedAt || ds?.updatedAt || '',
+          };
+          mergedResult[shortKey] = mergedDs;
           try {
-            localStorage.setItem(`${CALC_STORAGE_PREFIX}_${shortKey}`, JSON.stringify(ds));
+            localStorage.setItem(`${CALC_STORAGE_PREFIX}_${shortKey}`, JSON.stringify(mergedDs));
           } catch {
             // ignore
           }
         });
       }
-      return serverDatasets;
+      return mergedResult;
     }
   } catch {
     // ignore network error

@@ -11,13 +11,19 @@ import {
   ShieldCheck,
   AlertCircle,
   HelpCircle,
+  BarChart3,
+  Trophy,
+  TrendingUp,
+  Users,
 } from 'lucide-react';
 import { Student } from '../types';
 import { ALL_255_STUDENTS } from '../data/students255';
 import { KELAS_7_STUDENTS } from '../data/studentsAll';
 import {
   fetchStudentAssignmentStatus,
+  fetchClassAverageStatistics,
   StudentTaskCheckItem,
+  ClassPerformanceStat,
   DEFAULT_SPREADSHEET_URL,
 } from '../services/sheetsService';
 
@@ -25,14 +31,18 @@ interface StudentCheckViewProps {
   students: Student[];
   spreadsheetId: string;
   spreadsheetUrl?: string;
+  gradeLevel?: '7' | '8';
   onNavigateHome: () => void;
   onNavigatePengganti?: () => void;
+  onNavigateKelas7?: () => void;
+  onNavigateCek?: () => void;
 }
 
-const STORAGE_KEY_STUDENT_SESSION = 'siswa_logged_in_session_v1';
+const STORAGE_KEY_STUDENT_SESSION_8 = 'siswa_logged_in_session_v1';
+const STORAGE_KEY_STUDENT_SESSION_7 = 'siswa_logged_in_session_kelas7_v1';
 
-// Combined database for fast local validation (Kelas 7 & 8)
-const ALL_STUDENT_RECORDS = [...ALL_255_STUDENTS, ...KELAS_7_STUDENTS];
+const KELAS_8_CLASS_LIST = ['8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H'];
+const KELAS_7_CLASS_LIST = ['7E', '7F', '7G', '7H'];
 
 // Helper to normalize class string
 function normalizeClass(c?: string): string {
@@ -49,20 +59,39 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
   students,
   spreadsheetId,
   spreadsheetUrl = DEFAULT_SPREADSHEET_URL,
+  gradeLevel = '8',
   onNavigateHome,
   onNavigatePengganti,
+  onNavigateKelas7,
+  onNavigateCek,
 }) => {
+  const isGrade7Mode = gradeLevel === '7';
+  const sessionStorageKey = isGrade7Mode
+    ? STORAGE_KEY_STUDENT_SESSION_7
+    : STORAGE_KEY_STUDENT_SESSION_8;
+  const allowedClasses = isGrade7Mode ? KELAS_7_CLASS_LIST : KELAS_8_CLASS_LIST;
+
   // Authentication states
   const [usernameInput, setUsernameInput] = useState<string>('');
   const [passwordInput, setPasswordInput] = useState<string>('');
   const [authError, setAuthError] = useState<string | null>(null);
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
 
-  // Active Logged-in Student
+  // Active Logged-in Student (strictly validated against current page's grade level)
   const [activeStudent, setActiveStudent] = useState<Student | null>(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY_STUDENT_SESSION);
-      if (saved) return JSON.parse(saved);
+      const saved = localStorage.getItem(sessionStorageKey);
+      if (saved) {
+        const parsed: Student = JSON.parse(saved);
+        const normC = normalizeClass(parsed?.className);
+        if (isGrade7Mode && KELAS_7_CLASS_LIST.includes(normC)) {
+          return parsed;
+        }
+        if (!isGrade7Mode && KELAS_8_CLASS_LIST.includes(normC)) {
+          return parsed;
+        }
+        localStorage.removeItem(sessionStorageKey);
+      }
     } catch (e) {
       // ignore
     }
@@ -73,8 +102,38 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
   const [taskList, setTaskList] = useState<StudentTaskCheckItem[]>([]);
   const [isLoadingTasks, setIsLoadingTasks] = useState<boolean>(false);
   const [lastRefreshedAt, setLastRefreshedAt] = useState<string | null>(null);
-  const [quickClassSelect, setQuickClassSelect] = useState<string>('8G');
+  const [quickClassSelect, setQuickClassSelect] = useState<string>(
+    isGrade7Mode ? '7E' : '8G'
+  );
   const [quickAbsenSelect, setQuickAbsenSelect] = useState<string>('1');
+
+  // Class average statistics states
+  const [classStats, setClassStats] = useState<ClassPerformanceStat[]>([]);
+  const [isLoadingClassStats, setIsLoadingClassStats] = useState<boolean>(false);
+  const [selectedStatMetric, setSelectedStatMetric] = useState<
+    'overall' | 'informatika' | 'kka' | 'tugas'
+  >('overall');
+
+  // Filter student pool strictly for this page's grade level (Kelas 7E-7H vs Kelas 8A-8H)
+  const currentGradePool = React.useMemo(() => {
+    const basePool =
+      students && students.length >= 200
+        ? students.filter((s) =>
+            allowedClasses.includes(normalizeClass(s.className))
+          )
+        : [];
+    if (basePool.length > 0) return basePool;
+    return isGrade7Mode ? KELAS_7_STUDENTS : ALL_255_STUDENTS;
+  }, [students, isGrade7Mode, allowedClasses]);
+
+  const otherGradePool = React.useMemo(() => {
+    return isGrade7Mode ? ALL_255_STUDENTS : KELAS_7_STUDENTS;
+  }, [isGrade7Mode]);
+
+  // Load class average statistics on mount and gradeLevel/spreadsheetId change
+  useEffect(() => {
+    loadClassStatistics();
+  }, [spreadsheetId, gradeLevel]);
 
   // Load task status when student is logged in
   useEffect(() => {
@@ -82,6 +141,20 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
       loadStudentTasks(activeStudent);
     }
   }, [activeStudent, spreadsheetId]);
+
+  const loadClassStatistics = async () => {
+    setIsLoadingClassStats(true);
+    try {
+      const res = await fetchClassAverageStatistics(spreadsheetId, gradeLevel === '7' ? '7' : '8');
+      if (res.success) {
+        setClassStats(res.stats || []);
+      }
+    } catch (err) {
+      console.warn('Failed to load class average statistics:', err);
+    } finally {
+      setIsLoadingClassStats(false);
+    }
+  };
 
   // Fetch tasks status from spreadsheet
   const loadStudentTasks = async (student: Student) => {
@@ -156,30 +229,56 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
       }
     }
 
-    // Dataset pool to search from
-    const pool = students && students.length >= 200 ? students : ALL_STUDENT_RECORDS;
-
-    // 1. Search student by parsed Absen and Class
+    // 1. Search student by parsed Absen and Class in current page's grade pool
     let foundStudent: Student | undefined = undefined;
 
     if (parsedAbsen && parsedClass) {
-      foundStudent = pool.find((s) => {
+      foundStudent = currentGradePool.find((s) => {
         const sNormClass = normalizeClass(s.className);
         const sAtt = String(parseInt(s.attendanceNo || '0', 10));
         return sNormClass === parsedClass && sAtt === parsedAbsen;
       });
     }
 
-    // 2. Fallback search by NIPD / NIS directly
+    // 2. Fallback search by NIPD / NIS directly in current page's grade pool
     if (!foundStudent) {
-      foundStudent = pool.find(
+      foundStudent = currentGradePool.find(
         (s) => s.nis && s.nis.trim() === rawPass.trim()
       );
     }
 
+    // Check if the student actually belongs to the OTHER grade level (e.g. Kelas 7 trying on /cek or Kelas 8 trying on /kelas7)
     if (!foundStudent) {
+      const matchedOtherGrade = otherGradePool.find((s) => {
+        const sNormClass = normalizeClass(s.className);
+        const sAtt = String(parseInt(s.attendanceNo || '0', 10));
+        if (parsedAbsen && parsedClass && sNormClass === parsedClass && sAtt === parsedAbsen) {
+          return true;
+        }
+        if (s.nis && s.nis.trim() === rawPass.trim()) {
+          return true;
+        }
+        return false;
+      });
+
+      if (matchedOtherGrade) {
+        if (isGrade7Mode) {
+          setAuthError(
+            `Halaman ini khusus untuk pengecekan nilai Kelas 7E sampai dengan Kelas 7H. Siswa ${matchedOtherGrade.className} silakan melakukan pengecekan melalui halaman /cek.`
+          );
+        } else {
+          setAuthError(
+            `Pengecekan nilai untuk Kelas 7E sampai dengan Kelas 7H telah dipisahkan ke halaman kelas7 (/kelas7). Silakan buka halaman /kelas7.`
+          );
+        }
+        setIsLoggingIn(false);
+        return;
+      }
+
       setAuthError(
-        `Data siswa tidak ditemukan untuk username "${rawUser}". Pastikan format: No Absen - Kelas (contoh: 01 - 8G atau 1 - 8A).`
+        isGrade7Mode
+          ? `Data siswa Kelas 7 (7E - 7H) tidak ditemukan untuk username "${rawUser}". Pastikan format: No Absen - Kelas (contoh: 01 - 7E atau 15 - 7G).`
+          : `Data siswa Kelas 8 (8A - 8H) tidak ditemukan untuk username "${rawUser}". Pastikan format: No Absen - Kelas (contoh: 01 - 8G atau 1 - 8A).`
       );
       setIsLoggingIn(false);
       return;
@@ -197,14 +296,14 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
 
     // Login successful
     setActiveStudent(foundStudent);
-    localStorage.setItem(STORAGE_KEY_STUDENT_SESSION, JSON.stringify(foundStudent));
+    localStorage.setItem(sessionStorageKey, JSON.stringify(foundStudent));
     setIsLoggingIn(false);
   };
 
   // Handle Student Logout
   const handleLogout = () => {
     setActiveStudent(null);
-    localStorage.removeItem(STORAGE_KEY_STUDENT_SESSION);
+    localStorage.removeItem(sessionStorageKey);
     setUsernameInput('');
     setPasswordInput('');
     setTaskList([]);
@@ -217,8 +316,7 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
 
     // Auto-fill NIPD from student roster for seamless user convenience
     const normC = normalizeClass(quickClassSelect);
-    const pool = students && students.length >= 200 ? students : ALL_STUDENT_RECORDS;
-    const match = pool.find(
+    const match = currentGradePool.find(
       (s) =>
         normalizeClass(s.className) === normC &&
         String(parseInt(s.attendanceNo || '0', 10)) === String(parseInt(quickAbsenSelect, 10))
@@ -260,14 +358,518 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
   const incompleteTasks = totalTasks - completedTasks;
   const kktpAsts = 75;
 
+  // Helper to get active metric value for a class stat item
+  const getMetricValue = (stat: ClassPerformanceStat): number | null => {
+    if (selectedStatMetric === 'informatika') return stat.astsInformatikaAvg;
+    if (selectedStatMetric === 'kka') return stat.astsKkaAvg;
+    if (selectedStatMetric === 'tugas') return stat.taskCompletionRate;
+    return stat.averageScore;
+  };
+
+  // Compute rank map by selected metric (highest to lowest)
+  const rankedClassStats = React.useMemo(() => {
+    const withVal = classStats
+      .map((s) => ({ stat: s, val: getMetricValue(s) }))
+      .filter((x) => x.val !== null && !isNaN(Number(x.val)) && Number(x.val) > 0)
+      .sort((a, b) => Number(b.val) - Number(a.val));
+
+    const rankMap = new Map<string, number>();
+    withVal.forEach((item, idx) => {
+      rankMap.set(item.stat.classCode, idx + 1);
+    });
+
+    const validValues = withVal.map((x) => Number(x.val));
+    const overallMetricAvg =
+      validValues.length > 0
+        ? Math.round((validValues.reduce((a, b) => a + b, 0) / validValues.length) * 10) / 10
+        : null;
+
+    const topClass = withVal.length > 0 ? withVal[0] : null;
+    const totalGradedAcrossClasses = classStats.reduce((acc, s) => {
+      if (selectedStatMetric === 'informatika') return acc + s.astsInformatikaCount;
+      if (selectedStatMetric === 'kka') return acc + s.astsKkaCount;
+      return acc + s.gradedCount;
+    }, 0);
+    const totalStudentsAcrossClasses = classStats.reduce((acc, s) => acc + s.totalStudents, 0);
+
+    return {
+      rankMap,
+      overallMetricAvg,
+      topClass,
+      totalGradedAcrossClasses,
+      totalStudentsAcrossClasses,
+    };
+  }, [classStats, selectedStatMetric]);
+
+  // Student's own score for comparison against their class average
+  const activeStudentComparison = React.useMemo(() => {
+    if (!activeStudent) return null;
+    const normStuClass = normalizeClass(activeStudent.className);
+    const myClassStat = classStats.find((s) => s.classCode === normStuClass);
+    if (!myClassStat) return null;
+
+    const classMetricVal = getMetricValue(myClassStat);
+    const classRank = rankedClassStats.rankMap.get(normStuClass) || null;
+
+    // Find student's own score matching selectedStatMetric
+    let studentOwnVal: number | null = null;
+    if (selectedStatMetric === 'tugas') {
+      studentOwnVal =
+        totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 1000) / 10 : null;
+    } else if (selectedStatMetric === 'kka') {
+      const kkaTask = astsInformatikaTasks.find(
+        (t) =>
+          t.astsSubject === 'KKA' ||
+          t.taskName.toUpperCase().includes('KKA') ||
+          t.taskName.toUpperCase().includes('KODING')
+      );
+      if (kkaTask && kkaTask.isCompleted && kkaTask.score !== null && kkaTask.score !== undefined && kkaTask.score !== '') {
+        const n = Number(kkaTask.score);
+        if (!isNaN(n)) studentOwnVal = n;
+      }
+    } else {
+      // 'overall' or 'informatika'
+      const infTask = astsInformatikaTasks.find(
+        (t) =>
+          t.astsSubject === 'Informatika' ||
+          (!t.taskName.toUpperCase().includes('KKA') &&
+            !t.taskName.toUpperCase().includes('KODING'))
+      );
+      if (infTask && infTask.isCompleted && infTask.score !== null && infTask.score !== undefined && infTask.score !== '') {
+        const n = Number(infTask.score);
+        if (!isNaN(n)) studentOwnVal = n;
+      }
+    }
+
+    const diffFromClass =
+      studentOwnVal !== null && classMetricVal !== null
+        ? Math.round((studentOwnVal - classMetricVal) * 10) / 10
+        : null;
+
+    return {
+      myClassStat,
+      classMetricVal,
+      classRank,
+      studentOwnVal,
+      diffFromClass,
+    };
+  }, [activeStudent, classStats, selectedStatMetric, astsInformatikaTasks, totalTasks, completedTasks, rankedClassStats]);
+
+  // Render Reusable Class Performance Comparison Section
+  const renderClassComparisonSection = () => {
+    const isPercentMetric = selectedStatMetric === 'tugas';
+    const unitSuffix = isPercentMetric ? '%' : '';
+    const activeStudentClassCode = activeStudent ? normalizeClass(activeStudent.className) : '';
+
+    return (
+      <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] overflow-hidden font-mono-code">
+        {/* Header Bar */}
+        <div className="p-4 sm:p-5 bg-[#1a1a1a] text-white border-b-2 border-[#1a1a1a] flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 bg-[#2e59e6] text-white border border-white/40 shrink-0">
+              <BarChart3 className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="text-xs sm:text-sm font-bold uppercase tracking-wider text-white">
+                  STATISTIK RINGKASAN NILAI RATA-RATA PER KELAS ({isGrade7Mode ? 'KELAS 7E – 7H' : 'KELAS 8A – 8H'})
+                </h3>
+                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-400/40 text-[10px] font-bold uppercase">
+                  LIVE PERFORMA KELAS
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-300 mt-0.5">
+                Perbandingan rata-rata nilai evaluasi, ketuntasan KKTP ({kktpAsts}), dan penyelesaian tugas antar kelas secara keseluruhan
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={loadClassStatistics}
+            disabled={isLoadingClassStats}
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white hover:text-[#1a1a1a] text-white text-[11px] font-bold border border-white/30 transition-colors cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoadingClassStats ? 'animate-spin' : ''}`} />
+            <span>{isLoadingClassStats ? 'MEMUAT STATISTIK...' : 'SEGARKAN STATISTIK'}</span>
+          </button>
+        </div>
+
+        {/* Category Filter Sub-bar */}
+        <div className="p-3 sm:px-5 bg-[#F2EFEB] border-b-2 border-[#1a1a1a] flex flex-wrap items-center justify-between gap-2">
+          <span className="text-[11px] font-bold text-[#1a1a1a] uppercase">
+            PILIH KATEGORI PERBANDINGAN:
+          </span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setSelectedStatMetric('overall')}
+              className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-bold uppercase border border-[#1a1a1a] transition-all cursor-pointer ${
+                selectedStatMetric === 'overall'
+                  ? 'bg-[#2e59e6] text-white shadow-[2px_2px_0px_#1a1a1a]'
+                  : 'bg-white text-[#1a1a1a] hover:bg-slate-100'
+              }`}
+            >
+              RATA-RATA UTAMA
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedStatMetric('informatika')}
+              className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-bold uppercase border border-[#1a1a1a] transition-all cursor-pointer ${
+                selectedStatMetric === 'informatika'
+                  ? 'bg-[#2e59e6] text-white shadow-[2px_2px_0px_#1a1a1a]'
+                  : 'bg-white text-[#1a1a1a] hover:bg-slate-100'
+              }`}
+            >
+              ASTS INFORMATIKA
+            </button>
+            {!isGrade7Mode && (
+              <button
+                type="button"
+                onClick={() => setSelectedStatMetric('kka')}
+                className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-bold uppercase border border-[#1a1a1a] transition-all cursor-pointer ${
+                  selectedStatMetric === 'kka'
+                    ? 'bg-[#2e59e6] text-white shadow-[2px_2px_0px_#1a1a1a]'
+                    : 'bg-white text-[#1a1a1a] hover:bg-slate-100'
+                }`}
+              >
+                ASTS KODING / KKA
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setSelectedStatMetric('tugas')}
+              className={`px-2.5 py-1 text-[10px] sm:text-[11px] font-bold uppercase border border-[#1a1a1a] transition-all cursor-pointer ${
+                selectedStatMetric === 'tugas'
+                  ? 'bg-[#2e59e6] text-white shadow-[2px_2px_0px_#1a1a1a]'
+                  : 'bg-white text-[#1a1a1a] hover:bg-slate-100'
+              }`}
+            >
+              KETUNTASAN TUGAS (%)
+            </button>
+          </div>
+        </div>
+
+        {/* Top Summary KPI Cards */}
+        <div className="p-4 sm:p-5 bg-[#FAF8F5] border-b-2 border-[#1a1a1a] grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {/* Card 1: Overall Average across all classes */}
+          <div className="bg-white border-2 border-[#1a1a1a] p-3.5 shadow-[3px_3px_0px_#1a1a1a] flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">
+                RATA-RATA SELURUH KELAS ({isGrade7Mode ? 'KELAS 7' : 'KELAS 8'})
+              </span>
+              <TrendingUp className="h-4 w-4 text-[#2e59e6]" />
+            </div>
+            <div className="mt-1.5 flex items-baseline gap-2">
+              <span className="text-2xl font-black text-[#1a1a1a]">
+                {rankedClassStats.overallMetricAvg !== null
+                  ? `${rankedClassStats.overallMetricAvg}${unitSuffix}`
+                  : '-'}
+              </span>
+              {!isPercentMetric && rankedClassStats.overallMetricAvg !== null && (
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 border ${
+                    rankedClassStats.overallMetricAvg >= kktpAsts
+                      ? 'bg-emerald-100 text-emerald-800 border-emerald-500'
+                      : 'bg-amber-100 text-amber-900 border-amber-500'
+                  }`}
+                >
+                  {rankedClassStats.overallMetricAvg >= kktpAsts
+                    ? `≥ KKTP (${kktpAsts})`
+                    : `< KKTP (${kktpAsts})`}
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-slate-500 mt-1">
+              Dari {allowedClasses.length} kelas paralel ({isGrade7Mode ? '7E s.d. 7H' : '8A s.d. 8H'})
+            </p>
+          </div>
+
+          {/* Card 2: Highest Performing Class */}
+          <div className="bg-white border-2 border-[#1a1a1a] p-3.5 shadow-[3px_3px_0px_#1a1a1a] flex flex-col justify-between">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-slate-500 uppercase">
+                RATA-RATA KELAS TERTINGGI
+              </span>
+              <Trophy className="h-4 w-4 text-amber-500" />
+            </div>
+            {rankedClassStats.topClass ? (
+              <>
+                <div className="mt-1.5 flex items-baseline gap-2">
+                  <span className="text-xl sm:text-2xl font-black text-[#2e59e6]">
+                    {rankedClassStats.topClass.stat.className}
+                  </span>
+                  <span className="text-sm font-black bg-amber-100 text-amber-900 px-2 py-0.5 border border-amber-500">
+                    {rankedClassStats.topClass.val}
+                    {unitSuffix}
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">
+                  Peringkat #1 performa rata-rata tertinggi saat ini
+                </p>
+              </>
+            ) : (
+              <div className="mt-2 text-xs font-bold text-slate-400">
+                Belum ada data nilai pada kategori ini
+              </div>
+            )}
+          </div>
+
+          {/* Card 3: Student's Own Class Position (if logged in) OR Total Students Evaluated */}
+          {activeStudent && activeStudentComparison ? (
+            <div className="bg-blue-50/80 border-2 border-[#2e59e6] p-3.5 shadow-[3px_3px_0px_#1a1a1a] flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-[#2e59e6] uppercase">
+                  POSISI {activeStudent.className.toUpperCase()} ANDA
+                </span>
+                {activeStudentComparison.classRank && (
+                  <span className="px-2 py-0.5 bg-[#2e59e6] text-white text-[10px] font-bold">
+                    PERINGKAT #{activeStudentComparison.classRank}
+                  </span>
+                )}
+              </div>
+              <div className="mt-1.5 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-[#1a1a1a]">
+                  {activeStudentComparison.classMetricVal !== null
+                    ? `${activeStudentComparison.classMetricVal}${unitSuffix}`
+                    : 'Belum Ada'}
+                </span>
+                <span className="text-[11px] font-bold text-slate-600">
+                  (Rata-rata Kelas)
+                </span>
+              </div>
+              <div className="text-[10px] font-bold mt-1">
+                {activeStudentComparison.diffFromClass !== null ? (
+                  activeStudentComparison.diffFromClass >= 0 ? (
+                    <span className="text-emerald-700">
+                      ✓ Nilai Anda +{activeStudentComparison.diffFromClass}
+                      {unitSuffix} di atas rata-rata {activeStudent.className}
+                    </span>
+                  ) : (
+                    <span className="text-rose-700">
+                      • Nilai Anda {activeStudentComparison.diffFromClass}
+                      {unitSuffix} dari rata-rata {activeStudent.className}
+                    </span>
+                  )
+                ) : (
+                  <span className="text-slate-600">
+                    Membandingkan performa {activeStudent.className} dengan kelas lain
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white border-2 border-[#1a1a1a] p-3.5 shadow-[3px_3px_0px_#1a1a1a] flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-slate-500 uppercase">
+                  CAKUPAN DATA SISWA TERNILAI
+                </span>
+                <Users className="h-4 w-4 text-emerald-600" />
+              </div>
+              <div className="mt-1.5 flex items-baseline gap-2">
+                <span className="text-2xl font-black text-[#1a1a1a]">
+                  {rankedClassStats.totalGradedAcrossClasses}
+                </span>
+                <span className="text-xs font-bold text-slate-500">
+                  / {rankedClassStats.totalStudentsAcrossClasses || (isGrade7Mode ? 127 : 255)} Siswa
+                </span>
+              </div>
+              <p className="text-[10px] text-slate-500 mt-1">
+                Masuk dengan akun siswa untuk melihat perbandingan nilai Anda terhadap kelas
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Per-Class Bar Comparison & Stats Grid */}
+        <div className="p-4 sm:p-5 space-y-3">
+          {isLoadingClassStats && classStats.length === 0 ? (
+            <div className="py-8 text-center text-xs text-slate-500 flex flex-col items-center justify-center gap-2">
+              <RefreshCw className="h-5 w-5 animate-spin text-[#2e59e6]" />
+              <span>Sedang menghitung statistik rata-rata seluruh kelas...</span>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {classStats.map((stat) => {
+                const metricVal = getMetricValue(stat);
+                const hasVal = metricVal !== null && !isNaN(Number(metricVal)) && Number(metricVal) > 0;
+                const numVal = hasVal ? Number(metricVal) : 0;
+                const barWidth = Math.min(100, Math.max(0, numVal));
+                const isMyClass = activeStudentClassCode === stat.classCode;
+                const rank = rankedClassStats.rankMap.get(stat.classCode);
+                const isAboveKktp = numVal >= kktpAsts;
+
+                const subHighest =
+                  selectedStatMetric === 'informatika'
+                    ? stat.astsInformatikaHighest
+                    : selectedStatMetric === 'kka'
+                    ? stat.astsKkaHighest
+                    : stat.highestScore;
+                const subLowest =
+                  selectedStatMetric === 'informatika'
+                    ? stat.astsInformatikaLowest
+                    : selectedStatMetric === 'kka'
+                    ? stat.astsKkaLowest
+                    : stat.lowestScore;
+                const subCount =
+                  selectedStatMetric === 'informatika'
+                    ? stat.astsInformatikaCount
+                    : selectedStatMetric === 'kka'
+                    ? stat.astsKkaCount
+                    : stat.gradedCount;
+                const subTuntas =
+                  selectedStatMetric === 'informatika'
+                    ? stat.astsInformatikaTuntasCount
+                    : selectedStatMetric === 'kka'
+                    ? stat.astsKkaTuntasCount
+                    : stat.tuntasCount;
+
+                return (
+                  <div
+                    key={stat.classCode}
+                    className={`p-3.5 border-2 transition-all ${
+                      isMyClass
+                        ? 'bg-blue-50/50 border-[#2e59e6] shadow-[3px_3px_0px_#2e59e6]'
+                        : 'bg-white border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
+                    }`}
+                  >
+                    {/* Top Row: Class Name + Rank + Average Value */}
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`px-2 py-0.5 text-xs font-black border border-[#1a1a1a] ${
+                            isMyClass
+                              ? 'bg-[#2e59e6] text-white'
+                              : 'bg-[#F2EFEB] text-[#1a1a1a]'
+                          }`}
+                        >
+                          {stat.className}
+                        </span>
+                        {isMyClass && (
+                          <span className="px-1.5 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-600 text-[9px] font-black uppercase">
+                            KELAS ANDA
+                          </span>
+                        )}
+                        {rank && (
+                          <span
+                            className={`px-1.5 py-0.5 text-[10px] font-bold border ${
+                              rank === 1
+                                ? 'bg-amber-100 text-amber-900 border-amber-500'
+                                : 'bg-slate-100 text-slate-700 border-slate-300'
+                            }`}
+                          >
+                            #{rank}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="text-right">
+                        {hasVal ? (
+                          <div className="flex items-baseline gap-1 justify-end">
+                            <span className="text-[10px] text-slate-500 font-bold uppercase">
+                              RATA-RATA:
+                            </span>
+                            <span
+                              className={`text-lg font-black ${
+                                isAboveKktp ? 'text-emerald-700' : 'text-[#2e59e6]'
+                              }`}
+                            >
+                              {numVal}
+                              {unitSuffix}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] font-bold text-slate-400 uppercase">
+                            BELUM ADA NILAI
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Visual Progress Bar with KKTP 75 Marker */}
+                    <div className="relative h-3.5 w-full bg-slate-100 border border-[#1a1a1a] overflow-hidden mb-2.5">
+                      {/* KKTP 75 Vertical Line Marker */}
+                      <div
+                        className="absolute top-0 bottom-0 border-r border-dashed border-rose-600 z-10"
+                        style={{ left: `${kktpAsts}%` }}
+                        title={`Batas KKTP: ${kktpAsts}`}
+                      />
+                      <div
+                        className={`h-full transition-all duration-500 ${
+                          !hasVal
+                            ? 'bg-slate-200'
+                            : isAboveKktp
+                            ? 'bg-emerald-500'
+                            : 'bg-[#2e59e6]'
+                        }`}
+                        style={{ width: `${barWidth}%` }}
+                      />
+                    </div>
+
+                    {/* Bottom Metadata Strip */}
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-600 pt-1 border-t border-dashed border-slate-200">
+                      {isPercentMetric ? (
+                        <>
+                          <span>
+                            Siswa: <strong>{stat.totalStudents} Anak</strong>
+                          </span>
+                          <span>
+                            Rata-Rata Nilai Evaluasi:{' '}
+                            <strong>{stat.averageScore !== null ? stat.averageScore : '-'}</strong>
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <span>
+                            Tertinggi: <strong className="text-emerald-700">{subHighest ?? '-'}</strong> • Terendah:{' '}
+                            <strong className="text-rose-700">{subLowest ?? '-'}</strong>
+                          </span>
+                          <span>
+                            Tuntas ≥{kktpAsts}:{' '}
+                            <strong>
+                              {subTuntas}/{subCount || stat.totalStudents} Siswa
+                            </strong>
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Legend & Explanation Footer */}
+          <div className="pt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500 border-t border-slate-200">
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2.5 h-2.5 bg-emerald-500 border border-[#1a1a1a] inline-block" />
+                Rata-rata ≥ KKTP ({kktpAsts})
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2.5 h-2.5 bg-[#2e59e6] border border-[#1a1a1a] inline-block" />
+                Rata-rata &lt; KKTP ({kktpAsts})
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <span className="w-2 h-3 border-r border-dashed border-rose-600 inline-block" />
+                Garis Batas KKTP ({kktpAsts})
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full max-w-5xl mx-auto space-y-6 animate-in fade-in duration-300">
       {/* ========================================================================= */}
       {/* 1. LOGIN SCREEN (IF NOT LOGGED IN) */}
       {/* ========================================================================= */}
       {!activeStudent ? (
-        <div className="max-w-xl mx-auto space-y-5">
-          {/* Main Login Box */}
+        <div className="space-y-6">
+          <div className="max-w-xl mx-auto space-y-5">
+            {/* Main Login Box */}
           <div className="bg-white border-2 border-[#1a1a1a] shadow-[6px_6px_0px_#1a1a1a] p-6 sm:p-8">
             <div className="flex items-center gap-3 pb-4 mb-6 border-b-2 border-[#1a1a1a]">
               <div className="p-2.5 bg-[#2e59e6] text-white border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]">
@@ -275,10 +877,14 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
               </div>
               <div>
                 <h2 className="font-mono-code text-lg sm:text-xl font-bold text-[#1a1a1a] uppercase tracking-wide">
-                  Masuk Akun Siswa
+                  {isGrade7Mode
+                    ? 'Masuk Akun Siswa Kelas 7 (7E - 7H)'
+                    : 'Masuk Akun Siswa (Kelas 8A - 8H)'}
                 </h2>
                 <p className="font-mono-code text-xs text-slate-600 mt-0.5">
-                  Cek status pengerjaan tugas Koding/KKA & Informatika
+                  {isGrade7Mode
+                    ? 'Cek hasil nilai & status pengerjaan tugas Informatika Kelas 7E s.d. 7H'
+                    : 'Cek status pengerjaan tugas Koding/KKA & Informatika Kelas 8'}
                 </p>
               </div>
             </div>
@@ -306,12 +912,30 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                     required
                     value={usernameInput}
                     onChange={(e) => setUsernameInput(e.target.value)}
-                    placeholder="Contoh: 01 - 8G atau 1 - 8A"
+                    placeholder={
+                      isGrade7Mode
+                        ? 'Contoh: 01 - 7E atau 15 - 7G'
+                        : 'Contoh: 01 - 8G atau 1 - 8A'
+                    }
                     className="w-full px-3.5 py-2.5 bg-slate-50 border-2 border-[#1a1a1a] font-mono-code text-sm text-[#1a1a1a] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2e59e6]"
                   />
                 </div>
                 <p className="font-mono-code text-[11px] text-slate-500 mt-1">
-                  *Format: <span className="font-bold text-[#1a1a1a]">[No Absen] - [Kelas]</span> (contoh: <code className="bg-slate-100 px-1 py-0.5 border">01 - 8G</code>, <code className="bg-slate-100 px-1 py-0.5 border">1 - 8A</code>, <code className="bg-slate-100 px-1 py-0.5 border">15 - 7E</code>)
+                  *Format: <span className="font-bold text-[#1a1a1a]">[No Absen] - [Kelas]</span>{' '}
+                  {isGrade7Mode ? (
+                    <>
+                      (contoh: <code className="bg-slate-100 px-1 py-0.5 border">01 - 7E</code>,{' '}
+                      <code className="bg-slate-100 px-1 py-0.5 border">10 - 7F</code>,{' '}
+                      <code className="bg-slate-100 px-1 py-0.5 border">15 - 7G</code>,{' '}
+                      <code className="bg-slate-100 px-1 py-0.5 border">20 - 7H</code>)
+                    </>
+                  ) : (
+                    <>
+                      (contoh: <code className="bg-slate-100 px-1 py-0.5 border">01 - 8G</code>,{' '}
+                      <code className="bg-slate-100 px-1 py-0.5 border">1 - 8A</code>,{' '}
+                      <code className="bg-slate-100 px-1 py-0.5 border">10 - 8C</code>)
+                    </>
+                  )}
                 </p>
               </div>
 
@@ -325,7 +949,11 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                     required
                     value={passwordInput}
                     onChange={(e) => setPasswordInput(e.target.value)}
-                    placeholder="Masukkan NIPD Anda (contoh: 11690)"
+                    placeholder={
+                      isGrade7Mode
+                        ? 'Masukkan NIPD Anda (contoh: 11929)'
+                        : 'Masukkan NIPD Anda (contoh: 11690)'
+                    }
                     className="w-full px-3.5 py-2.5 bg-slate-50 border-2 border-[#1a1a1a] font-mono-code text-sm text-[#1a1a1a] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2e59e6]"
                   />
                   <div className="absolute right-3 top-3 text-slate-400">
@@ -360,7 +988,9 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
             <div className="mt-6 pt-5 border-t border-dashed border-slate-300 font-mono-code">
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-2.5">
                 <Sparkles className="h-3.5 w-3.5 text-[#2e59e6]" />
-                <span>Bantuan Cepat Pilihan Siswa:</span>
+                <span>
+                  Bantuan Cepat Pilihan Siswa ({isGrade7Mode ? 'Kelas 7E - 7H' : 'Kelas 8A - 8H'}):
+                </span>
               </div>
               <div className="grid grid-cols-2 gap-2 text-xs">
                 <div>
@@ -370,7 +1000,7 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                     onChange={(e) => setQuickClassSelect(e.target.value)}
                     className="w-full p-2 bg-white border border-[#1a1a1a] font-mono-code text-xs"
                   >
-                    {['8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '7E', '7F', '7G', '7H'].map((c) => (
+                    {allowedClasses.map((c) => (
                       <option key={c} value={c}>
                         Kelas {c}
                       </option>
@@ -384,7 +1014,10 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                     onChange={(e) => setQuickAbsenSelect(e.target.value)}
                     className="w-full p-2 bg-white border border-[#1a1a1a] font-mono-code text-xs"
                   >
-                    {Array.from({ length: 32 }, (_, i) => String(i + 1)).map((num) => (
+                    {Array.from(
+                      { length: quickClassSelect === '7H' ? 31 : 32 },
+                      (_, i) => String(i + 1)
+                    ).map((num) => (
                       <option key={num} value={num}>
                         Absen {num.padStart(2, '0')}
                       </option>
@@ -406,13 +1039,23 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
           <div className="bg-[#F2EFEB] border-2 border-[#1a1a1a] p-4 font-mono-code text-xs text-slate-700 space-y-2">
             <div className="flex items-center gap-2 font-bold text-[#1a1a1a]">
               <HelpCircle className="h-4 w-4 text-[#2e59e6]" />
-              <span>Petunjuk Akses Akun Siswa:</span>
+              <span>Petunjuk Akses Akun Siswa {isGrade7Mode ? 'Kelas 7 (7E - 7H)' : 'Kelas 8 (8A - 8H)'}:</span>
             </div>
             <ul className="list-disc pl-5 space-y-1 text-[11px] leading-relaxed">
               <li>
                 <strong>Username</strong>: Gabungan Nomor Absen dan Kelas dengan tanda strip (misal:{' '}
-                <span className="font-bold text-[#2e59e6]">01 - 8G</span>,{' '}
-                <span className="font-bold text-[#2e59e6]">02 - 8A</span>).
+                {isGrade7Mode ? (
+                  <>
+                    <span className="font-bold text-[#2e59e6]">01 - 7E</span>,{' '}
+                    <span className="font-bold text-[#2e59e6]">02 - 7F</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-bold text-[#2e59e6]">01 - 8G</span>,{' '}
+                    <span className="font-bold text-[#2e59e6]">02 - 8A</span>
+                  </>
+                )}
+                ).
               </li>
               <li>
                 <strong>Kata Sandi</strong>: NIPD resmi Anda yang terdaftar pada buku induk dan Google Spreadsheet sekolah.
@@ -422,6 +1065,10 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
               </li>
             </ul>
           </div>
+        </div>
+
+        {/* Statistik Ringkasan Nilai Rata-Rata Per Kelas (Tampil juga di halaman awal /cek) */}
+        {renderClassComparisonSection()}
         </div>
       ) : (
         /* ========================================================================= */
@@ -715,6 +1362,9 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                 </div>
               );
             })}
+
+          {/* Statistik Ringkasan Nilai Rata-Rata Per Kelas & Perbandingan Performa Kelas */}
+          {renderClassComparisonSection()}
 
           {/* Tasks Status Table */}
           <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] overflow-hidden">
