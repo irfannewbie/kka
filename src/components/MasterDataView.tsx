@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { Student, TaskSubmission, AppNotification, SubstituteTaskSubmission } from '../types';
 import { loadSubstituteTaskSubmissions } from '../services/sheetsService';
+import { SessionTimerInfo } from '../services/firebaseAuth';
+import { SessionCountdownPanel } from './SessionCountdownPanel';
 
 interface MasterDataViewProps {
   students: Student[];
@@ -33,7 +35,13 @@ interface MasterDataViewProps {
   onQuickAddStudent?: (student: Omit<Student, 'id'>) => Promise<void>;
   onOpenSubmitModal: () => void;
   onClearNotifications?: () => void;
-  onNavigateTab: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'substitute_tasks') => void;
+  onNavigateTab: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'substitute_tasks' | 'master_quiz' | 'kuis') => void;
+  sessionInfo?: SessionTimerInfo;
+  masterOpenSeconds?: number;
+  isLoggingIn?: boolean;
+  onRefreshSession?: () => void;
+  onLogout?: () => void;
+  userEmail?: string | null;
 }
 
 interface UnifiedActivityItem {
@@ -97,6 +105,12 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
   onOpenSubmitModal,
   onClearNotifications,
   onNavigateTab,
+  sessionInfo,
+  masterOpenSeconds = 0,
+  isLoggingIn = false,
+  onRefreshSession,
+  onLogout,
+  userEmail,
 }) => {
   const [substituteTasks, setSubstituteTasks] = useState<SubstituteTaskSubmission[]>([]);
   const [activeLogFilter, setActiveLogFilter] = useState<'all' | 'task' | 'substitute' | 'system'>('all');
@@ -231,6 +245,19 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
         </span>
       </header>
 
+      {/* 1B. LIVE SESSION COUNTDOWN & WRITE PERMISSION MONITOR */}
+      {sessionInfo && onRefreshSession && (
+        <SessionCountdownPanel
+          sessionInfo={sessionInfo}
+          masterOpenSeconds={masterOpenSeconds}
+          isLoggingIn={isLoggingIn}
+          onRefreshSession={onRefreshSession}
+          onLogout={onLogout}
+          userEmail={userEmail}
+          variant="full"
+        />
+      )}
+
       {/* 2. FAST ACTION BAR FOR TEACHERS & ADMINS */}
       <div className="bg-[#1a1a1a] text-white p-4 border-[1.5px] border-[#1a1a1a] shadow-[4px_4px_0px_#2e59e6] flex flex-wrap items-center justify-between gap-3 font-mono-code">
         <div className="flex items-center space-x-2">
@@ -267,6 +294,13 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
             className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 text-xs font-bold border border-white/40 transition-all cursor-pointer"
           >
             <Calculator className="h-3.5 w-3.5" /> KALKULATOR AKADEMIK
+          </button>
+
+          <button
+            onClick={() => onNavigateTab('master_quiz')}
+            className="inline-flex items-center gap-1.5 bg-purple-600 hover:bg-purple-500 text-white px-3 py-1.5 text-xs font-bold border border-white/40 transition-all cursor-pointer"
+          >
+            <Activity className="h-3.5 w-3.5" /> STUDIO KUIS & ARENA
           </button>
 
           <button

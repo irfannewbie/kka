@@ -136,6 +136,35 @@ let isSigningIn = false;
 
 const TOKEN_STORAGE_KEY = 'inforkoding_oauth_token';
 const TOKEN_EXPIRY_KEY = 'inforkoding_oauth_token_expiry';
+const TOKEN_START_KEY = 'inforkoding_oauth_token_start';
+export const DEFAULT_SESSION_DURATION_SECONDS = 3600; // 60 minutes
+
+export interface SessionTimerInfo {
+  isActive: boolean;
+  remainingSeconds: number;
+  elapsedSeconds: number;
+  totalDurationSeconds: number;
+  progressPercent: number;
+  startTimeMs: number | null;
+  expiryTimeMs: number | null;
+  formattedRemaining: string;
+  formattedElapsed: string;
+  formattedStartTime: string | null;
+  formattedExpiryTime: string | null;
+  urgencyLevel: 'safe' | 'warning' | 'critical' | 'expired';
+}
+
+export const formatDurationMMSS = (totalSeconds: number): string => {
+  const safeSec = Math.max(0, Math.floor(totalSeconds));
+  const hours = Math.floor(safeSec / 3600);
+  const minutes = Math.floor((safeSec % 3600) / 60);
+  const seconds = safeSec % 60;
+  const pad = (n: number) => String(n).padStart(2, '0');
+  if (hours > 0) {
+    return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+  }
+  return `${pad(minutes)}:${pad(seconds)}`;
+};
 
 // Get saved access token from localStorage/sessionStorage if not expired
 export const getSavedAccessToken = (): string | null => {
@@ -158,16 +187,115 @@ export const getSavedAccessToken = (): string | null => {
   return null;
 };
 
+export const getTokenExpiryTime = (): number | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const token = localStorage.getItem(TOKEN_STORAGE_KEY) || sessionStorage.getItem(TOKEN_STORAGE_KEY);
+    const expiry = localStorage.getItem(TOKEN_EXPIRY_KEY) || sessionStorage.getItem(TOKEN_EXPIRY_KEY);
+    if (token && expiry) {
+      const expTime = parseInt(expiry, 10);
+      if (!isNaN(expTime) && Date.now() < expTime) {
+        return expTime;
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
+};
+
+export const getTokenStartTime = (): number | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const start = localStorage.getItem(TOKEN_START_KEY) || sessionStorage.getItem(TOKEN_START_KEY);
+    if (start) {
+      const parsed = parseInt(start, 10);
+      if (!isNaN(parsed)) return parsed;
+    }
+    const expiry = getTokenExpiryTime();
+    if (expiry) {
+      return expiry - DEFAULT_SESSION_DURATION_SECONDS * 1000;
+    }
+  } catch (e) {
+    // ignore
+  }
+  return null;
+};
+
+export const getSessionTimerInfo = (activeToken?: string | null): SessionTimerInfo => {
+  const token = activeToken !== undefined ? activeToken : getSavedAccessToken();
+  const expiryTimeMs = token ? getTokenExpiryTime() : null;
+
+  if (!token || !expiryTimeMs) {
+    return {
+      isActive: false,
+      remainingSeconds: 0,
+      elapsedSeconds: 0,
+      totalDurationSeconds: DEFAULT_SESSION_DURATION_SECONDS,
+      progressPercent: 0,
+      startTimeMs: null,
+      expiryTimeMs: null,
+      formattedRemaining: '00:00',
+      formattedElapsed: '00:00',
+      formattedStartTime: null,
+      formattedExpiryTime: null,
+      urgencyLevel: 'expired',
+    };
+  }
+
+  const now = Date.now();
+  const startTimeMs = getTokenStartTime() || expiryTimeMs - DEFAULT_SESSION_DURATION_SECONDS * 1000;
+  const totalDurationSeconds = Math.max(1, Math.round((expiryTimeMs - startTimeMs) / 1000));
+  const remainingSeconds = Math.max(0, Math.floor((expiryTimeMs - now) / 1000));
+  const elapsedSeconds = Math.max(0, Math.floor((now - startTimeMs) / 1000));
+  const progressPercent = Math.min(100, Math.max(0, (remainingSeconds / totalDurationSeconds) * 100));
+
+  let urgencyLevel: 'safe' | 'warning' | 'critical' | 'expired' = 'safe';
+  if (remainingSeconds <= 0) {
+    urgencyLevel = 'expired';
+  } else if (remainingSeconds <= 300) {
+    urgencyLevel = 'critical';
+  } else if (remainingSeconds <= 900) {
+    urgencyLevel = 'warning';
+  }
+
+  return {
+    isActive: remainingSeconds > 0,
+    remainingSeconds,
+    elapsedSeconds,
+    totalDurationSeconds,
+    progressPercent,
+    startTimeMs,
+    expiryTimeMs,
+    formattedRemaining: formatDurationMMSS(remainingSeconds),
+    formattedElapsed: formatDurationMMSS(elapsedSeconds),
+    formattedStartTime: new Date(startTimeMs).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }),
+    formattedExpiryTime: new Date(expiryTimeMs).toLocaleTimeString('id-ID', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    }),
+    urgencyLevel,
+  };
+};
+
 // Save access token with expiration (typically 1 hour / 3600 seconds)
-export const saveAccessToken = (token: string, expiresInSeconds: number = 3600) => {
+export const saveAccessToken = (token: string, expiresInSeconds: number = DEFAULT_SESSION_DURATION_SECONDS) => {
   cachedAccessToken = token;
   if (typeof window === 'undefined') return;
   try {
-    const expiryTime = Date.now() + (expiresInSeconds - 60) * 1000;
+    const now = Date.now();
+    const expiryTime = now + expiresInSeconds * 1000;
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
     localStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    localStorage.setItem(TOKEN_START_KEY, now.toString());
     sessionStorage.setItem(TOKEN_STORAGE_KEY, token);
     sessionStorage.setItem(TOKEN_EXPIRY_KEY, expiryTime.toString());
+    sessionStorage.setItem(TOKEN_START_KEY, now.toString());
   } catch (e) {
     console.warn('Could not save token to storage:', e);
   }
@@ -206,8 +334,10 @@ export const clearAuthToken = () => {
   try {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
     localStorage.removeItem(TOKEN_EXPIRY_KEY);
+    localStorage.removeItem(TOKEN_START_KEY);
     sessionStorage.removeItem(TOKEN_STORAGE_KEY);
     sessionStorage.removeItem(TOKEN_EXPIRY_KEY);
+    sessionStorage.removeItem(TOKEN_START_KEY);
   } catch (e) {
     // ignore
   }
@@ -248,7 +378,13 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
       throw new Error('Gagal memperoleh token akses dari Google.');
     }
 
-    saveAccessToken(credential.accessToken);
+    const rawExpiresIn = (result as any)?._tokenResponse?.oauthExpireIn;
+    const expiresInSeconds =
+      typeof rawExpiresIn === 'number' && rawExpiresIn > 0
+        ? rawExpiresIn
+        : DEFAULT_SESSION_DURATION_SECONDS;
+
+    saveAccessToken(credential.accessToken, expiresInSeconds);
     return { user: result.user, accessToken: credential.accessToken };
   } catch (error: any) {
     if (

@@ -1,0 +1,6586 @@
+{
+  "KELAS_8C_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 21,
+        "benarMJ": 10,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 23,
+        "benarMJ": 10,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 14,
+        "benarMJ": 9,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 17,
+        "benarMJ": 10,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 6,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 14,
+        "benarMJ": 10,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 9,
+        "benarMJ": 10,
+        "skorUraian": 24,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 21,
+        "benarMJ": 9,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 24,
+        "benarMJ": 10,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 11,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 20,
+        "benarMJ": 10,
+        "skorUraian": 25,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 21,
+        "benarMJ": 9,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 10,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 3,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 16,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 18,
+        "benarMJ": 3,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 4,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 5,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 8,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 5,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 5,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 5,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 5,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 3,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 18,
+        "benarMJ": 7,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 15,
+        "benarMJ": 5,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 7,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 2,
+        "benarMJ": 0,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 5,
+        "benarMJ": 0,
+        "skorUraian": 5,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 3,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 95,
+        "nilaiASTS": 82,
+        "nilaiASAS": 82
+      },
+      "2": {
+        "rerataUH": 93,
+        "nilaiASTS": 93,
+        "nilaiASAS": 93
+      },
+      "3": {
+        "rerataUH": 72,
+        "nilaiASTS": 72,
+        "nilaiASAS": 72
+      },
+      "4": {
+        "rerataUH": 81,
+        "nilaiASTS": 81,
+        "nilaiASAS": 81
+      },
+      "5": {
+        "rerataUH": 27,
+        "nilaiASTS": 27,
+        "nilaiASAS": 27
+      },
+      "6": {
+        "rerataUH": 70,
+        "nilaiASTS": 70,
+        "nilaiASAS": 70
+      },
+      "7": {
+        "rerataUH": 67,
+        "nilaiASTS": 67,
+        "nilaiASAS": 67
+      },
+      "8": {
+        "rerataUH": 95,
+        "nilaiASTS": 86,
+        "nilaiASAS": 86
+      },
+      "9": {
+        "rerataUH": 95,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "10": {
+        "rerataUH": 95,
+        "nilaiASTS": 47,
+        "nilaiASAS": 47
+      },
+      "11": {
+        "rerataUH": 95,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "12": {
+        "rerataUH": 95,
+        "nilaiASTS": 82,
+        "nilaiASAS": 82
+      },
+      "13": {
+        "rerataUH": 95,
+        "nilaiASTS": 48,
+        "nilaiASAS": 48
+      },
+      "14": {
+        "rerataUH": 26,
+        "nilaiASTS": 26,
+        "nilaiASAS": 26
+      },
+      "15": {
+        "rerataUH": 50,
+        "nilaiASTS": 50,
+        "nilaiASAS": 50
+      },
+      "16": {
+        "rerataUH": 95,
+        "nilaiASTS": 58,
+        "nilaiASAS": 58
+      },
+      "17": {
+        "rerataUH": 26,
+        "nilaiASTS": 26,
+        "nilaiASAS": 26
+      },
+      "18": {
+        "rerataUH": 28,
+        "nilaiASTS": 28,
+        "nilaiASAS": 28
+      },
+      "19": {
+        "rerataUH": 37,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "20": {
+        "rerataUH": 33,
+        "nilaiASTS": 33,
+        "nilaiASAS": 33
+      },
+      "21": {
+        "rerataUH": 25,
+        "nilaiASTS": 25,
+        "nilaiASAS": 25
+      },
+      "22": {
+        "rerataUH": 95,
+        "nilaiASTS": 30,
+        "nilaiASAS": 30
+      },
+      "23": {
+        "rerataUH": 36,
+        "nilaiASTS": 36,
+        "nilaiASAS": 36
+      },
+      "24": {
+        "rerataUH": 30,
+        "nilaiASTS": 30,
+        "nilaiASAS": 30
+      },
+      "25": {
+        "rerataUH": 21,
+        "nilaiASTS": 21,
+        "nilaiASAS": 21
+      },
+      "26": {
+        "rerataUH": 95,
+        "nilaiASTS": 77,
+        "nilaiASAS": 77
+      },
+      "27": {
+        "rerataUH": 62,
+        "nilaiASTS": 62,
+        "nilaiASAS": 62
+      },
+      "28": {
+        "rerataUH": 40,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "29": {
+        "rerataUH": 29,
+        "nilaiASTS": 29,
+        "nilaiASAS": 29
+      },
+      "30": {
+        "rerataUH": 20,
+        "nilaiASTS": 20,
+        "nilaiASAS": 20
+      },
+      "31": {
+        "rerataUH": 15,
+        "nilaiASTS": 15,
+        "nilaiASAS": 15
+      },
+      "32": {
+        "rerataUH": 21,
+        "nilaiASTS": 21,
+        "nilaiASAS": 21
+      }
+    },
+    "standarData": {
+      "1": 82,
+      "2": 93,
+      "3": 72,
+      "4": 81,
+      "5": 27,
+      "6": 70,
+      "7": 67,
+      "8": 86,
+      "9": 85,
+      "10": 47,
+      "11": 90,
+      "12": 82,
+      "13": 48,
+      "14": 26,
+      "15": 50,
+      "16": 58,
+      "17": 26,
+      "18": 28,
+      "19": 37,
+      "20": 33,
+      "21": 25,
+      "22": 30,
+      "23": 36,
+      "24": 30,
+      "25": 21,
+      "26": 77,
+      "27": 62,
+      "28": 40,
+      "29": 29,
+      "30": 20,
+      "31": 15,
+      "32": 21
+    },
+    "updatedAt": "21.27.35"
+  },
+  "KELAS_8A_KODING_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 15,
+        "benarMJ": 9,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 12,
+        "benarMJ": 2,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 18,
+        "benarMJ": 9,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 8,
+        "benarMJ": 9,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 15,
+        "benarMJ": 6,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 15,
+        "benarMJ": 10,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 14,
+        "benarMJ": 8,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 11,
+        "benarMJ": 6,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 10,
+        "benarMJ": 9,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 10,
+        "benarMJ": 9,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 13,
+        "benarMJ": 5,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 14,
+        "benarMJ": 8,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 9,
+        "benarMJ": 6,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 16,
+        "benarMJ": 7,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 12,
+        "benarMJ": 9,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 17,
+        "benarMJ": 6,
+        "skorUraian": 24,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 13,
+        "benarMJ": 5,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 14,
+        "benarMJ": 2,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 10,
+        "benarMJ": 5,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 11,
+        "benarMJ": 4,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 11,
+        "benarMJ": 5,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 10,
+        "benarMJ": 5,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 17,
+        "benarMJ": 3,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 15,
+        "benarMJ": 5,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 16,
+        "benarMJ": 5,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 12,
+        "benarMJ": 7,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 14,
+        "benarMJ": 6,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 12,
+        "benarMJ": 6,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 15,
+        "benarMJ": 3,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 95,
+        "nilaiASTS": 66,
+        "nilaiASAS": 66
+      },
+      "2": {
+        "rerataUH": 95,
+        "nilaiASTS": 46,
+        "nilaiASAS": 46
+      },
+      "3": {
+        "rerataUH": 90,
+        "nilaiASTS": 58,
+        "nilaiASAS": 58
+      },
+      "4": {
+        "rerataUH": 90,
+        "nilaiASTS": 45,
+        "nilaiASAS": 45
+      },
+      "5": {
+        "rerataUH": 85,
+        "nilaiASTS": 38,
+        "nilaiASAS": 38
+      },
+      "6": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 56,
+        "nilaiASAS": 56
+      },
+      "7": {
+        "rerataUH": 80,
+        "nilaiASTS": 79,
+        "nilaiASAS": 79
+      },
+      "8": {
+        "rerataUH": 85,
+        "nilaiASTS": 75,
+        "nilaiASAS": 75
+      },
+      "9": {
+        "rerataUH": 95,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "10": {
+        "rerataUH": 95,
+        "nilaiASTS": 34,
+        "nilaiASAS": 34
+      },
+      "11": {
+        "rerataUH": 58,
+        "nilaiASTS": 47,
+        "nilaiASAS": 47
+      },
+      "12": {
+        "rerataUH": 95,
+        "nilaiASTS": 77,
+        "nilaiASAS": 77
+      },
+      "13": {
+        "rerataUH": 90,
+        "nilaiASTS": 65,
+        "nilaiASAS": 65
+      },
+      "14": {
+        "rerataUH": 95,
+        "nilaiASTS": 55,
+        "nilaiASAS": 55
+      },
+      "15": {
+        "rerataUH": 95,
+        "nilaiASTS": 70,
+        "nilaiASAS": 70
+      },
+      "16": {
+        "rerataUH": 95,
+        "nilaiASTS": 44,
+        "nilaiASAS": 44
+      },
+      "17": {
+        "rerataUH": 90,
+        "nilaiASTS": 48,
+        "nilaiASAS": 48
+      },
+      "18": {
+        "rerataUH": 95,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "19": {
+        "rerataUH": 41,
+        "nilaiASTS": 38,
+        "nilaiASAS": 38
+      },
+      "20": {
+        "rerataUH": 95,
+        "nilaiASTS": 51,
+        "nilaiASAS": 51
+      },
+      "21": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 51,
+        "nilaiASAS": 51
+      },
+      "22": {
+        "rerataUH": 90,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "23": {
+        "rerataUH": 90,
+        "nilaiASTS": 44,
+        "nilaiASAS": 44
+      },
+      "24": {
+        "rerataUH": 51,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "25": {
+        "rerataUH": 90,
+        "nilaiASTS": 55,
+        "nilaiASAS": 55
+      },
+      "26": {
+        "rerataUH": 95,
+        "nilaiASTS": 66,
+        "nilaiASAS": 66
+      },
+      "27": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 87,
+        "nilaiASAS": 87
+      },
+      "28": {
+        "rerataUH": 95,
+        "nilaiASTS": 86,
+        "nilaiASAS": 86
+      },
+      "29": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 49,
+        "nilaiASAS": 49
+      },
+      "30": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 76,
+        "nilaiASAS": 76
+      },
+      "31": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 59,
+        "nilaiASAS": 59
+      },
+      "32": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 46,
+        "nilaiASAS": 46
+      }
+    },
+    "standarData": {
+      "1": 76,
+      "2": 49,
+      "3": 74,
+      "4": 56,
+      "5": 41,
+      "6": 66,
+      "7": 78,
+      "8": 67,
+      "9": 56,
+      "10": 64,
+      "11": 58,
+      "12": 60,
+      "13": 71,
+      "14": 51,
+      "15": 67,
+      "16": 64,
+      "17": 73,
+      "18": 57,
+      "19": 41,
+      "20": 53,
+      "21": 51,
+      "22": 40,
+      "23": 48,
+      "24": 51,
+      "25": 49,
+      "26": 63,
+      "27": 64,
+      "28": 66,
+      "29": 59,
+      "30": 65,
+      "31": 58,
+      "32": 56
+    },
+    "updatedAt": "22.49.49"
+  },
+  "KELAS_8B_KODING_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 11,
+        "benarMJ": 1,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 16,
+        "benarMJ": 8,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 15,
+        "benarMJ": 4,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 11,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 16,
+        "benarMJ": 8,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 11,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 15,
+        "benarMJ": 6,
+        "skorUraian": 2,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 12,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 15,
+        "benarMJ": 3,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 11,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 13,
+        "benarMJ": 5,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 17,
+        "benarMJ": 8,
+        "skorUraian": 25,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 16,
+        "benarMJ": 5,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 10,
+        "benarMJ": 8,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 14,
+        "benarMJ": 10,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 14,
+        "benarMJ": 10,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 12,
+        "benarMJ": 10,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 15,
+        "benarMJ": 6,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 11,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 14,
+        "benarMJ": 10,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 18,
+        "benarMJ": 10,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 9,
+        "benarMJ": 9,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 11,
+        "benarMJ": 7,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 18,
+        "benarMJ": 7,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 21,
+        "benarMJ": 10,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 16,
+        "benarMJ": 9,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 7,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 12,
+        "benarMJ": 10,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 13,
+        "benarMJ": 10,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {},
+    "standarData": {},
+    "updatedAt": "22.29.49"
+  },
+  "KELAS_8F_KODING_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 14,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 11,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 12,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 8,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 10,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 7,
+        "benarMJ": 0,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 12,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 7,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 12,
+        "benarMJ": 7,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 8,
+        "benarMJ": 7,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 10,
+        "benarMJ": 7,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 6,
+        "benarMJ": 1,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 15,
+        "benarMJ": 7,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 7,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": 11,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 7,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 7,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 7,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 16,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 7,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 3,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 13,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {},
+    "standarData": {},
+    "updatedAt": "22.29.49"
+  },
+  "KELAS_8G_KODING_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 13,
+        "benarMJ": 3,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 18,
+        "benarMJ": 10,
+        "skorUraian": 25,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 13,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 17,
+        "benarMJ": 5,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 7,
+        "benarMJ": 0,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 13,
+        "benarMJ": 3,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 14,
+        "benarMJ": 3,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 21,
+        "benarMJ": 4,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 14,
+        "benarMJ": 2,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 12,
+        "benarMJ": 1,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 16,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 12,
+        "benarMJ": 0,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 12,
+        "benarMJ": 5,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 12,
+        "benarMJ": 5,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 15,
+        "benarMJ": 7,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 11,
+        "benarMJ": 3,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 12,
+        "benarMJ": 3,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 13,
+        "benarMJ": 7,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 12,
+        "benarMJ": 6,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 14,
+        "benarMJ": 4,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 12,
+        "benarMJ": 9,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 10,
+        "benarMJ": 10,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 10,
+        "benarMJ": 10,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 9,
+        "benarMJ": 4,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 13,
+        "benarMJ": 6,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 9,
+        "benarMJ": 10,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 12,
+        "benarMJ": 10,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 10,
+        "benarMJ": 3,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 12,
+        "benarMJ": 3,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 30,
+        "nilaiASAS": 30
+      },
+      "2": {
+        "rerataUH": 95,
+        "nilaiASTS": 41,
+        "nilaiASAS": 41
+      },
+      "3": {
+        "rerataUH": 95,
+        "nilaiASTS": 87,
+        "nilaiASAS": 87
+      },
+      "4": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 33,
+        "nilaiASAS": 33
+      },
+      "5": {
+        "rerataUH": 95,
+        "nilaiASTS": 76,
+        "nilaiASAS": 76
+      },
+      "6": {
+        "rerataUH": 90,
+        "nilaiASTS": 26,
+        "nilaiASAS": 26
+      },
+      "7": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 45,
+        "nilaiASAS": 45
+      },
+      "8": {
+        "rerataUH": 90,
+        "nilaiASTS": 41,
+        "nilaiASAS": 41
+      },
+      "9": {
+        "rerataUH": 90,
+        "nilaiASTS": 60,
+        "nilaiASAS": 60
+      },
+      "10": {
+        "rerataUH": 95,
+        "nilaiASTS": 42,
+        "nilaiASAS": 42
+      },
+      "11": {
+        "rerataUH": 90,
+        "nilaiASTS": 61,
+        "nilaiASAS": 61
+      },
+      "12": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 44,
+        "nilaiASAS": 44
+      },
+      "13": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 41,
+        "nilaiASAS": 41
+      },
+      "14": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "15": {
+        "rerataUH": 53,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "16": {
+        "rerataUH": 95,
+        "nilaiASTS": 47,
+        "nilaiASAS": 47
+      },
+      "17": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 34,
+        "nilaiASAS": 34
+      },
+      "18": {
+        "rerataUH": 85,
+        "nilaiASTS": 25,
+        "nilaiASAS": 25
+      },
+      "19": {
+        "rerataUH": 95,
+        "nilaiASTS": 70,
+        "nilaiASAS": 70
+      },
+      "20": {
+        "rerataUH": 90,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "21": {
+        "rerataUH": 90,
+        "nilaiASTS": 32,
+        "nilaiASAS": 32
+      },
+      "22": {
+        "rerataUH": 95,
+        "nilaiASTS": 59,
+        "nilaiASAS": 59
+      },
+      "23": {
+        "rerataUH": 95,
+        "nilaiASTS": 49,
+        "nilaiASAS": 49
+      },
+      "24": {
+        "rerataUH": 65,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "25": {
+        "rerataUH": 95,
+        "nilaiASTS": 52,
+        "nilaiASAS": 52
+      },
+      "26": {
+        "rerataUH": 95,
+        "nilaiASTS": 70,
+        "nilaiASAS": 70
+      },
+      "27": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 36,
+        "nilaiASAS": 36
+      },
+      "28": {
+        "rerataUH": 95,
+        "nilaiASTS": 32,
+        "nilaiASAS": 32
+      },
+      "29": {
+        "rerataUH": 95,
+        "nilaiASTS": 33,
+        "nilaiASAS": 33
+      },
+      "30": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 28,
+        "nilaiASAS": 28
+      },
+      "31": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 60,
+        "nilaiASAS": 60
+      },
+      "32": {
+        "rerataUH": 95,
+        "nilaiASTS": 34,
+        "nilaiASAS": 34
+      }
+    },
+    "standarData": {
+      "1": 40,
+      "2": 53,
+      "3": 86,
+      "4": 51,
+      "5": 69,
+      "6": 32,
+      "7": 52,
+      "8": 50,
+      "9": 71,
+      "10": 53,
+      "11": 46,
+      "12": 62,
+      "13": 40,
+      "14": 56,
+      "15": 53,
+      "16": 67,
+      "17": 53,
+      "18": 50,
+      "19": 65,
+      "20": 57,
+      "21": 56,
+      "22": 69,
+      "23": 66,
+      "24": 65,
+      "25": 46,
+      "26": 64,
+      "27": 62,
+      "28": 66,
+      "29": 40,
+      "30": 46,
+      "31": 53,
+      "32": 44
+    },
+    "updatedAt": "22.32.23"
+  },
+  "KELAS_8G_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 5,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 22,
+        "benarMJ": 9,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 7,
+        "benarMJ": 2,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 18,
+        "benarMJ": 8,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 4,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 9,
+        "benarMJ": 5,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 8,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 15,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 14,
+        "benarMJ": 7,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 9,
+        "benarMJ": 4,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 7,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 8,
+        "benarMJ": 4,
+        "skorUraian": 13,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 10,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 7,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 4,
+        "benarMJ": 1,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 19,
+        "benarMJ": 6,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 6,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 8,
+        "benarMJ": 0,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 13,
+        "benarMJ": 7,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 11,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 9,
+        "benarMJ": 4,
+        "skorUraian": 9,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 9,
+        "benarMJ": 7,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 17,
+        "benarMJ": 7,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 11,
+        "benarMJ": 0,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 7,
+        "benarMJ": 0,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 16,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 30,
+        "nilaiASTS": 30,
+        "nilaiASAS": 30
+      },
+      "2": {
+        "rerataUH": 41,
+        "nilaiASTS": 41,
+        "nilaiASAS": 41
+      },
+      "3": {
+        "rerataUH": 95,
+        "nilaiASTS": 87,
+        "nilaiASAS": 87
+      },
+      "4": {
+        "rerataUH": 33,
+        "nilaiASTS": 33,
+        "nilaiASAS": 33
+      },
+      "5": {
+        "rerataUH": 76,
+        "nilaiASTS": 76,
+        "nilaiASAS": 76
+      },
+      "6": {
+        "rerataUH": 80,
+        "nilaiASTS": 26,
+        "nilaiASAS": 26
+      },
+      "7": {
+        "rerataUH": 45,
+        "nilaiASTS": 45,
+        "nilaiASAS": 45
+      },
+      "8": {
+        "rerataUH": 41,
+        "nilaiASTS": 41,
+        "nilaiASAS": 41
+      },
+      "9": {
+        "rerataUH": 60,
+        "nilaiASTS": 60,
+        "nilaiASAS": 60
+      },
+      "10": {
+        "rerataUH": 42,
+        "nilaiASTS": 42,
+        "nilaiASAS": 42
+      },
+      "11": {
+        "rerataUH": 95,
+        "nilaiASTS": 61,
+        "nilaiASAS": 61
+      },
+      "12": {
+        "rerataUH": 44,
+        "nilaiASTS": 44,
+        "nilaiASAS": 44
+      },
+      "13": {
+        "rerataUH": 41,
+        "nilaiASTS": 41,
+        "nilaiASAS": 41
+      },
+      "14": {
+        "rerataUH": 95,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "15": {
+        "rerataUH": 95,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "16": {
+        "rerataUH": 95,
+        "nilaiASTS": 47,
+        "nilaiASAS": 47
+      },
+      "17": {
+        "rerataUH": 95,
+        "nilaiASTS": 34,
+        "nilaiASAS": 34
+      },
+      "18": {
+        "rerataUH": 25,
+        "nilaiASTS": 25,
+        "nilaiASAS": 25
+      },
+      "19": {
+        "rerataUH": 70,
+        "nilaiASTS": 70,
+        "nilaiASAS": 70
+      },
+      "20": {
+        "rerataUH": 37,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "21": {
+        "rerataUH": 32,
+        "nilaiASTS": 32,
+        "nilaiASAS": 32
+      },
+      "22": {
+        "rerataUH": 59,
+        "nilaiASTS": 59,
+        "nilaiASAS": 59
+      },
+      "23": {
+        "rerataUH": 49,
+        "nilaiASTS": 49,
+        "nilaiASAS": 49
+      },
+      "24": {
+        "rerataUH": 37,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "25": {
+        "rerataUH": 52,
+        "nilaiASTS": 52,
+        "nilaiASAS": 52
+      },
+      "26": {
+        "rerataUH": 70,
+        "nilaiASTS": 70,
+        "nilaiASAS": 70
+      },
+      "27": {
+        "rerataUH": 36,
+        "nilaiASTS": 36,
+        "nilaiASAS": 36
+      },
+      "28": {
+        "rerataUH": 95,
+        "nilaiASTS": 32,
+        "nilaiASAS": 32
+      },
+      "29": {
+        "rerataUH": 95,
+        "nilaiASTS": 33,
+        "nilaiASAS": 33
+      },
+      "30": {
+        "rerataUH": 95,
+        "nilaiASTS": 28,
+        "nilaiASAS": 28
+      },
+      "31": {
+        "rerataUH": 95,
+        "nilaiASTS": 60,
+        "nilaiASAS": 60
+      },
+      "32": {
+        "rerataUH": 95,
+        "nilaiASTS": 34,
+        "nilaiASAS": 34
+      }
+    },
+    "standarData": {
+      "1": 30,
+      "2": 41,
+      "3": 87,
+      "4": 33,
+      "5": 76,
+      "6": 26,
+      "7": 45,
+      "8": 41,
+      "9": 60,
+      "10": 42,
+      "11": 61,
+      "12": 44,
+      "13": 41,
+      "14": 39,
+      "15": 39,
+      "16": 47,
+      "17": 34,
+      "18": 25,
+      "19": 70,
+      "20": 37,
+      "21": 32,
+      "22": 59,
+      "23": 49,
+      "24": 37,
+      "25": 52,
+      "26": 70,
+      "27": 36,
+      "28": 32,
+      "29": 33,
+      "30": 28,
+      "31": 60,
+      "32": 34
+    },
+    "updatedAt": "22.29.57"
+  },
+  "KELAS_7G_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 16,
+        "benarMJ": 3,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 12,
+        "benarMJ": 6,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 20,
+        "benarMJ": 9,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 15,
+        "benarMJ": 3,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 12,
+        "benarMJ": 1,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 12,
+        "benarMJ": 0,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 10,
+        "benarMJ": 3,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 8,
+        "benarMJ": 6,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 10,
+        "benarMJ": 6,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 14,
+        "benarMJ": 8,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 14,
+        "benarMJ": 3,
+        "skorUraian": 6,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 6,
+        "benarMJ": 1,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 10,
+        "benarMJ": 0,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 13,
+        "benarMJ": 1,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 12,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 6,
+        "benarMJ": 3,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 10,
+        "benarMJ": 0,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 12,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 16,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 15,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 8,
+        "benarMJ": 6,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 9,
+        "benarMJ": 5,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "2": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "3": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "4": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "5": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "6": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "7": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "9": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "10": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "11": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "12": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "13": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "14": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "15": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "16": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "17": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "18": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "19": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "20": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "21": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "22": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "23": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "25": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "26": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "27": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "28": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "29": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "30": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "32": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      }
+    },
+    "standarData": {
+      "1": 80,
+      "2": 80,
+      "3": 85,
+      "4": 95,
+      "5": 95,
+      "6": 95,
+      "7": 90,
+      "9": 85,
+      "10": 80,
+      "11": 95,
+      "12": 95,
+      "13": 85,
+      "14": 90,
+      "15": 90,
+      "16": 80,
+      "17": 80,
+      "18": 85,
+      "19": 85,
+      "20": 90,
+      "21": 90,
+      "22": 85,
+      "23": 90,
+      "25": 95,
+      "26": 80,
+      "27": 90,
+      "28": 95,
+      "29": 95,
+      "30": 90,
+      "32": 90
+    },
+    "updatedAt": "22.35.02"
+  },
+  "KELAS_7F_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {},
+    "modeBData": {
+      "1": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "2": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "4": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "5": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "7": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "8": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "9": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "10": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "11": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "13": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "14": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "17": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "18": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "20": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "21": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "23": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "24": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "26": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "27": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "28": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "29": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "30": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "31": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      }
+    },
+    "standarData": {
+      "1": 90,
+      "2": 90,
+      "4": 90,
+      "5": 95,
+      "7": 95,
+      "8": 90,
+      "9": 95,
+      "10": 90,
+      "11": 95,
+      "13": 95,
+      "14": 90,
+      "17": 95,
+      "18": 80,
+      "20": 95,
+      "21": 95,
+      "23": 95,
+      "24": 95,
+      "26": 95,
+      "27": 95,
+      "28": 90,
+      "29": 95,
+      "30": 90,
+      "31": 95
+    },
+    "updatedAt": "22.50.25"
+  },
+  "KELAS_8F_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 7,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 7,
+        "benarMJ": 4,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 7,
+        "benarMJ": 1,
+        "skorUraian": 9,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 6,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 8,
+        "benarMJ": 2,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 6,
+        "benarMJ": 1,
+        "skorUraian": 11,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 13,
+        "benarMJ": 1,
+        "skorUraian": 11,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 4,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 12,
+        "benarMJ": 5,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 4,
+        "benarMJ": 0,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 9,
+        "benarMJ": 4,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 5,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 8,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 13,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": 10,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 5,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 7,
+        "benarMJ": 1,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 6,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 7,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 4,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 10,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 16,
+        "benarMJ": 5,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 34,
+        "nilaiASTS": 34,
+        "nilaiASAS": 34
+      },
+      "2": {
+        "rerataUH": 42,
+        "nilaiASTS": 42,
+        "nilaiASAS": 42
+      },
+      "3": {
+        "rerataUH": 40,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "4": {
+        "rerataUH": 26,
+        "nilaiASTS": 26,
+        "nilaiASAS": 26
+      },
+      "5": {
+        "rerataUH": 30,
+        "nilaiASTS": 30,
+        "nilaiASAS": 30
+      },
+      "6": {
+        "rerataUH": 39,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "7": {
+        "rerataUH": 33,
+        "nilaiASTS": 33,
+        "nilaiASAS": 33
+      },
+      "8": {
+        "rerataUH": 37,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "9": {
+        "rerataUH": 49,
+        "nilaiASTS": 49,
+        "nilaiASAS": 49
+      },
+      "10": {
+        "rerataUH": 37,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "11": {
+        "rerataUH": 26,
+        "nilaiASTS": 26,
+        "nilaiASAS": 26
+      },
+      "12": {
+        "rerataUH": 40,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "13": {
+        "rerataUH": 35,
+        "nilaiASTS": 35,
+        "nilaiASAS": 35
+      },
+      "14": {
+        "rerataUH": 26,
+        "nilaiASTS": 26,
+        "nilaiASAS": 26
+      },
+      "15": {
+        "rerataUH": 33,
+        "nilaiASTS": 33,
+        "nilaiASAS": 33
+      },
+      "16": {
+        "rerataUH": 51,
+        "nilaiASTS": 51,
+        "nilaiASAS": 51
+      },
+      "17": {
+        "rerataUH": 22,
+        "nilaiASTS": 22,
+        "nilaiASAS": 22
+      },
+      "18": {
+        "rerataUH": 44,
+        "nilaiASTS": 44,
+        "nilaiASAS": 44
+      },
+      "19": {
+        "rerataUH": 39,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "20": {
+        "rerataUH": 35,
+        "nilaiASTS": 35,
+        "nilaiASAS": 35
+      },
+      "21": {
+        "rerataUH": 39,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "22": {
+        "rerataUH": 36,
+        "nilaiASTS": 36,
+        "nilaiASAS": 36
+      },
+      "23": {
+        "rerataUH": 51,
+        "nilaiASTS": 51,
+        "nilaiASAS": 51
+      },
+      "24": {
+        "rerataUH": 31,
+        "nilaiASTS": 31,
+        "nilaiASAS": 31
+      },
+      "25": {
+        "rerataUH": 28,
+        "nilaiASTS": 28,
+        "nilaiASAS": 28
+      },
+      "26": {
+        "rerataUH": 31,
+        "nilaiASTS": 31,
+        "nilaiASAS": 31
+      },
+      "27": {
+        "rerataUH": 32,
+        "nilaiASTS": 32,
+        "nilaiASAS": 32
+      },
+      "28": {
+        "rerataUH": 42,
+        "nilaiASTS": 42,
+        "nilaiASAS": 42
+      },
+      "29": {
+        "rerataUH": 37,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "30": {
+        "rerataUH": 36,
+        "nilaiASTS": 36,
+        "nilaiASAS": 36
+      },
+      "31": {
+        "rerataUH": 35,
+        "nilaiASTS": 35,
+        "nilaiASAS": 35
+      },
+      "32": {
+        "rerataUH": 66,
+        "nilaiASTS": 66,
+        "nilaiASAS": 66
+      }
+    },
+    "standarData": {
+      "1": 34,
+      "2": 42,
+      "3": 40,
+      "4": 26,
+      "5": 30,
+      "6": 39,
+      "7": 33,
+      "8": 37,
+      "9": 49,
+      "10": 37,
+      "11": 26,
+      "12": 40,
+      "13": 35,
+      "14": 26,
+      "15": 33,
+      "16": 51,
+      "17": 22,
+      "18": 44,
+      "19": 39,
+      "20": 35,
+      "21": 39,
+      "22": 36,
+      "23": 51,
+      "24": 31,
+      "25": 28,
+      "26": 31,
+      "27": 32,
+      "28": 42,
+      "29": 37,
+      "30": 36,
+      "31": 35,
+      "32": 66
+    },
+    "updatedAt": "21.28.03"
+  },
+  "KELAS_8A_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 15,
+        "benarMJ": 7,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 13,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 13,
+        "benarMJ": 6,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 6,
+        "benarMJ": 7,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 10,
+        "benarMJ": 7,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 21,
+        "benarMJ": 7,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 19,
+        "benarMJ": 7,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 6,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 6,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 16,
+        "benarMJ": 1,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 21,
+        "benarMJ": 7,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 18,
+        "benarMJ": 4,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 7,
+        "benarMJ": 10,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 17,
+        "benarMJ": 7,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 12,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 11,
+        "benarMJ": 3,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 8,
+        "benarMJ": 4,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 7,
+        "benarMJ": 4,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 13,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 7,
+        "benarMJ": 4,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 10,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 13,
+        "benarMJ": 4,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 15,
+        "benarMJ": 8,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 20,
+        "benarMJ": 9,
+        "skorUraian": 24,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 20,
+        "benarMJ": 9,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 19,
+        "benarMJ": 8,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 14,
+        "benarMJ": 5,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 95,
+        "nilaiASTS": 66,
+        "nilaiASAS": 66
+      },
+      "2": {
+        "rerataUH": 95,
+        "nilaiASTS": 46,
+        "nilaiASAS": 46
+      },
+      "3": {
+        "rerataUH": 58,
+        "nilaiASTS": 58,
+        "nilaiASAS": 58
+      },
+      "4": {
+        "rerataUH": 45,
+        "nilaiASTS": 45,
+        "nilaiASAS": 45
+      },
+      "5": {
+        "rerataUH": 38,
+        "nilaiASTS": 38,
+        "nilaiASAS": 38
+      },
+      "6": {
+        "rerataUH": 95,
+        "nilaiASTS": 56,
+        "nilaiASAS": 56
+      },
+      "7": {
+        "rerataUH": 79,
+        "nilaiASTS": 79,
+        "nilaiASAS": 79
+      },
+      "8": {
+        "rerataUH": 75,
+        "nilaiASTS": 75,
+        "nilaiASAS": 75
+      },
+      "9": {
+        "rerataUH": 40,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "10": {
+        "rerataUH": 34,
+        "nilaiASTS": 34,
+        "nilaiASAS": 34
+      },
+      "11": {
+        "rerataUH": 47,
+        "nilaiASTS": 47,
+        "nilaiASAS": 47
+      },
+      "12": {
+        "rerataUH": 95,
+        "nilaiASTS": 77,
+        "nilaiASAS": 77
+      },
+      "13": {
+        "rerataUH": 65,
+        "nilaiASTS": 65,
+        "nilaiASAS": 65
+      },
+      "14": {
+        "rerataUH": 95,
+        "nilaiASTS": 55,
+        "nilaiASAS": 55
+      },
+      "15": {
+        "rerataUH": 70,
+        "nilaiASTS": 70,
+        "nilaiASAS": 70
+      },
+      "16": {
+        "rerataUH": 44,
+        "nilaiASTS": 44,
+        "nilaiASAS": 44
+      },
+      "17": {
+        "rerataUH": 48,
+        "nilaiASTS": 48,
+        "nilaiASAS": 48
+      },
+      "18": {
+        "rerataUH": 40,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "19": {
+        "rerataUH": 38,
+        "nilaiASTS": 38,
+        "nilaiASAS": 38
+      },
+      "20": {
+        "rerataUH": 95,
+        "nilaiASTS": 51,
+        "nilaiASAS": 51
+      },
+      "21": {
+        "rerataUH": 95,
+        "nilaiASTS": 51,
+        "nilaiASAS": 51
+      },
+      "22": {
+        "rerataUH": 40,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "23": {
+        "rerataUH": 44,
+        "nilaiASTS": 44,
+        "nilaiASAS": 44
+      },
+      "24": {
+        "rerataUH": 39,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "25": {
+        "rerataUH": 55,
+        "nilaiASTS": 55,
+        "nilaiASAS": 55
+      },
+      "26": {
+        "rerataUH": 95,
+        "nilaiASTS": 66,
+        "nilaiASAS": 66
+      },
+      "27": {
+        "rerataUH": 95,
+        "nilaiASTS": 87,
+        "nilaiASAS": 87
+      },
+      "28": {
+        "rerataUH": 95,
+        "nilaiASTS": 86,
+        "nilaiASAS": 86
+      },
+      "29": {
+        "rerataUH": 49,
+        "nilaiASTS": 49,
+        "nilaiASAS": 49
+      },
+      "30": {
+        "rerataUH": 95,
+        "nilaiASTS": 76,
+        "nilaiASAS": 76
+      },
+      "31": {
+        "rerataUH": 95,
+        "nilaiASTS": 59,
+        "nilaiASAS": 59
+      },
+      "32": {
+        "rerataUH": 46,
+        "nilaiASTS": 46,
+        "nilaiASAS": 46
+      }
+    },
+    "standarData": {
+      "1": 66,
+      "2": 46,
+      "3": 58,
+      "4": 45,
+      "5": 38,
+      "6": 56,
+      "7": 79,
+      "8": 75,
+      "9": 40,
+      "10": 34,
+      "11": 47,
+      "12": 77,
+      "13": 65,
+      "14": 55,
+      "15": 70,
+      "16": 44,
+      "17": 48,
+      "18": 40,
+      "19": 38,
+      "20": 51,
+      "21": 51,
+      "22": 40,
+      "23": 44,
+      "24": 39,
+      "25": 55,
+      "26": 66,
+      "27": 87,
+      "28": 86,
+      "29": 49,
+      "30": 76,
+      "31": 59,
+      "32": 46
+    },
+    "updatedAt": "22.35.03"
+  },
+  "KELAS_8D_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 6,
+        "benarMJ": 1,
+        "skorUraian": 3,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 6,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 3,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 13,
+        "benarMJ": 2,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 3,
+        "benarMJ": 2,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 11,
+        "benarMJ": 5,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 8,
+        "benarMJ": 6,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 3,
+        "benarMJ": 3,
+        "skorUraian": 9,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 11,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 7,
+        "benarMJ": 2,
+        "skorUraian": 8,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 3,
+        "benarMJ": 2,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 6,
+        "benarMJ": 0,
+        "skorUraian": 11,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 22,
+        "benarMJ": 7,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 18,
+        "benarMJ": 10,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 12,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 6,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 8,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 11,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 5,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 4,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 6,
+        "benarMJ": 0,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 5,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 14,
+        "benarMJ": 5,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 5,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 11,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": 9,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 18,
+        "nilaiASTS": 18,
+        "nilaiASAS": 18
+      },
+      "2": {
+        "rerataUH": 95,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "3": {
+        "rerataUH": 24,
+        "nilaiASTS": 24,
+        "nilaiASAS": 24
+      },
+      "4": {
+        "rerataUH": 49,
+        "nilaiASTS": 49,
+        "nilaiASAS": 49
+      },
+      "5": {
+        "rerataUH": 95,
+        "nilaiASTS": 23,
+        "nilaiASAS": 23
+      },
+      "6": {
+        "rerataUH": 95,
+        "nilaiASTS": 53,
+        "nilaiASAS": 53
+      },
+      "7": {
+        "rerataUH": 95,
+        "nilaiASTS": 46,
+        "nilaiASAS": 46
+      },
+      "8": {
+        "rerataUH": 23,
+        "nilaiASTS": 23,
+        "nilaiASAS": 23
+      },
+      "9": {
+        "rerataUH": 95,
+        "nilaiASTS": 41,
+        "nilaiASAS": 41
+      },
+      "10": {
+        "rerataUH": 27,
+        "nilaiASTS": 27,
+        "nilaiASAS": 27
+      },
+      "11": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 33,
+        "nilaiASAS": 33
+      },
+      "12": {
+        "rerataUH": 25,
+        "nilaiASTS": 25,
+        "nilaiASAS": 25
+      },
+      "13": {
+        "rerataUH": 90,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "14": {
+        "rerataUH": 95,
+        "nilaiASTS": 23,
+        "nilaiASAS": 23
+      },
+      "15": {
+        "rerataUH": 95,
+        "nilaiASTS": 84,
+        "nilaiASAS": 84
+      },
+      "16": {
+        "rerataUH": 80,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "17": {
+        "rerataUH": 39,
+        "nilaiASTS": 39,
+        "nilaiASAS": 39
+      },
+      "18": {
+        "rerataUH": 80,
+        "nilaiASTS": 33,
+        "nilaiASAS": 33
+      },
+      "19": {
+        "rerataUH": 30,
+        "nilaiASTS": 30,
+        "nilaiASAS": 30
+      },
+      "20": {
+        "rerataUH": 34,
+        "nilaiASTS": 34,
+        "nilaiASAS": 34
+      },
+      "21": {
+        "rerataUH": 41,
+        "nilaiASTS": 41,
+        "nilaiASAS": 41
+      },
+      "22": {
+        "rerataUH": 90,
+        "nilaiASTS": 31,
+        "nilaiASAS": 31
+      },
+      "23": {
+        "rerataUH": 80,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "24": {
+        "rerataUH": 28,
+        "nilaiASTS": 28,
+        "nilaiASAS": 28
+      },
+      "25": {
+        "rerataUH": 90,
+        "nilaiASTS": 26,
+        "nilaiASAS": 26
+      },
+      "26": {
+        "rerataUH": 95,
+        "nilaiASTS": 28,
+        "nilaiASAS": 28
+      },
+      "27": {
+        "rerataUH": 80,
+        "nilaiASTS": 36,
+        "nilaiASAS": 36
+      },
+      "28": {
+        "rerataUH": 31,
+        "nilaiASTS": 31,
+        "nilaiASAS": 31
+      },
+      "29": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 57,
+        "nilaiASAS": 57
+      },
+      "30": {
+        "rerataUH": 28,
+        "nilaiASTS": 28,
+        "nilaiASAS": 28
+      },
+      "31": {
+        "rerataUH": 95,
+        "nilaiASTS": 47,
+        "nilaiASAS": 47
+      },
+      "32": {
+        "rerataUH": 35,
+        "nilaiASTS": 35,
+        "nilaiASAS": 35
+      }
+    },
+    "standarData": {
+      "1": 18,
+      "2": 39,
+      "3": 24,
+      "4": 49,
+      "5": 23,
+      "6": 53,
+      "7": 46,
+      "8": 23,
+      "9": 41,
+      "10": 27,
+      "11": 33,
+      "12": 25,
+      "13": 37,
+      "14": 23,
+      "15": 84,
+      "16": 85,
+      "17": 39,
+      "18": 33,
+      "19": 30,
+      "20": 34,
+      "21": 41,
+      "22": 31,
+      "23": 40,
+      "24": 28,
+      "25": 26,
+      "26": 28,
+      "27": 36,
+      "28": 31,
+      "29": 57,
+      "30": 28,
+      "31": 47,
+      "32": 35
+    },
+    "updatedAt": "21.27.42"
+  },
+  "KELAS_7E_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 4,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 13,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 13,
+        "benarMJ": 0,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 12,
+        "benarMJ": 7,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 7,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 13,
+        "benarMJ": 1,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 18,
+        "benarMJ": 10,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 8,
+        "benarMJ": 0,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 12,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 6,
+        "benarMJ": 1,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 13,
+        "benarMJ": 5,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 8,
+        "benarMJ": 4,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 7,
+        "benarMJ": 1,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 7,
+        "benarMJ": 0,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 9,
+        "benarMJ": 5,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 17,
+        "benarMJ": 6,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 11,
+        "benarMJ": 4,
+        "skorUraian": null,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "2": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "3": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "4": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "5": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "6": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "7": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "8": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "9": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "10": {
+        "rerataUH": 75,
+        "nilaiASTS": 75,
+        "nilaiASAS": 75
+      },
+      "11": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "12": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "13": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "15": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "16": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "17": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "18": {
+        "rerataUH": 75,
+        "nilaiASTS": 75,
+        "nilaiASAS": 75
+      },
+      "19": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "20": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "21": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "22": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "23": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "24": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "25": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "26": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "27": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "28": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "29": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "31": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "32": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      }
+    },
+    "standarData": {
+      "1": 80,
+      "2": 80,
+      "3": 95,
+      "4": 85,
+      "5": 90,
+      "6": 80,
+      "7": 85,
+      "8": 80,
+      "9": 80,
+      "10": 75,
+      "11": 85,
+      "12": 80,
+      "13": 80,
+      "15": 95,
+      "16": 90,
+      "17": 80,
+      "18": 75,
+      "19": 80,
+      "20": 80,
+      "21": 85,
+      "22": 90,
+      "23": 90,
+      "24": 80,
+      "25": 95,
+      "26": 95,
+      "27": 95,
+      "28": 95,
+      "29": 95,
+      "31": 85,
+      "32": 95
+    },
+    "updatedAt": "22.34.59"
+  },
+  "KELAS_8E_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 10,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 12,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 4,
+        "benarMJ": 3,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 15,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 18,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 8,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 13,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 4,
+        "benarMJ": 0,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 5,
+        "benarMJ": 1,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 5,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 5,
+        "benarMJ": 0,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 6,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 8,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 6,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 6,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 10,
+        "benarMJ": 0,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 6,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 8,
+        "benarMJ": 2,
+        "skorUraian": 13,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 4,
+        "benarMJ": 2,
+        "skorUraian": 13,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 6,
+        "benarMJ": 2,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 6,
+        "benarMJ": 1,
+        "skorUraian": 13,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 2,
+        "benarMJ": 3,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 8,
+        "benarMJ": 2,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 7,
+        "benarMJ": 8,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 5,
+        "benarMJ": 6,
+        "skorUraian": 10,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 4,
+        "benarMJ": 1,
+        "skorUraian": 13,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 35,
+        "nilaiASAS": 35
+      },
+      "2": {
+        "rerataUH": 42,
+        "nilaiASTS": 42,
+        "nilaiASAS": 42
+      },
+      "3": {
+        "rerataUH": 90,
+        "nilaiASTS": 30,
+        "nilaiASAS": 30
+      },
+      "4": {
+        "rerataUH": 55,
+        "nilaiASTS": 55,
+        "nilaiASAS": 55
+      },
+      "5": {
+        "rerataUH": 57,
+        "nilaiASTS": 57,
+        "nilaiASAS": 57
+      },
+      "6": {
+        "rerataUH": 90,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "7": {
+        "rerataUH": 80,
+        "nilaiASTS": 46,
+        "nilaiASAS": 46
+      },
+      "8": {
+        "rerataUH": 22,
+        "nilaiASTS": 22,
+        "nilaiASAS": 22
+      },
+      "9": {
+        "rerataUH": 27,
+        "nilaiASTS": 27,
+        "nilaiASAS": 27
+      },
+      "10": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "11": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 25,
+        "nilaiASAS": 25
+      },
+      "12": {
+        "rerataUH": 85,
+        "nilaiASTS": 24,
+        "nilaiASAS": 24
+      },
+      "13": {
+        "rerataUH": 90,
+        "nilaiASTS": 32,
+        "nilaiASAS": 32
+      },
+      "14": {
+        "rerataUH": 90,
+        "nilaiASTS": 41,
+        "nilaiASAS": 41
+      },
+      "15": {
+        "rerataUH": 85,
+        "nilaiASTS": 31,
+        "nilaiASAS": 31
+      },
+      "16": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 30,
+        "nilaiASAS": 30
+      },
+      "17": {
+        "rerataUH": 90,
+        "nilaiASTS": 38,
+        "nilaiASAS": 38
+      },
+      "18": {
+        "rerataUH": 35,
+        "nilaiASTS": 35,
+        "nilaiASAS": 35
+      },
+      "19": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 41,
+        "nilaiASAS": 41
+      },
+      "20": {
+        "rerataUH": 90,
+        "nilaiASTS": 42,
+        "nilaiASAS": 42
+      },
+      "21": {
+        "rerataUH": 38,
+        "nilaiASTS": 38,
+        "nilaiASAS": 38
+      },
+      "22": {
+        "rerataUH": 32,
+        "nilaiASTS": 32,
+        "nilaiASAS": 32
+      },
+      "23": {
+        "rerataUH": 32,
+        "nilaiASTS": 32,
+        "nilaiASAS": 32
+      },
+      "24": {
+        "rerataUH": 34,
+        "nilaiASTS": 34,
+        "nilaiASAS": 34
+      },
+      "25": {
+        "rerataUH": 26,
+        "nilaiASTS": 26,
+        "nilaiASAS": 26
+      },
+      "26": {
+        "rerataUH": 85,
+        "nilaiASTS": 31,
+        "nilaiASAS": 31
+      },
+      "27": {
+        "rerataUH": 28,
+        "nilaiASTS": 28,
+        "nilaiASAS": 28
+      },
+      "28": {
+        "rerataUH": 82.5,
+        "nilaiASTS": 26,
+        "nilaiASAS": 26
+      },
+      "29": {
+        "rerataUH": 82.5,
+        "nilaiASTS": 35,
+        "nilaiASAS": 35
+      },
+      "30": {
+        "rerataUH": 90,
+        "nilaiASTS": 49,
+        "nilaiASAS": 49
+      },
+      "31": {
+        "rerataUH": 90,
+        "nilaiASTS": 35,
+        "nilaiASAS": 35
+      },
+      "32": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 24,
+        "nilaiASAS": 24
+      }
+    },
+    "standarData": {
+      "1": 35,
+      "2": 42,
+      "3": 30,
+      "4": 55,
+      "5": 57,
+      "6": 37,
+      "7": 46,
+      "8": 22,
+      "9": 27,
+      "10": 40,
+      "11": 25,
+      "12": 24,
+      "13": 32,
+      "14": 41,
+      "15": 31,
+      "16": 30,
+      "17": 38,
+      "18": 35,
+      "19": 41,
+      "20": 42,
+      "21": 38,
+      "22": 32,
+      "23": 32,
+      "24": 34,
+      "25": 26,
+      "26": 31,
+      "27": 28,
+      "28": 26,
+      "29": 35,
+      "30": 49,
+      "31": 35,
+      "32": 24
+    },
+    "updatedAt": "21.28.00"
+  },
+  "KELAS_8B_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 14,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 14,
+        "benarMJ": 6,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 13,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 9,
+        "benarMJ": 4,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 16,
+        "benarMJ": 6,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 7,
+        "benarMJ": 1,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 10,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 14,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 17,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 10,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 9,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 14,
+        "benarMJ": 7,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 19,
+        "benarMJ": 6,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 14,
+        "benarMJ": 6,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 11,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 7,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 11,
+        "benarMJ": 7,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 19,
+        "benarMJ": 8,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 14,
+        "benarMJ": 5,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 12,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 9,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 7,
+        "benarMJ": 3,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 11,
+        "benarMJ": 6,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 12,
+        "benarMJ": 6,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 11,
+        "benarMJ": 6,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 13,
+        "benarMJ": 4,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 13,
+        "benarMJ": 8,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 19,
+        "benarMJ": 7,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 15,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 17,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {
+      "1": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 48,
+        "nilaiASAS": 48
+      },
+      "2": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 62,
+        "nilaiASAS": 62
+      },
+      "3": {
+        "rerataUH": 95,
+        "nilaiASTS": 56,
+        "nilaiASAS": 56
+      },
+      "4": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "5": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 66,
+        "nilaiASAS": 66
+      },
+      "6": {
+        "rerataUH": 80,
+        "nilaiASTS": 31,
+        "nilaiASAS": 31
+      },
+      "7": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 47,
+        "nilaiASAS": 47
+      },
+      "8": {
+        "rerataUH": 90,
+        "nilaiASTS": 56,
+        "nilaiASAS": 56
+      },
+      "9": {
+        "rerataUH": 57,
+        "nilaiASTS": 57,
+        "nilaiASAS": 57
+      },
+      "10": {
+        "rerataUH": 87.5,
+        "nilaiASTS": 50,
+        "nilaiASAS": 50
+      },
+      "11": {
+        "rerataUH": 95,
+        "nilaiASTS": 43,
+        "nilaiASAS": 43
+      },
+      "12": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 62,
+        "nilaiASAS": 62
+      },
+      "13": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 71,
+        "nilaiASAS": 71
+      },
+      "14": {
+        "rerataUH": 95,
+        "nilaiASTS": 59,
+        "nilaiASAS": 59
+      },
+      "15": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 47,
+        "nilaiASAS": 47
+      },
+      "16": {
+        "rerataUH": 37,
+        "nilaiASTS": 37,
+        "nilaiASAS": 37
+      },
+      "17": {
+        "rerataUH": 40,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "18": {
+        "rerataUH": 95,
+        "nilaiASTS": 59,
+        "nilaiASAS": 59
+      },
+      "19": {
+        "rerataUH": 90,
+        "nilaiASTS": 74,
+        "nilaiASAS": 74
+      },
+      "20": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 57,
+        "nilaiASAS": 57
+      },
+      "21": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 54,
+        "nilaiASAS": 54
+      },
+      "22": {
+        "rerataUH": 43,
+        "nilaiASTS": 43,
+        "nilaiASAS": 43
+      },
+      "23": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 34,
+        "nilaiASAS": 34
+      },
+      "24": {
+        "rerataUH": 53,
+        "nilaiASTS": 53,
+        "nilaiASAS": 53
+      },
+      "25": {
+        "rerataUH": 90,
+        "nilaiASTS": 51,
+        "nilaiASAS": 51
+      },
+      "26": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 49,
+        "nilaiASAS": 49
+      },
+      "27": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 55,
+        "nilaiASAS": 55
+      },
+      "28": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 62,
+        "nilaiASAS": 62
+      },
+      "29": {
+        "rerataUH": 92.5,
+        "nilaiASTS": 74,
+        "nilaiASAS": 74
+      },
+      "30": {
+        "rerataUH": 80,
+        "nilaiASTS": 40,
+        "nilaiASAS": 40
+      },
+      "31": {
+        "rerataUH": 58,
+        "nilaiASTS": 58,
+        "nilaiASAS": 58
+      },
+      "32": {
+        "rerataUH": 95,
+        "nilaiASTS": 59,
+        "nilaiASAS": 59
+      }
+    },
+    "standarData": {
+      "1": 48,
+      "2": 62,
+      "3": 56,
+      "4": 40,
+      "5": 66,
+      "6": 31,
+      "7": 47,
+      "8": 56,
+      "9": 57,
+      "10": 50,
+      "11": 43,
+      "12": 62,
+      "13": 71,
+      "14": 59,
+      "15": 47,
+      "16": 37,
+      "17": 40,
+      "18": 59,
+      "19": 74,
+      "20": 57,
+      "21": 54,
+      "22": 43,
+      "23": 34,
+      "24": 53,
+      "25": 51,
+      "26": 49,
+      "27": 55,
+      "28": 62,
+      "29": 74,
+      "30": 40,
+      "31": 58,
+      "32": 59
+    },
+    "updatedAt": "21.27.31"
+  },
+  "KELAS_7H_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {},
+    "modeBData": {
+      "1": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "2": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "3": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "4": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "5": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "6": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "7": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "8": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "9": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "11": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "12": {
+        "rerataUH": 80,
+        "nilaiASTS": 80,
+        "nilaiASAS": 80
+      },
+      "13": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "14": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "15": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "16": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "19": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "20": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "21": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "22": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "23": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "24": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "25": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "26": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "27": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      },
+      "28": {
+        "rerataUH": 85,
+        "nilaiASTS": 85,
+        "nilaiASAS": 85
+      },
+      "29": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "30": {
+        "rerataUH": 95,
+        "nilaiASTS": 95,
+        "nilaiASAS": 95
+      },
+      "31": {
+        "rerataUH": 90,
+        "nilaiASTS": 90,
+        "nilaiASAS": 90
+      }
+    },
+    "standarData": {
+      "1": 90,
+      "2": 90,
+      "3": 95,
+      "4": 95,
+      "5": 95,
+      "6": 95,
+      "7": 80,
+      "8": 95,
+      "9": 90,
+      "11": 90,
+      "12": 80,
+      "13": 90,
+      "14": 85,
+      "15": 95,
+      "16": 95,
+      "19": 85,
+      "20": 95,
+      "21": 95,
+      "22": 90,
+      "23": 95,
+      "24": 90,
+      "25": 90,
+      "26": 90,
+      "27": 90,
+      "28": 85,
+      "29": 95,
+      "30": 95,
+      "31": 90
+    },
+    "updatedAt": "22.35.02"
+  },
+  "KELAS_8C_KODING_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 6,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 5,
+        "benarMJ": 4,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 10,
+        "benarMJ": 4,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 14,
+        "benarMJ": 0,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 12,
+        "benarMJ": 8,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 4,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 11,
+        "benarMJ": 5,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 12,
+        "benarMJ": 5,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 13,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 4,
+        "benarMJ": 1,
+        "skorUraian": 10,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 7,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 20,
+        "benarMJ": 10,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 5,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 11,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 5,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 7,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 6,
+        "benarMJ": 0,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 7,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 5,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 20,
+        "benarMJ": 7,
+        "skorUraian": 24,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 9,
+        "benarMJ": 6,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 8,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 13,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 7,
+        "benarMJ": 2,
+        "skorUraian": 10,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {},
+    "standarData": {},
+    "updatedAt": "20.51.22"
+  },
+  "KELAS_8D_KODING_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 14,
+        "benarMJ": 0,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 11,
+        "benarMJ": 0,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 12,
+        "benarMJ": 0,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 9,
+        "benarMJ": 4,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 16,
+        "benarMJ": 4,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 13,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 13,
+        "benarMJ": 0,
+        "skorUraian": 10,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 11,
+        "benarMJ": 3,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 15,
+        "benarMJ": 5,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 21,
+        "benarMJ": 5,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 16,
+        "benarMJ": 5,
+        "skorUraian": 10,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 14,
+        "benarMJ": 4,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 15,
+        "benarMJ": 5,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 18,
+        "benarMJ": 9,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 21,
+        "benarMJ": 10,
+        "skorUraian": 10,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 6,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 4,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 6,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 13,
+        "benarMJ": 0,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 7,
+        "benarMJ": 1,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 4,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 12,
+        "benarMJ": 2,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 4,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 15,
+        "benarMJ": 4,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 6,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 8,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 6,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {},
+    "standarData": {},
+    "updatedAt": "20.51.22"
+  },
+  "KELAS_8E_KODING_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 14,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 10,
+        "benarMJ": 6,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 9,
+        "benarMJ": 6,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 15,
+        "benarMJ": 6,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 13,
+        "benarMJ": 5,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 16,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 7,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 10,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 12,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 10,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 8,
+        "benarMJ": 6,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 7,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 12,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 7,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 8,
+        "benarMJ": 5,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 8,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 13,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 10,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 13,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 8,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 15,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 12,
+        "benarMJ": 0,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 11,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 11,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {},
+    "standarData": {},
+    "updatedAt": "20.51.22"
+  },
+  "KELAS_8H_INFORMATIKA_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 5,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 12,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 15,
+        "benarMJ": 8,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 5,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 12,
+        "benarMJ": 3,
+        "skorUraian": 12,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 16,
+        "benarMJ": 6,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 13,
+        "benarMJ": 2,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 13,
+        "benarMJ": 6,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 11,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 8,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 6,
+        "benarMJ": 3,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 9,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 8,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 16,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 8,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 15,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 14,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 7,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 15,
+        "benarMJ": 7,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 5,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 13,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 16,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {},
+    "standarData": {},
+    "updatedAt": "20.51.22"
+  },
+  "KELAS_8H_KODING_ASTS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 11,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 9,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 11,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 12,
+        "benarMJ": 7,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 7,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 7,
+        "benarMJ": 7,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 13,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 16,
+        "benarMJ": 7,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 11,
+        "benarMJ": 5,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 16,
+        "benarMJ": 5,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 12,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 13,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 10,
+        "benarMJ": 3,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 13,
+        "benarMJ": 3,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 11,
+        "benarMJ": 6,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 13,
+        "benarMJ": 2,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 7,
+        "benarMJ": 3,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 14,
+        "benarMJ": 5,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 8,
+        "benarMJ": 3,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 9,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 9,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 16,
+        "benarMJ": 5,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 9,
+        "benarMJ": 5,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 19,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 16,
+        "benarMJ": 4,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 11,
+        "benarMJ": 1,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 6,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {},
+    "standarData": {},
+    "updatedAt": "20.51.22"
+  }
+}

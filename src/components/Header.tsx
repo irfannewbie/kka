@@ -5,13 +5,15 @@ import {
   Volume2,
   VolumeX,
   Menu,
+  Clock,
+  Zap,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { ADMIN_EMAILS } from '../services/firebaseAuth';
+import { ADMIN_EMAILS, SessionTimerInfo, formatDurationMMSS } from '../services/firebaseAuth';
 
 interface HeaderProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz', path?: string) => void;
   user: User | null;
   token: string | null;
   onLogin: () => void;
@@ -28,6 +30,8 @@ interface HeaderProps {
   spreadsheetUrl: string;
   onOpenMobileSidebar?: () => void;
   onOpenSubmitModal?: () => void;
+  sessionInfo?: SessionTimerInfo;
+  masterOpenSeconds?: number;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -49,15 +53,19 @@ export const Header: React.FC<HeaderProps> = ({
   spreadsheetUrl,
   onOpenMobileSidebar,
   onOpenSubmitModal,
+  sessionInfo,
+  masterOpenSeconds = 0,
 }) => {
   const isMasterMode =
     activeTab !== 'showcase' &&
     activeTab !== 'cek' &&
     activeTab !== 'kelas7' &&
-    activeTab !== 'pengganti';
+    activeTab !== 'pengganti' &&
+    activeTab !== 'kuis';
   const isCekMode = activeTab === 'cek';
   const isKelas7Mode = activeTab === 'kelas7';
   const isPenggantiMode = activeTab === 'pengganti';
+  const isKuisMode = activeTab === 'kuis';
 
   return (
     <header
@@ -82,7 +90,7 @@ export const Header: React.FC<HeaderProps> = ({
           className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-1.5 sm:gap-2 shrink-0"
         >
           <span>[ SISWAHUB v2.0 ]</span>
-          {!isMasterMode && !isCekMode && !isKelas7Mode && !isPenggantiMode && (
+          {!isMasterMode && !isCekMode && !isKelas7Mode && !isPenggantiMode && !isKuisMode && (
             <span className="hidden sm:inline-block text-[11px] font-normal text-slate-500 font-mono-code border-l border-[#1a1a1a] pl-2">
               SHOWCASE KARYA SISWA
             </span>
@@ -100,6 +108,11 @@ export const Header: React.FC<HeaderProps> = ({
           {isPenggantiMode && (
             <span className="hidden sm:inline-block text-[11px] font-bold text-amber-700 font-mono-code border-l border-[#1a1a1a] pl-2">
               TUGAS PENGGANTI KKA 2
+            </span>
+          )}
+          {isKuisMode && (
+            <span className="hidden sm:inline-block text-[11px] font-bold text-emerald-800 font-mono-code border-l border-[#1a1a1a] pl-2">
+              PORTAL KUIS & LAB KODING INTERAKTIF
             </span>
           )}
         </div>
@@ -152,9 +165,51 @@ export const Header: React.FC<HeaderProps> = ({
 
         {/* Login / User Status Indicator (Only in Master mode, hidden on Homepage and /cek) */}
         {isMasterMode && (
-          <div className="flex items-center gap-2 font-mono-code text-xs">
+          <div className="flex items-center gap-1.5 sm:gap-2 font-mono-code text-xs">
+            {/* Live Session Countdown Badge */}
+            {sessionInfo && (
+              <div
+                className={`flex items-center border border-[#1a1a1a] px-2 py-1 gap-1.5 text-[10px] sm:text-[11px] font-bold ${
+                  !sessionInfo.isActive
+                    ? 'bg-amber-100 text-amber-950'
+                    : sessionInfo.urgencyLevel === 'critical'
+                    ? 'bg-rose-600 text-white animate-pulse'
+                    : sessionInfo.urgencyLevel === 'warning'
+                    ? 'bg-amber-300 text-[#1a1a1a]'
+                    : 'bg-emerald-100 text-emerald-950'
+                }`}
+                title={
+                  sessionInfo.isActive
+                    ? `Sisa waktu sesi tulis Google: ${sessionInfo.formattedRemaining} (Berjalan: ${sessionInfo.formattedElapsed}${
+                        sessionInfo.formattedExpiryTime ? ` • Habis pkl ${sessionInfo.formattedExpiryTime}` : ''
+                      })`
+                    : `Sesi tulis Google belum aktif. Durasi buka panel Master: ${formatDurationMMSS(masterOpenSeconds)}`
+                }
+              >
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span className="hidden md:inline">
+                  {sessionInfo.isActive ? 'SESI:' : 'SESI EDIT:'}
+                </span>
+                <span className="font-black tracking-wider">
+                  {sessionInfo.isActive ? sessionInfo.formattedRemaining : '00:00'}
+                </span>
+                {sessionInfo.isActive && (
+                  <button
+                    type="button"
+                    onClick={onLogin}
+                    disabled={isLoggingIn}
+                    className="ml-0.5 px-1.5 py-0.5 bg-[#1a1a1a] hover:bg-[#2e59e6] text-white text-[9px] font-bold uppercase transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-0.5"
+                    title="Perpanjang sesi Google 60 menit agar tidak login ulang saat mengedit data"
+                  >
+                    <Zap className="h-2.5 w-2.5 text-amber-300" />
+                    <span className="hidden xl:inline">+60M</span>
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Active Admin Profile Switcher */}
-            <div className="hidden sm:flex items-center bg-white border border-[#1a1a1a] px-2 py-1 gap-1.5">
+            <div className="hidden lg:flex items-center bg-white border border-[#1a1a1a] px-2 py-1 gap-1.5">
               <span className={`w-2 h-2 rounded-full inline-block ${token ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`}></span>
               <select
                 value={user?.email || ADMIN_EMAILS[0]}

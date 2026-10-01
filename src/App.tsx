@@ -8,6 +8,11 @@ import {
   ADMIN_PROFILES,
   ADMIN_EMAILS,
   getAuthErrorMessage,
+  getSavedAccessToken,
+  getSessionTimerInfo,
+  getTokenExpiryTime,
+  saveAccessToken,
+  SessionTimerInfo,
 } from './services/firebaseAuth';
 import {
   DEFAULT_SPREADSHEET_ID,
@@ -39,6 +44,9 @@ import { MasterSubstituteTaskView } from './components/MasterSubstituteTaskView'
 import { TaskSubmissionModal } from './components/TaskSubmissionModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
 import { ConfirmationModal } from './components/ConfirmationModal';
+import { SessionCountdownPanel } from './components/SessionCountdownPanel';
+import { StudentQuizView } from './components/StudentQuizView';
+import { MasterQuizManagerView } from './components/MasterQuizManagerView';
 import {
   Bell,
   X,
@@ -67,8 +75,10 @@ try {
 }
 
 // Helper to determine route tab from pathname
-const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' => {
+const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' => {
   const cleanPath = (path || '/').toLowerCase().replace(/\/$/, '') || '/';
+  if (cleanPath === '/kuis' || cleanPath === '/quiz' || cleanPath === '/ujian') return 'kuis';
+  if (cleanPath === '/master/quiz' || cleanPath === '/master/kuis') return 'master_quiz';
   if (cleanPath === '/kelas7' || cleanPath === '/kelas-7' || cleanPath === '/cek-kelas7' || cleanPath === '/cek7') return 'kelas7';
   if (cleanPath === '/cek' || cleanPath === '/check' || cleanPath === '/login-siswa') return 'cek';
   if (cleanPath === '/pengganti' || cleanPath === '/tugas-pengganti' || cleanPath === '/pengganti-kka2' || cleanPath === '/kka2') return 'pengganti';
@@ -84,9 +94,14 @@ const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'studen
 
 export default function App() {
   // Navigation state initialized based on current URL pathname
-  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks'>(() => {
+  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz'>(() => {
     return getTabFromPath(window.location.pathname);
   });
+  const [quizLaunchParams, setQuizLaunchParams] = useState<{
+    pin?: string;
+    className?: string;
+    attendanceNo?: number;
+  }>({});
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
@@ -101,7 +116,7 @@ export default function App() {
   }, []);
 
   // Programmatic navigation that updates the browser URL
-  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks', targetPath?: string) => {
+  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz', targetPath?: string) => {
     setActiveTab(tab);
     let resolvedPath = targetPath;
     if (!resolvedPath) {
@@ -109,6 +124,8 @@ export default function App() {
       else if (tab === 'cek') resolvedPath = '/cek';
       else if (tab === 'kelas7') resolvedPath = '/kelas7';
       else if (tab === 'pengganti') resolvedPath = '/pengganti';
+      else if (tab === 'kuis') resolvedPath = '/kuis';
+      else if (tab === 'master_quiz') resolvedPath = '/master/quiz';
       else if (tab === 'substitute_tasks') resolvedPath = '/master/substitute';
       else resolvedPath = `/master${tab === 'master' ? '' : `/${tab}`}`;
     }
@@ -125,7 +142,14 @@ export default function App() {
     }
     return ADMIN_PROFILES['irfandwi.hs@gmail.com'] || DEFAULT_ADMIN_USER;
   });
-  const [token, setToken] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(() => getSavedAccessToken());
+  const [sessionInfo, setSessionInfo] = useState<SessionTimerInfo>(() =>
+    getSessionTimerInfo(getSavedAccessToken())
+  );
+  const [masterOpenSeconds, setMasterOpenSeconds] = useState<number>(0);
+  const masterMountTimeRef = useRef<number>(Date.now());
+  const warned5MinRef = useRef<boolean>(false);
+  const warned1MinRef = useRef<boolean>(false);
   const [isLoggingIn, setIsLoggingIn] = useState<boolean>(false);
   const [isSyncing, setIsSyncing] = useState<boolean>(false);
   const [lastSyncedAt, setLastSyncedAt] = useState<string | null>(null);
@@ -291,17 +315,64 @@ export default function App() {
     return () => clearInterval(intervalId);
   }, [token, spreadsheetId]);
 
-  // Handle Google Login
+  // Live 1-Second Session Countdown Ticker & Expiry Monitor
+  useEffect(() => {
+    if (token && !getTokenExpiryTime()) {
+      saveAccessToken(token);
+    }
+    const updateTimers = () => {
+      setMasterOpenSeconds(Math.max(0, Math.floor((Date.now() - masterMountTimeRef.current) / 1000)));
+      const info = getSessionTimerInfo(token);
+      setSessionInfo(info);
+
+      if (token) {
+        if (!info.isActive || info.remainingSeconds <= 0) {
+          setToken(null);
+          warned5MinRef.current = false;
+          warned1MinRef.current = false;
+          triggerNewTaskAlert(
+            'Waktu Sesi Google Habis (00:00)',
+            'Sesi 60 menit Anda telah berakhir. Klik "MULAI SESI GOOGLE (60M)" atau "PERPANJANG SESI" untuk kembali memasukkan/mengedit data ke Spreadsheet.'
+          );
+        } else if (info.remainingSeconds <= 300 && info.remainingSeconds > 60 && !warned5MinRef.current) {
+          warned5MinRef.current = true;
+          triggerNewTaskAlert(
+            'Peringatan Sesi (< 5 Menit)',
+            `Sisa sesi tulis Google tinggal ${info.formattedRemaining}. Klik "PERPANJANG SESI (+60M)" agar tidak tiba-tiba login ulang saat memasukkan/mengedit data.`
+          );
+        } else if (info.remainingSeconds <= 60 && !warned1MinRef.current) {
+          warned1MinRef.current = true;
+          triggerNewTaskAlert(
+            'Sesi Hampir Habis (< 1 Menit)!',
+            'Segera klik tombol "PERPANJANG SESI (+60M)" di bagian atas agar perubahan data Anda dapat disimpan ke Google Spreadsheet.'
+          );
+        }
+      }
+    };
+
+    updateTimers();
+    const timerId = setInterval(updateTimers, 1000);
+    return () => clearInterval(timerId);
+  }, [token]);
+
+  // Handle Google Login / Session Refresh
   const handleGoogleLogin = async () => {
     setIsLoggingIn(true);
     try {
       const result = await googleSignIn();
       if (result) {
+        warned5MinRef.current = false;
+        warned1MinRef.current = false;
         setUser(result.user);
         setToken(result.accessToken);
+        setSessionInfo(getSessionTimerInfo(result.accessToken));
         if (result.user.email) {
           localStorage.setItem(STORAGE_KEYS.ACTIVE_ADMIN, result.user.email);
         }
+        triggerNewTaskAlert(
+          'Sesi Google Aktif (60 Menit)',
+          'Timer countdown sesi telah direset ke 60:00. Anda dapat memasukkan dan mengedit data dengan aman.'
+        );
         await performSyncWithSheet(result.accessToken, false);
       }
     } catch (err: any) {
@@ -320,6 +391,9 @@ export default function App() {
     const activeProfile = (savedEmail && ADMIN_PROFILES[savedEmail]) || ADMIN_PROFILES['irfandwi.hs@gmail.com'] || DEFAULT_ADMIN_USER;
     setUser(activeProfile);
     setToken(null);
+    setSessionInfo(getSessionTimerInfo(null));
+    warned5MinRef.current = false;
+    warned1MinRef.current = false;
   };
 
   // Synchronize data with Google Sheets
@@ -659,7 +733,7 @@ export default function App() {
   return (
     <div className="flex h-screen w-full bg-[#F2EFEB] font-sans overflow-hidden text-[#1a1a1a]">
       {/* High Density Left Sidebar (Mounted ONLY for Master Admin Views) */}
-      {activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && (
+      {activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && (
         <Sidebar
           activeTab={activeTab}
           onNavigate={handleNavigate}
@@ -673,6 +747,8 @@ export default function App() {
           isOpenMobile={isMobileSidebarOpen}
           onCloseMobile={() => setIsMobileSidebarOpen(false)}
           spreadsheetUrl={spreadsheetUrl}
+          sessionInfo={sessionInfo}
+          masterOpenSeconds={masterOpenSeconds}
         />
       )}
 
@@ -698,10 +774,12 @@ export default function App() {
           spreadsheetUrl={spreadsheetUrl}
           onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
           onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
+          sessionInfo={sessionInfo}
+          masterOpenSeconds={masterOpenSeconds}
         />
 
         {/* Real-time Toast Floating Alert (Only in Master Mode) */}
-        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && (
+        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && (
           <div className="fixed top-16 right-4 z-50 max-w-sm bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-3 font-mono-code animate-in slide-in-from-top-4 duration-200">
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
@@ -769,6 +847,18 @@ export default function App() {
               />
             )}
 
+            {activeTab === 'kuis' && (
+              <StudentQuizView
+                initialPin={quizLaunchParams.pin}
+                initialClassName={quizLaunchParams.className}
+                initialAttendanceNo={quizLaunchParams.attendanceNo}
+                onNavigateHome={() => handleNavigate('showcase', '/')}
+                onNavigateCek={(gl) =>
+                  handleNavigate(gl === '7' ? 'kelas7' : 'cek', gl === '7' ? '/kelas7' : '/cek')
+                }
+              />
+            )}
+
             {activeTab === 'pengganti' && (
               <SubstituteTaskView
                 students={students}
@@ -787,6 +877,24 @@ export default function App() {
               />
             )}
 
+            {/* Compact Session Countdown Banner for Master Sub-Views (Grades, Calculator, Students, Tasks, Spreadsheet) */}
+            {activeTab !== 'showcase' &&
+              activeTab !== 'cek' &&
+              activeTab !== 'kelas7' &&
+              activeTab !== 'pengganti' &&
+              activeTab !== 'kuis' &&
+              activeTab !== 'master' && (
+                <SessionCountdownPanel
+                  sessionInfo={sessionInfo}
+                  masterOpenSeconds={masterOpenSeconds}
+                  isLoggingIn={isLoggingIn}
+                  onRefreshSession={handleGoogleLogin}
+                  onLogout={handleGoogleLogout}
+                  userEmail={user?.email}
+                  variant="compact-banner"
+                />
+              )}
+
             {activeTab === 'master' && (
               <MasterDataView
                 students={students}
@@ -801,6 +909,12 @@ export default function App() {
                 onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
                 onClearNotifications={handleClearAllNotifs}
                 onNavigateTab={(tab) => handleNavigate(tab)}
+                sessionInfo={sessionInfo}
+                masterOpenSeconds={masterOpenSeconds}
+                isLoggingIn={isLoggingIn}
+                onRefreshSession={handleGoogleLogin}
+                onLogout={handleGoogleLogout}
+                userEmail={user?.email}
               />
             )}
 
@@ -846,6 +960,20 @@ export default function App() {
                 spreadsheetUrl={spreadsheetUrl}
                 token={token}
                 onLogin={handleGoogleLogin}
+                onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
+              />
+            )}
+
+            {activeTab === 'master_quiz' && (
+              <MasterQuizManagerView
+                spreadsheetId={spreadsheetId}
+                spreadsheetUrl={spreadsheetUrl}
+                token={token}
+                onLogin={handleGoogleLogin}
+                onNavigateToStudentQuiz={(pin) => {
+                  setQuizLaunchParams({ pin });
+                  handleNavigate('kuis', '/kuis');
+                }}
                 onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
               />
             )}

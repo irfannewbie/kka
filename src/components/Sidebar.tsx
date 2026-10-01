@@ -14,13 +14,15 @@ import {
   Database,
   Grid,
   ArrowLeft,
+  Clock,
+  RefreshCw,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
-import { ADMIN_EMAILS } from '../services/firebaseAuth';
+import { ADMIN_EMAILS, SessionTimerInfo, formatDurationMMSS } from '../services/firebaseAuth';
 
 interface SidebarProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz', path?: string) => void;
   onOpenSubmitModal: () => void;
   user: User | null;
   token: string | null;
@@ -31,6 +33,8 @@ interface SidebarProps {
   isOpenMobile: boolean;
   onCloseMobile: () => void;
   spreadsheetUrl: string;
+  sessionInfo?: SessionTimerInfo;
+  masterOpenSeconds?: number;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -46,9 +50,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isOpenMobile,
   onCloseMobile,
   spreadsheetUrl,
+  sessionInfo,
+  masterOpenSeconds = 0,
 }) => {
   interface NavItem {
-    id: 'master' | 'students' | 'grades' | 'calculator' | 'tasks' | 'substitute_tasks' | 'spreadsheet';
+    id: 'master' | 'students' | 'grades' | 'calculator' | 'tasks' | 'substitute_tasks' | 'spreadsheet' | 'master_quiz';
     label: string;
     code: string;
     path: string;
@@ -74,9 +80,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: '/master/calculator',
     },
     {
+      id: 'master_quiz',
+      label: 'STUDIO KUIS & ARENA',
+      code: '04',
+      path: '/master/quiz',
+    },
+    {
       id: 'spreadsheet',
       label: 'SPREADSHEET VIEWER',
-      code: '04',
+      code: '05',
       path: '/master/spreadsheet',
     },
   ];
@@ -164,6 +176,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </span>
             <span className="text-[10px] text-amber-300 font-mono-code">/pengganti</span>
           </button>
+
+          <button
+            onClick={() => {
+              onNavigate('kuis', '/kuis');
+              onCloseMobile();
+            }}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-purple-500/20 hover:bg-purple-400 hover:text-[#1a1a1a] text-purple-200 border border-purple-400/30 transition-all cursor-pointer"
+          >
+            <span className="flex items-center gap-1.5">
+              <Award className="h-3 w-3 text-purple-300" />
+              <span>PORTAL KUIS SISWA</span>
+            </span>
+            <span className="text-[10px] text-purple-200 font-mono-code">/kuis</span>
+          </button>
         </div>
 
         {/* Navigation Items */}
@@ -229,21 +255,81 @@ export const Sidebar: React.FC<SidebarProps> = ({
           )}
         </div>
 
+        {/* Live Session Countdown Box in Sidebar */}
+        {sessionInfo && (
+          <div className="mb-2.5 p-2 bg-[#141414] border border-white/20 space-y-1.5">
+            <div className="flex items-center justify-between text-[10px]">
+              <span className="flex items-center gap-1 text-slate-400 font-bold">
+                <Clock className="h-3 w-3 text-[#2e59e6]" />
+                <span>SISA SESI EDIT</span>
+              </span>
+              <span
+                className={`font-black text-xs tracking-wider ${
+                  !sessionInfo.isActive
+                    ? 'text-amber-400'
+                    : sessionInfo.urgencyLevel === 'critical'
+                    ? 'text-rose-400 animate-pulse'
+                    : sessionInfo.urgencyLevel === 'warning'
+                    ? 'text-amber-300'
+                    : 'text-emerald-400'
+                }`}
+              >
+                {sessionInfo.isActive ? sessionInfo.formattedRemaining : '00:00'}
+              </span>
+            </div>
+
+            <div className="w-full h-1.5 bg-white/10 overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 ${
+                  !sessionInfo.isActive
+                    ? 'bg-slate-600'
+                    : sessionInfo.urgencyLevel === 'critical'
+                    ? 'bg-rose-500'
+                    : sessionInfo.urgencyLevel === 'warning'
+                    ? 'bg-amber-400'
+                    : 'bg-emerald-500'
+                }`}
+                style={{ width: `${sessionInfo.isActive ? sessionInfo.progressPercent : 0}%` }}
+              />
+            </div>
+
+            <div className="flex items-center justify-between text-[9px] text-slate-400">
+              <span>
+                Berjalan: {sessionInfo.isActive ? sessionInfo.formattedElapsed : formatDurationMMSS(masterOpenSeconds)}
+              </span>
+              {sessionInfo.isActive && sessionInfo.formattedExpiryTime && (
+                <span>Habis: {sessionInfo.formattedExpiryTime}</span>
+              )}
+            </div>
+          </div>
+        )}
+
         {token ? (
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs font-bold cursor-pointer"
-          >
-            <LogOut className="h-3 w-3" />
-            <span>PUTUSKAN SESI</span>
-          </button>
+          <div className="space-y-1.5">
+            <button
+              onClick={onLogin}
+              disabled={isLoggingIn}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-[#2e59e6] hover:bg-blue-600 text-white border border-blue-400 text-[11px] font-bold cursor-pointer disabled:opacity-50"
+              title="Perpanjang sesi 60 menit penuh"
+            >
+              <RefreshCw className={`h-3 w-3 ${isLoggingIn ? 'animate-spin' : ''}`} />
+              <span>{isLoggingIn ? 'MEMPERBARUI...' : 'PERPANJANG SESI (+60M)'}</span>
+            </button>
+            <button
+              onClick={onLogout}
+              className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-rose-950/60 hover:bg-rose-900 text-rose-300 border border-rose-800 text-xs font-bold cursor-pointer"
+            >
+              <LogOut className="h-3 w-3" />
+              <span>PUTUSKAN SESI</span>
+            </button>
+          </div>
         ) : (
           <button
             onClick={onLogin}
             disabled={isLoggingIn}
             className="w-full flex items-center justify-center gap-1.5 py-1.5 bg-[#2e59e6] hover:bg-blue-600 text-white text-xs font-bold border border-blue-400 cursor-pointer disabled:opacity-50"
           >
-            <span>{isLoggingIn ? 'MENGHUBUNGKAN...' : 'LOGIN GOOGLE'}</span>
+            <span>{isLoggingIn ? 'MENGHUBUNGKAN...' : 'LOGIN GOOGLE (60M)'}</span>
           </button>
         )}
       </div>

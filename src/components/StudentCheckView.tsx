@@ -1357,14 +1357,49 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                           Rincian jumlah benar Pilihan Ganda (PG), Menjodohkan, dan Skor Uraian untuk siswa ini belum diinput pada halaman <strong>Kalkulator Master</strong> (saat ini baru tersedia nilai akhir <strong>{numScore}</strong> dari Google Spreadsheets).
                         </div>
                       )}
+
+                      {/* Keterangan Status Pelaksanaan Remedial (Tanpa Tombol Kuis Online) */}
+                      {!isTuntas && (
+                        <div
+                          className={`p-3 border-2 text-xs flex items-start gap-2.5 ${
+                            isKkaCard
+                              ? 'bg-amber-50 border-amber-500 text-amber-950'
+                              : 'bg-slate-100 border-[#1a1a1a] text-[#1a1a1a]'
+                          }`}
+                        >
+                          <AlertCircle
+                            className={`h-4 w-4 shrink-0 mt-0.5 ${
+                              isKkaCard ? 'text-amber-700' : 'text-[#2e59e6]'
+                            }`}
+                          />
+                          <div>
+                            {isKkaCard ? (
+                              <>
+                                <span className="font-bold uppercase">
+                                  Informasi Remedial Koding &amp; Kecerdasan Artifisial (KKA):{' '}
+                                </span>
+                                <span>
+                                  Untuk mata pelajaran Koding dan Kecerdasan Artifisial (KKA), saat ini <strong>belum diadakan pelaksanaan remedial</strong>.
+                                </span>
+                              </>
+                            ) : (
+                              <>
+                                <span className="font-bold uppercase">
+                                  Informasi Remedial Informatika:{' '}
+                                </span>
+                                <span>
+                                  Pelaksanaan remedial untuk mata pelajaran Informatika saat ini dilakukan secara <strong>offline (tatap muka langsung)</strong> sesuai jadwal guru mata pelajaran.
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               );
             })}
-
-          {/* Statistik Ringkasan Nilai Rata-Rata Per Kelas & Perbandingan Performa Kelas */}
-          {renderClassComparisonSection()}
 
           {/* Tasks Status Table */}
           <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] overflow-hidden">

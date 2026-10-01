@@ -4,12 +4,70 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import { INITIAL_CALCULATOR_MASTER_SEED } from './src/data/calculatorMasterSeed';
+import {
+  DEFAULT_QUIZZES_SEED,
+  InteractiveQuiz,
+  QuizAttemptSubmission,
+} from './src/services/quizStore';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'calculator-master-db.json');
+const QUIZ_DB_FILE = path.join(DATA_DIR, 'quizzes-db.json');
+
+interface QuizDatabaseSchema {
+  quizzes: InteractiveQuiz[];
+  submissions: QuizAttemptSubmission[];
+}
+
+function getShortDatasetKeyServer(
+  className: string,
+  subject: string = 'Informatika',
+  assessment: string = 'ASTS Gasal'
+): string {
+  const rawClass = className.replace(/^Kelas\s*/i, '').trim().toUpperCase();
+  const cleanClass = `KELAS_${rawClass}`;
+  const cleanSubj = subject.trim().toUpperCase();
+  const cleanAssess = assessment.replace(/[^a-zA-Z0-9]/g, '_').toUpperCase();
+  return `${cleanClass}_${cleanSubj}_${cleanAssess}`;
+}
+
+function readQuizDb(): QuizDatabaseSchema {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (fs.existsSync(QUIZ_DB_FILE)) {
+      const raw = fs.readFileSync(QUIZ_DB_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.quizzes)) {
+        return {
+          quizzes: parsed.quizzes.length > 0 ? parsed.quizzes : DEFAULT_QUIZZES_SEED,
+          submissions: Array.isArray(parsed.submissions) ? parsed.submissions : [],
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to read quizzes-db.json:', e);
+  }
+  return {
+    quizzes: DEFAULT_QUIZZES_SEED,
+    submissions: [],
+  };
+}
+
+function writeQuizDb(data: QuizDatabaseSchema): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(QUIZ_DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('Failed to write quizzes-db.json:', e);
+  }
+}
 
 interface MasterModeARecord {
   benarPG: number | null;
@@ -182,6 +240,131 @@ async function startServer() {
     }
 
     res.json({ success: true, datasets: db });
+  });
+
+  // 4. GET daftar kuis interaktif & seluruh hasil pengerjaan siswa
+  app.get('/api/quizzes', (_req, res) => {
+    const qdb = readQuizDb();
+    res.json({ success: true, quizzes: qdb.quizzes, submissions: qdb.submissions });
+  });
+
+  // 5. POST simpan / update kuis interaktif
+  app.post('/api/quizzes/save', (req, res) => {
+    const { quiz } = req.body || {};
+    if (!quiz || !quiz.id) {
+      res.status(400).json({ success: false, message: 'Data kuis tidak valid' });
+      return;
+    }
+    const qdb = readQuizDb();
+    const idx = qdb.quizzes.findIndex((q) => q.id === quiz.id);
+    if (idx >= 0) {
+      qdb.quizzes[idx] = quiz;
+    } else {
+      qdb.quizzes.unshift(quiz);
+    }
+    writeQuizDb(qdb);
+    res.json({ success: true, quizzes: qdb.quizzes });
+  });
+
+  // 6. DELETE hapus paket kuis interaktif
+  app.delete('/api/quizzes/:quizId', (req, res) => {
+    const { quizId } = req.params;
+    const qdb = readQuizDb();
+    qdb.quizzes = qdb.quizzes.filter((q) => q.id !== quizId);
+    writeQuizDb(qdb);
+    res.json({ success: true, quizzes: qdb.quizzes });
+  });
+
+  // 7. POST submit pengerjaan kuis siswa & sinkron otomatis ke database Kalkulator Akademik
+  app.post('/api/quizzes/submit', (req, res) => {
+    const { submission } = req.body || {};
+    if (!submission || !submission.quizId || !submission.className || !submission.attendanceNo) {
+      res.status(400).json({ success: false, message: 'Data pengumpulan kuis tidak lengkap' });
+      return;
+    }
+
+    const qdb = readQuizDb();
+    const filtered = qdb.submissions.filter(
+      (s) =>
+        !(
+          s.quizId === submission.quizId &&
+          s.className === submission.className &&
+          Number(s.attendanceNo) === Number(submission.attendanceNo)
+        )
+    );
+    qdb.submissions = [submission, ...filtered];
+    writeQuizDb(qdb);
+
+    // Otomatis simpan juga ke calculator-master-db.json
+    try {
+      const masterDb = readMasterDb();
+      const shortKey = getShortDatasetKeyServer(
+        submission.className,
+        submission.subject,
+        submission.assessment
+      );
+      const existing = masterDb[shortKey] || {
+        modeAData: {},
+        modeBData: {},
+        standarData: {},
+        updatedAt: '',
+      };
+      const attKey = String(parseInt(String(submission.attendanceNo), 10) || submission.attendanceNo);
+      const prevRec = existing.modeAData?.[attKey] || {
+        benarPG: null,
+        benarMJ: null,
+        skorUraian: null,
+        remedialScore: null,
+        isManual: true,
+      };
+
+      if (submission.isRemedial) {
+        existing.modeAData[attKey] = {
+          benarPG: prevRec.benarPG ?? submission.calcBenarPG,
+          benarMJ: prevRec.benarMJ ?? submission.calcBenarMJ,
+          skorUraian: prevRec.skorUraian ?? submission.calcSkorUraian,
+          remedialScore: Math.max(prevRec.remedialScore ?? 0, submission.finalScore),
+          isManual: true,
+        };
+      } else {
+        existing.modeAData[attKey] = {
+          benarPG: submission.calcBenarPG,
+          benarMJ: submission.calcBenarMJ,
+          skorUraian: submission.calcSkorUraian,
+          remedialScore: prevRec.remedialScore,
+          isManual: true,
+        };
+      }
+      existing.standarData = {
+        ...(existing.standarData || {}),
+        [attKey]: submission.isRemedial
+          ? Math.max(existing.standarData?.[attKey] ?? 0, submission.finalScore)
+          : submission.finalScore,
+      };
+      existing.updatedAt = new Date().toLocaleTimeString('id-ID');
+      masterDb[shortKey] = existing;
+      writeMasterDb(masterDb);
+    } catch (err) {
+      console.warn('Auto-sync quiz submission to masterDb warning:', err);
+    }
+
+    res.json({ success: true, submissions: qdb.submissions });
+  });
+
+  // 8. POST reset percobaan kuis siswa (agar siswa bisa mengerjakan ulang)
+  app.post('/api/quizzes/reset-attempt', (req, res) => {
+    const { quizId, className, attendanceNo } = req.body || {};
+    const qdb = readQuizDb();
+    qdb.submissions = qdb.submissions.filter(
+      (s) =>
+        !(
+          s.quizId === quizId &&
+          s.className === className &&
+          Number(s.attendanceNo) === Number(attendanceNo)
+        )
+    );
+    writeQuizDb(qdb);
+    res.json({ success: true, submissions: qdb.submissions });
   });
 
   // Vite middleware untuk development atau static dist untuk production
