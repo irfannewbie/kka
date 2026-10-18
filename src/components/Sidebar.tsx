@@ -21,8 +21,8 @@ import { User } from 'firebase/auth';
 import { ADMIN_EMAILS, SessionTimerInfo, formatDurationMMSS } from '../services/firebaseAuth';
 
 interface SidebarProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel', path?: string) => void;
   onOpenSubmitModal: () => void;
   user: User | null;
   token: string | null;
@@ -54,7 +54,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   masterOpenSeconds = 0,
 }) => {
   interface NavItem {
-    id: 'master' | 'students' | 'grades' | 'calculator' | 'tasks' | 'substitute_tasks' | 'spreadsheet' | 'master_quiz';
+    id: 'master' | 'students' | 'grades' | 'calculator' | 'tasks' | 'substitute_tasks' | 'spreadsheet' | 'master_quiz' | 'master_excel';
     label: string;
     code: string;
     path: string;
@@ -86,12 +86,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
       path: '/master/quiz',
     },
     {
+      id: 'master_excel',
+      label: 'LABORATORIUM EXCEL',
+      code: '05',
+      path: '/master/excel',
+    },
+    {
       id: 'spreadsheet',
       label: 'SPREADSHEET VIEWER',
-      code: '05',
+      code: '06',
       path: '/master/spreadsheet',
     },
   ];
+
 
   const content = (
     <div className="h-full flex flex-col justify-between bg-[#1a1a1a] text-[#F2EFEB] select-none border-r-2 border-[#1a1a1a]">
@@ -154,11 +161,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
               onNavigate('kelas7', '/kelas7');
               onCloseMobile();
             }}
-            className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-emerald-500/20 hover:bg-emerald-500 hover:text-[#1a1a1a] text-emerald-300 border border-emerald-500/30 transition-all cursor-pointer"
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-[#107c41]/25 hover:bg-[#107c41] hover:text-white text-emerald-300 border border-emerald-500/40 transition-all cursor-pointer shadow-[2px_2px_0px_#000]"
           >
             <span className="flex items-center gap-1.5">
-              <CheckSquare className="h-3 w-3 text-emerald-400" />
-              <span>PORTAL CEK KELAS 7</span>
+              <FileSpreadsheet className="h-3 w-3 text-emerald-400" />
+              <span>LAB EXCEL & KELAS 7</span>
             </span>
             <span className="text-[10px] text-emerald-300 font-mono-code">/kelas7</span>
           </button>

@@ -62,7 +62,7 @@ const POSSIBLE_STUDENT_SHEET_NAMES = [
 
 export const CLASS_SHEET_NAMES = ['8A', '8B', '8C', '8D', '8E', '8F', '8G', '8H', '7E', '7F', '7G', '7H'];
 
-// Authentic 382-student database from Google Spreadsheet (Kelas 8A-8H & Kelas 7E-7H)
+// Authentic 383-student database from Google Spreadsheet (Kelas 8A-8H & Kelas 7E-7H)
 export const INITIAL_STUDENTS_MOCK: Student[] = ALL_STUDENTS_DATABASE;
 
 // Authentic Task Submissions with student web showcase projects (empty by default so only real spreadsheet submissions are displayed)

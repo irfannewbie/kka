@@ -15,6 +15,7 @@ import {
   Trophy,
   TrendingUp,
   Users,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { Student } from '../types';
 import { ALL_255_STUDENTS } from '../data/students255';
@@ -36,7 +37,9 @@ interface StudentCheckViewProps {
   onNavigatePengganti?: () => void;
   onNavigateKelas7?: () => void;
   onNavigateCek?: () => void;
+  onNavigateExcel?: () => void;
 }
+
 
 const STORAGE_KEY_STUDENT_SESSION_8 = 'siswa_logged_in_session_v1';
 const STORAGE_KEY_STUDENT_SESSION_7 = 'siswa_logged_in_session_kelas7_v1';
@@ -64,7 +67,9 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
   onNavigatePengganti,
   onNavigateKelas7,
   onNavigateCek,
+  onNavigateExcel,
 }) => {
+
   const isGrade7Mode = gradeLevel === '7';
   const sessionStorageKey = isGrade7Mode
     ? STORAGE_KEY_STUDENT_SESSION_7
@@ -671,7 +676,7 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                   {rankedClassStats.totalGradedAcrossClasses}
                 </span>
                 <span className="text-xs font-bold text-slate-500">
-                  / {rankedClassStats.totalStudentsAcrossClasses || (isGrade7Mode ? 127 : 255)} Siswa
+                  / {rankedClassStats.totalStudentsAcrossClasses || (isGrade7Mode ? 128 : 255)} Siswa
                 </span>
               </div>
               <p className="text-[10px] text-slate-500 mt-1">
@@ -869,8 +874,35 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
       {!activeStudent ? (
         <div className="space-y-6">
           <div className="max-w-xl mx-auto space-y-5">
+            {/* Laboratorium Excel Banner */}
+            {onNavigateExcel && (
+              <div className="p-3.5 bg-emerald-50 border-2 border-[#107c41] shadow-[4px_4px_0px_#107c41] flex items-center justify-between gap-3 font-mono-code text-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-[#107c41] text-white flex items-center justify-center shrink-0 border border-[#1a1a1a]">
+                    <FileSpreadsheet className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-[#107c41] block uppercase tracking-wider text-[11px]">
+                      MODUL BARU: LABORATORIUM EXCEL
+                    </span>
+                    <span className="text-slate-600 font-sans text-xs">
+                      Praktik rumus spreadsheet interaktif (SUM, AVERAGE, IF, VLOOKUP) & penilaian otomatis.
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={onNavigateExcel}
+                  className="px-3 py-1.5 bg-[#107c41] hover:bg-emerald-700 text-white font-bold border border-[#1a1a1a] shadow-[1px_1px_0px_#000] cursor-pointer whitespace-nowrap transition-all text-xs"
+                >
+                  Buka Lab ?
+                </button>
+              </div>
+            )}
+
             {/* Main Login Box */}
-          <div className="bg-white border-2 border-[#1a1a1a] shadow-[6px_6px_0px_#1a1a1a] p-6 sm:p-8">
+            <div className="bg-white border-2 border-[#1a1a1a] shadow-[6px_6px_0px_#1a1a1a] p-6 sm:p-8">
+
             <div className="flex items-center gap-3 pb-4 mb-6 border-b-2 border-[#1a1a1a]">
               <div className="p-2.5 bg-[#2e59e6] text-white border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]">
                 <GraduationCap className="h-6 w-6" />
@@ -951,7 +983,7 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                     onChange={(e) => setPasswordInput(e.target.value)}
                     placeholder={
                       isGrade7Mode
-                        ? 'Masukkan NIPD Anda (contoh: 11929)'
+                        ? 'Masukkan NIPD Anda (contoh: 11881)'
                         : 'Masukkan NIPD Anda (contoh: 11690)'
                     }
                     className="w-full px-3.5 py-2.5 bg-slate-50 border-2 border-[#1a1a1a] font-mono-code text-sm text-[#1a1a1a] focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#2e59e6]"
@@ -1015,7 +1047,7 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
                     className="w-full p-2 bg-white border border-[#1a1a1a] font-mono-code text-xs"
                   >
                     {Array.from(
-                      { length: quickClassSelect === '7H' ? 31 : 32 },
+                      { length: 32 },
                       (_, i) => String(i + 1)
                     ).map((num) => (
                       <option key={num} value={num}>

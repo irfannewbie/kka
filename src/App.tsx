@@ -47,10 +47,14 @@ import { ConfirmationModal } from './components/ConfirmationModal';
 import { SessionCountdownPanel } from './components/SessionCountdownPanel';
 import { StudentQuizView } from './components/StudentQuizView';
 import { MasterQuizManagerView } from './components/MasterQuizManagerView';
+import { ExcelLabStudentWorkspace } from './components/excel/ExcelLabStudentWorkspace';
+import { ExcelLabMasterView } from './components/excel/ExcelLabMasterView';
+import { Kelas7HubView } from './components/Kelas7HubView';
 import {
   Bell,
   X,
 } from 'lucide-react';
+
 
 const STORAGE_KEYS = {
   TASKS: 'tugas_siswa_tasks_v3',
@@ -75,8 +79,10 @@ try {
 }
 
 // Helper to determine route tab from pathname
-const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' => {
+const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' => {
   const cleanPath = (path || '/').toLowerCase().replace(/\/$/, '') || '/';
+  if (cleanPath === '/excel' || cleanPath === '/lab-excel' || cleanPath === '/laboratorium-excel') return 'kelas7';
+  if (cleanPath === '/master/excel' || cleanPath === '/master/lab-excel') return 'master_excel';
   if (cleanPath === '/kuis' || cleanPath === '/quiz' || cleanPath === '/ujian') return 'kuis';
   if (cleanPath === '/master/quiz' || cleanPath === '/master/kuis') return 'master_quiz';
   if (cleanPath === '/kelas7' || cleanPath === '/kelas-7' || cleanPath === '/cek-kelas7' || cleanPath === '/cek7') return 'kelas7';
@@ -94,7 +100,7 @@ const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'studen
 
 export default function App() {
   // Navigation state initialized based on current URL pathname
-  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz'>(() => {
+  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel'>(() => {
     return getTabFromPath(window.location.pathname);
   });
   const [quizLaunchParams, setQuizLaunchParams] = useState<{
@@ -116,18 +122,20 @@ export default function App() {
   }, []);
 
   // Programmatic navigation that updates the browser URL
-  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz', targetPath?: string) => {
-    setActiveTab(tab);
+  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel', targetPath?: string) => {
+    const effectiveTab = tab === 'excel' ? 'kelas7' : tab;
+    setActiveTab(effectiveTab);
     let resolvedPath = targetPath;
     if (!resolvedPath) {
-      if (tab === 'showcase') resolvedPath = '/';
-      else if (tab === 'cek') resolvedPath = '/cek';
-      else if (tab === 'kelas7') resolvedPath = '/kelas7';
-      else if (tab === 'pengganti') resolvedPath = '/pengganti';
-      else if (tab === 'kuis') resolvedPath = '/kuis';
-      else if (tab === 'master_quiz') resolvedPath = '/master/quiz';
-      else if (tab === 'substitute_tasks') resolvedPath = '/master/substitute';
-      else resolvedPath = `/master${tab === 'master' ? '' : `/${tab}`}`;
+      if (effectiveTab === 'showcase') resolvedPath = '/';
+      else if (effectiveTab === 'cek') resolvedPath = '/cek';
+      else if (effectiveTab === 'kelas7') resolvedPath = '/kelas7';
+      else if (effectiveTab === 'pengganti') resolvedPath = '/pengganti';
+      else if (effectiveTab === 'kuis') resolvedPath = '/kuis';
+      else if (effectiveTab === 'master_quiz') resolvedPath = '/master/quiz';
+      else if (effectiveTab === 'master_excel') resolvedPath = '/master/excel';
+      else if (effectiveTab === 'substitute_tasks') resolvedPath = '/master/substitute';
+      else resolvedPath = `/master${effectiveTab === 'master' ? '' : `/${effectiveTab}`}`;
     }
     if (window.location.pathname !== resolvedPath) {
       window.history.pushState({}, '', resolvedPath);
@@ -733,7 +741,7 @@ export default function App() {
   return (
     <div className="flex h-screen w-full bg-[#F2EFEB] font-sans overflow-hidden text-[#1a1a1a]">
       {/* High Density Left Sidebar (Mounted ONLY for Master Admin Views) */}
-      {activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && (
+      {activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && activeTab !== 'excel' && (
         <Sidebar
           activeTab={activeTab}
           onNavigate={handleNavigate}
@@ -779,7 +787,7 @@ export default function App() {
         />
 
         {/* Real-time Toast Floating Alert (Only in Master Mode) */}
-        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && (
+        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && activeTab !== 'excel' && (
           <div className="fixed top-16 right-4 z-50 max-w-sm bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-3 font-mono-code animate-in slide-in-from-top-4 duration-200">
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
@@ -822,6 +830,7 @@ export default function App() {
               />
             )}
 
+
             {activeTab === 'cek' && (
               <StudentCheckView
                 key="cek-kelas8"
@@ -832,20 +841,21 @@ export default function App() {
                 onNavigateHome={() => handleNavigate('showcase', '/')}
                 onNavigatePengganti={() => handleNavigate('pengganti', '/pengganti')}
                 onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
+                onNavigateExcel={() => handleNavigate('kelas7', '/kelas7')}
               />
             )}
 
-            {activeTab === 'kelas7' && (
-              <StudentCheckView
-                key="cek-kelas7"
-                gradeLevel="7"
+            {(activeTab === 'kelas7' || activeTab === 'excel') && (
+              <Kelas7HubView
                 students={students}
                 spreadsheetId={spreadsheetId}
                 spreadsheetUrl={spreadsheetUrl}
+                initialSubTab="excel"
                 onNavigateHome={() => handleNavigate('showcase', '/')}
                 onNavigateCek={() => handleNavigate('cek', '/cek')}
               />
             )}
+
 
             {activeTab === 'kuis' && (
               <StudentQuizView
@@ -883,6 +893,7 @@ export default function App() {
               activeTab !== 'kelas7' &&
               activeTab !== 'pengganti' &&
               activeTab !== 'kuis' &&
+              activeTab !== 'excel' &&
               activeTab !== 'master' && (
                 <SessionCountdownPanel
                   sessionInfo={sessionInfo}
@@ -977,6 +988,14 @@ export default function App() {
                 onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
               />
             )}
+
+            {activeTab === 'master_excel' && (
+              <ExcelLabMasterView
+                spreadsheetUrl={spreadsheetUrl}
+                onNavigateTab={(tab, path) => handleNavigate(tab, path)}
+              />
+            )}
+
 
             {activeTab === 'substitute_tasks' && (
               <MasterSubstituteTaskView

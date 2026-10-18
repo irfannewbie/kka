@@ -33,7 +33,7 @@ export interface ParsedSubmissionLinks {
   rawDescription: string;
 }
 
-// Build authentic lookup map for all 382 students (Kelas 7E-7H & 8A-8H) by class and attendance number
+// Build authentic lookup map for all 383 students (Kelas 7E-7H & 8A-8H) by class and attendance number
 const AUTHENTIC_CLASS_ROSTER: Record<string, Record<string, { name: string; nis: string }>> = {};
 
 ALL_STUDENTS_DATABASE.forEach((std) => {

@@ -21,6 +21,7 @@ interface ShowcaseViewProps {
   spreadsheetUrl: string;
 }
 
+
 const CLASS_OPTIONS = [
   'Semua Kelas',
   'Kelas 8A',
@@ -48,6 +49,7 @@ export const ShowcaseView: React.FC<ShowcaseViewProps> = ({
   tasks,
   spreadsheetUrl,
 }) => {
+
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('Semua Kelas');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTaskForModal, setSelectedTaskForModal] = useState<TaskSubmission | null>(null);
@@ -131,6 +133,7 @@ export const ShowcaseView: React.FC<ShowcaseViewProps> = ({
       </header>
 
       {/* 2. CLASS FILTER DROPDOWN & SEARCH BAR */}
+
       <div className="bg-white border-[1.5px] border-[#1a1a1a] p-3.5 sm:p-4 shadow-[4px_4px_0px_#1a1a1a]">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           {/* Class Filter Dropdown */}

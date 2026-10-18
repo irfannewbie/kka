@@ -9,6 +9,11 @@ import {
   InteractiveQuiz,
   QuizAttemptSubmission,
 } from './src/services/quizStore';
+import {
+  DEFAULT_EXCEL_TASKS,
+  DEFAULT_LEARNING_DATASETS,
+} from './src/services/excelLabStore';
+import { ExcelTask, ExcelSubmission } from './src/types/excelLab';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,11 +21,53 @@ const __dirname = path.dirname(__filename);
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'calculator-master-db.json');
 const QUIZ_DB_FILE = path.join(DATA_DIR, 'quizzes-db.json');
+const EXCEL_LAB_DB_FILE = path.join(DATA_DIR, 'excel-lab-db.json');
+
+interface ExcelLabDatabaseSchema {
+  tasks: ExcelTask[];
+  submissions: ExcelSubmission[];
+}
+
+function readExcelLabDb(): ExcelLabDatabaseSchema {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (fs.existsSync(EXCEL_LAB_DB_FILE)) {
+      const raw = fs.readFileSync(EXCEL_LAB_DB_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.tasks)) {
+        return {
+          tasks: parsed.tasks.length > 0 ? parsed.tasks : DEFAULT_EXCEL_TASKS,
+          submissions: Array.isArray(parsed.submissions) ? parsed.submissions : [],
+        };
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to read excel-lab-db.json:', e);
+  }
+  return {
+    tasks: DEFAULT_EXCEL_TASKS,
+    submissions: [],
+  };
+}
+
+function writeExcelLabDb(data: ExcelLabDatabaseSchema): void {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    fs.writeFileSync(EXCEL_LAB_DB_FILE, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (e) {
+    console.warn('Failed to write excel-lab-db.json:', e);
+  }
+}
 
 interface QuizDatabaseSchema {
   quizzes: InteractiveQuiz[];
   submissions: QuizAttemptSubmission[];
 }
+
 
 function getShortDatasetKeyServer(
   className: string,
@@ -365,6 +412,92 @@ async function startServer() {
     );
     writeQuizDb(qdb);
     res.json({ success: true, submissions: qdb.submissions });
+  });
+
+  // 9. GET Excel Lab tasks, submissions & datasets
+  app.get('/api/excel-lab/data', (_req, res) => {
+    const eldb = readExcelLabDb();
+    res.json({
+      success: true,
+      tasks: eldb.tasks,
+      submissions: eldb.submissions,
+      datasets: DEFAULT_LEARNING_DATASETS,
+    });
+  });
+
+  // 10. POST submit Excel Lab task by student
+  app.post('/api/excel-lab/submit', (req, res) => {
+    const { submission } = req.body || {};
+    if (!submission || !submission.taskId || !submission.className || !submission.attendanceNo) {
+      res.status(400).json({ success: false, message: 'Data submission tidak lengkap' });
+      return;
+    }
+    const eldb = readExcelLabDb();
+    const filtered = eldb.submissions.filter(
+      (s) =>
+        !(
+          s.taskId === submission.taskId &&
+          s.className === submission.className &&
+          Number(s.attendanceNo) === Number(submission.attendanceNo)
+        )
+    );
+    eldb.submissions = [submission, ...filtered];
+    writeExcelLabDb(eldb);
+    res.json({ success: true, submissions: eldb.submissions });
+  });
+
+  // 11. POST create or update Excel Lab task
+  app.post('/api/excel-lab/tasks', (req, res) => {
+    const { task } = req.body || {};
+    if (!task || !task.id) {
+      res.status(400).json({ success: false, message: 'Data tugas Excel tidak valid' });
+      return;
+    }
+    const eldb = readExcelLabDb();
+    const idx = eldb.tasks.findIndex((t) => t.id === task.id);
+    if (idx >= 0) {
+      eldb.tasks[idx] = task;
+    } else {
+      eldb.tasks.unshift(task);
+    }
+    writeExcelLabDb(eldb);
+    res.json({ success: true, tasks: eldb.tasks });
+  });
+
+  // 12. DELETE Excel Lab task
+  app.delete('/api/excel-lab/tasks/:taskId', (req, res) => {
+    const { taskId } = req.params;
+    const eldb = readExcelLabDb();
+    eldb.tasks = eldb.tasks.filter((t) => t.id !== taskId);
+    writeExcelLabDb(eldb);
+    res.json({ success: true, tasks: eldb.tasks });
+  });
+
+  // 13. POST grade / feedback Excel Lab submission
+  app.post('/api/excel-lab/grade', (req, res) => {
+    const { submissionId, finalScore, teacherFeedback, gradedBy } = req.body || {};
+    const eldb = readExcelLabDb();
+    const target = eldb.submissions.find((s) => s.id === submissionId);
+    if (!target) {
+      res.status(404).json({ success: false, message: 'Pengumpulan tidak ditemukan' });
+      return;
+    }
+    target.finalScore = typeof finalScore === 'number' ? finalScore : target.finalScore;
+    target.teacherFeedback = teacherFeedback ?? target.teacherFeedback;
+    target.gradedAt = new Date().toLocaleString('id-ID');
+    target.gradedBy = gradedBy || 'Guru Informatika';
+    target.isPassed = target.finalScore >= 75;
+    writeExcelLabDb(eldb);
+    res.json({ success: true, submissions: eldb.submissions });
+  });
+
+  // 14. POST reset Excel Lab submission
+  app.post('/api/excel-lab/reset-submission', (req, res) => {
+    const { submissionId } = req.body || {};
+    const eldb = readExcelLabDb();
+    eldb.submissions = eldb.submissions.filter((s) => s.id !== submissionId);
+    writeExcelLabDb(eldb);
+    res.json({ success: true, submissions: eldb.submissions });
   });
 
   // Vite middleware untuk development atau static dist untuk production

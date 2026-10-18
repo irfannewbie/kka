@@ -12,9 +12,10 @@ import { User } from 'firebase/auth';
 import { ADMIN_EMAILS, SessionTimerInfo, formatDurationMMSS } from '../services/firebaseAuth';
 
 interface HeaderProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz', path?: string) => void;
+  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel';
+  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel', path?: string) => void;
   user: User | null;
+
   token: string | null;
   onLogin: () => void;
   onLogout: () => void;
@@ -61,11 +62,14 @@ export const Header: React.FC<HeaderProps> = ({
     activeTab !== 'cek' &&
     activeTab !== 'kelas7' &&
     activeTab !== 'pengganti' &&
-    activeTab !== 'kuis';
+    activeTab !== 'kuis' &&
+    activeTab !== 'excel';
   const isCekMode = activeTab === 'cek';
   const isKelas7Mode = activeTab === 'kelas7';
   const isPenggantiMode = activeTab === 'pengganti';
   const isKuisMode = activeTab === 'kuis';
+  const isExcelMode = activeTab === 'excel';
+  const isMasterExcelMode = activeTab === 'master_excel';
 
   return (
     <header
@@ -90,7 +94,7 @@ export const Header: React.FC<HeaderProps> = ({
           className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-1.5 sm:gap-2 shrink-0"
         >
           <span>[ SISWAHUB v2.0 ]</span>
-          {!isMasterMode && !isCekMode && !isKelas7Mode && !isPenggantiMode && !isKuisMode && (
+          {!isMasterMode && !isCekMode && !isKelas7Mode && !isPenggantiMode && !isKuisMode && !isExcelMode && !isMasterExcelMode && (
             <span className="hidden sm:inline-block text-[11px] font-normal text-slate-500 font-mono-code border-l border-[#1a1a1a] pl-2">
               SHOWCASE KARYA SISWA
             </span>
@@ -101,8 +105,8 @@ export const Header: React.FC<HeaderProps> = ({
             </span>
           )}
           {isKelas7Mode && (
-            <span className="hidden sm:inline-block text-[11px] font-bold text-[#2e59e6] font-mono-code border-l border-[#1a1a1a] pl-2">
-              CEK NILAI & TUGAS KELAS 7 (7E - 7H)
+            <span className="hidden sm:inline-block text-[11px] font-bold text-[#107c41] font-mono-code border-l border-[#1a1a1a] pl-2">
+              KELAS 7: LABORATORIUM EXCEL & CEK NILAI
             </span>
           )}
           {isPenggantiMode && (
@@ -115,8 +119,19 @@ export const Header: React.FC<HeaderProps> = ({
               PORTAL KUIS & LAB KODING INTERAKTIF
             </span>
           )}
+          {isExcelMode && (
+            <span className="hidden sm:inline-block text-[11px] font-bold text-[#107c41] font-mono-code border-l border-[#1a1a1a] pl-2">
+              LABORATORIUM EXCEL & SPREADSHEET
+            </span>
+          )}
+          {isMasterExcelMode && (
+            <span className="hidden sm:inline-block text-[11px] font-bold text-[#107c41] font-mono-code border-l border-[#1a1a1a] pl-2">
+              PANEL MASTER - LABORATORIUM EXCEL
+            </span>
+          )}
         </div>
       </div>
+
 
       {/* Top Right Navigation Anchor */}
       <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">

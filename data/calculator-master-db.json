@@ -2569,7 +2569,232 @@
     "updatedAt": "22.35.02"
   },
   "KELAS_7F_INFORMATIKA_ASTS_GASAL": {
-    "modeAData": {},
+    "modeAData": {
+      "1": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 11,
+        "benarMJ": 4,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 11,
+        "benarMJ": 0,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 12,
+        "benarMJ": 5,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 15,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 15,
+        "benarMJ": 5,
+        "skorUraian": 14,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 5,
+        "benarMJ": 10,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 12,
+        "benarMJ": 10,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 10,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 8,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 15,
+        "benarMJ": 2,
+        "skorUraian": 13,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 9,
+        "benarMJ": 2,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 10,
+        "benarMJ": 2,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 14,
+        "benarMJ": 6,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 15,
+        "benarMJ": 3,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 6,
+        "benarMJ": 0,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 15,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 9,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 14,
+        "benarMJ": 5,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 13,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 4,
+        "benarMJ": 2,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 13,
+        "benarMJ": 3,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 13,
+        "benarMJ": 1,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 10,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 12,
+        "benarMJ": 1,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 12,
+        "benarMJ": 3,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 10,
+        "benarMJ": 3,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 13,
+        "benarMJ": 4,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
     "modeBData": {
       "1": {
         "rerataUH": 90,
@@ -5253,7 +5478,232 @@
     "updatedAt": "21.27.31"
   },
   "KELAS_7H_INFORMATIKA_ASTS_GASAL": {
-    "modeAData": {},
+    "modeAData": {
+      "1": {
+        "benarPG": 17,
+        "benarMJ": 10,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 13,
+        "benarMJ": 6,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "3": {
+        "benarPG": 17,
+        "benarMJ": 5,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "4": {
+        "benarPG": 11,
+        "benarMJ": 8,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "5": {
+        "benarPG": 14,
+        "benarMJ": 9,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "6": {
+        "benarPG": 10,
+        "benarMJ": 1,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "7": {
+        "benarPG": 15,
+        "benarMJ": 10,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "8": {
+        "benarPG": 17,
+        "benarMJ": 6,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "9": {
+        "benarPG": 8,
+        "benarMJ": 5,
+        "skorUraian": 16,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "10": {
+        "benarPG": 17,
+        "benarMJ": 6,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "11": {
+        "benarPG": 18,
+        "benarMJ": 5,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "12": {
+        "benarPG": 17,
+        "benarMJ": 8,
+        "skorUraian": 22,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "13": {
+        "benarPG": 15,
+        "benarMJ": 6,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "14": {
+        "benarPG": 17,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "15": {
+        "benarPG": 12,
+        "benarMJ": 4,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "16": {
+        "benarPG": 14,
+        "benarMJ": 6,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "17": {
+        "benarPG": 14,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "18": {
+        "benarPG": 14,
+        "benarMJ": 3,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "19": {
+        "benarPG": 11,
+        "benarMJ": 5,
+        "skorUraian": 21,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "20": {
+        "benarPG": 16,
+        "benarMJ": 6,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "21": {
+        "benarPG": 14,
+        "benarMJ": 7,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "22": {
+        "benarPG": 13,
+        "benarMJ": 4,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "23": {
+        "benarPG": 13,
+        "benarMJ": 5,
+        "skorUraian": 23,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "24": {
+        "benarPG": 14,
+        "benarMJ": 5,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "25": {
+        "benarPG": 18,
+        "benarMJ": 6,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "26": {
+        "benarPG": 15,
+        "benarMJ": 7,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "27": {
+        "benarPG": 12,
+        "benarMJ": 7,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "28": {
+        "benarPG": 17,
+        "benarMJ": 8,
+        "skorUraian": 18,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "29": {
+        "benarPG": 17,
+        "benarMJ": 9,
+        "skorUraian": 20,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "30": {
+        "benarPG": 5,
+        "benarMJ": 3,
+        "skorUraian": 15,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "31": {
+        "benarPG": 11,
+        "benarMJ": 5,
+        "skorUraian": 17,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "32": {
+        "benarPG": 15,
+        "benarMJ": 6,
+        "skorUraian": 19,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
     "modeBData": {
       "1": {
         "rerataUH": 90,
@@ -6582,5 +7032,19 @@
     "modeBData": {},
     "standarData": {},
     "updatedAt": "20.51.22"
+  },
+  "KELAS_8A_KODING_ASTS_GENAP": {
+    "modeAData": {
+      "1": {
+        "benarPG": 5,
+        "benarMJ": 0,
+        "skorUraian": 0,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {},
+    "standarData": {},
+    "updatedAt": "20.50.50"
   }
 }
