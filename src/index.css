@@ -1,0 +1,71 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #F2EFEB;
+  --ink: #1a1a1a;
+  --accent: #2e59e6;
+  --ink-faint: rgba(26, 26, 26, 0.08);
+}
+
+@layer base {
+  body {
+    background-color: var(--bg);
+    color: var(--ink);
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+.font-serif-display {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+}
+
+.font-mono-code {
+  font-family: 'Space Mono', monospace;
+}
+
+.font-sans-body {
+  font-family: 'Inter', sans-serif;
+}
+
+/* Playful Neo-Brutalist Grid Card */
+.playful-card {
+  background: white;
+  border: 1.5px solid var(--ink);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.playful-card:hover {
+  background: var(--accent);
+  color: white;
+  transform: translateY(-4px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.playful-card:hover .card-accent-text {
+  color: white;
+}
+
+.playful-card:hover .card-border-current {
+  border-color: white;
+}
+
+.playful-card:hover .card-pill-current {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #E5E0D8;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a1a1a;
+}
+

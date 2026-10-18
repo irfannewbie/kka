@@ -1,0 +1,6 @@
+{
+  "name": "Manajemen Tugas Siswa",
+  "description": "Showcase karya web siswa terintegrasi langsung dengan Google Spreadsheet dan panel kontrol master untuk manajemen data siswa dan rekapitulasi karya.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
