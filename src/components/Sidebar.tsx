@@ -6,7 +6,7 @@ import {
   PlusCircle,
   LogOut,
   X,
-  FileSpreadsheet,
+  GraduationCap,
   CheckSquare,
   Square,
   BookOpen,
@@ -145,6 +145,20 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
           <button
             onClick={() => {
+              onNavigate('materi', '/materi');
+              onCloseMobile();
+            }}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-[#2e59e6]/25 hover:bg-[#2e59e6] hover:text-white text-blue-200 border border-blue-400/40 transition-all cursor-pointer shadow-[2px_2px_0px_#000]"
+          >
+            <span className="flex items-center gap-1.5">
+              <BookOpen className="h-3 w-3 text-blue-300" />
+              <span>MATERI (KELAS 7 & 8)</span>
+            </span>
+            <span className="text-[10px] text-blue-300 font-mono-code">/materi</span>
+          </button>
+
+          <button
+            onClick={() => {
               onNavigate('cek', '/cek');
               onCloseMobile();
             }}
@@ -165,8 +179,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
             className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-[#107c41]/25 hover:bg-[#107c41] hover:text-white text-emerald-300 border border-emerald-500/40 transition-all cursor-pointer shadow-[2px_2px_0px_#000]"
           >
             <span className="flex items-center gap-1.5">
-              <FileSpreadsheet className="h-3 w-3 text-emerald-400" />
-              <span>LAB EXCEL & KELAS 7</span>
+              <GraduationCap className="h-3 w-3 text-emerald-400" />
+              <span>CEK NILAI KELAS 7</span>
             </span>
             <span className="text-[10px] text-emerald-300 font-mono-code">/kelas7</span>
           </button>

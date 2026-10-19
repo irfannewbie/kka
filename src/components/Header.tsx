@@ -7,6 +7,7 @@ import {
   Menu,
   Clock,
   Zap,
+  BookOpen,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { ADMIN_EMAILS, SessionTimerInfo, formatDurationMMSS } from '../services/firebaseAuth';
@@ -64,13 +65,15 @@ export const Header: React.FC<HeaderProps> = ({
     activeTab !== 'kelas7' &&
     activeTab !== 'pengganti' &&
     activeTab !== 'kuis' &&
-    activeTab !== 'excel';
+    activeTab !== 'excel' &&
+    activeTab !== 'materi';
   const isCekMode = activeTab === 'cek';
   const isKelas7Mode = activeTab === 'kelas7';
   const isPenggantiMode = activeTab === 'pengganti';
   const isKuisMode = activeTab === 'kuis';
   const isExcelMode = activeTab === 'excel';
   const isMasterExcelMode = activeTab === 'master_excel';
+  const isMateriMode = activeTab === 'materi';
 
   return (
     <header
@@ -95,9 +98,14 @@ export const Header: React.FC<HeaderProps> = ({
           className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-1.5 sm:gap-2 shrink-0"
         >
           <span>[ SISWAHUB v2.0 ]</span>
-          {!isMasterMode && !isCekMode && !isKelas7Mode && !isPenggantiMode && !isKuisMode && !isExcelMode && !isMasterExcelMode && (
+          {!isMasterMode && !isCekMode && !isKelas7Mode && !isPenggantiMode && !isKuisMode && !isExcelMode && !isMasterExcelMode && !isMateriMode && (
             <span className="hidden sm:inline-block text-[11px] font-normal text-slate-500 font-mono-code border-l border-[#1a1a1a] pl-2">
               SHOWCASE KARYA SISWA
+            </span>
+          )}
+          {isMateriMode && (
+            <span className="hidden sm:inline-block text-[11px] font-bold text-[#2e59e6] font-mono-code border-l border-[#1a1a1a] pl-2">
+              MATERI PEMBELAJARAN (KELAS 7 & 8)
             </span>
           )}
           {isCekMode && (
@@ -107,7 +115,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
           {isKelas7Mode && (
             <span className="hidden sm:inline-block text-[11px] font-bold text-[#107c41] font-mono-code border-l border-[#1a1a1a] pl-2">
-              KELAS 7: LABORATORIUM EXCEL & CEK NILAI
+              KELAS 7: CEK NILAI & PENGERJAAN TUGAS SISWA
             </span>
           )}
           {isPenggantiMode && (
@@ -136,6 +144,28 @@ export const Header: React.FC<HeaderProps> = ({
 
       {/* Top Right Navigation Anchor */}
       <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
+        {/* Quick links when in Master Mode */}
+        {isMasterMode && (
+          <div className="hidden sm:flex items-center gap-1.5 mr-1 font-mono-code">
+            <button
+              type="button"
+              onClick={() => onNavigate('materi', '/materi')}
+              className="px-2 py-1 font-bold border border-[#1a1a1a] bg-[#2e59e6] hover:bg-[#1f3fb3] text-white text-[10px] transition-all flex items-center gap-1 cursor-pointer shadow-[1px_1px_0px_#1a1a1a]"
+              title="Buka Materi Pembelajaran Kelas 7 & 8 (termasuk Lab Excel)"
+            >
+              <BookOpen className="h-3 w-3" />
+              <span>MATERI</span>
+            </button>
+            <button
+              onClick={() => onNavigate('showcase', '/')}
+              className="px-2 py-1 font-bold border border-[#1a1a1a] bg-white hover:bg-slate-100 text-[#1a1a1a] text-[10px] transition-all flex items-center gap-1 cursor-pointer shadow-[1px_1px_0px_#1a1a1a]"
+              title="Kembali ke Web Publik / Showcase"
+            >
+              <span>🌐 WEB PUBLIK</span>
+            </button>
+          </div>
+        )}
+
         {/* Sound Toggle & Notification Bell (Visible only in Master Mode) */}
         {isMasterMode && (
           <>

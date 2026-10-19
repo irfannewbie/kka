@@ -266,7 +266,7 @@ export const MateriView: React.FC<MateriViewProps> = ({
                   <span>Coba di Laboratorium Excel &rarr;</span>
                 </button>
               </div>
-              <ExcelFormulaGuideView onOpenPracticeSheet={() => setKelas7SubTab('excel')} />
+              <ExcelFormulaGuideView onTryFormulaInPlayground={() => setKelas7SubTab('excel')} />
             </div>
           )}
 

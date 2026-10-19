@@ -50,6 +50,7 @@ import { MasterQuizManagerView } from './components/MasterQuizManagerView';
 import { ExcelLabStudentWorkspace } from './components/excel/ExcelLabStudentWorkspace';
 import { ExcelLabMasterView } from './components/excel/ExcelLabMasterView';
 import { Kelas7HubView } from './components/Kelas7HubView';
+import { MateriView } from './components/MateriView';
 import {
   Bell,
   X,
@@ -98,7 +99,7 @@ export default function App() {
 
   // Programmatic navigation — URL & history dikelola React Router
   const handleNavigate = (tab: TabId, targetPath?: string) => {
-    const effectiveTab = tab === 'excel' ? 'kelas7' : tab;
+    const effectiveTab = tab === 'excel' ? 'materi' : tab;
     const resolvedPath = resolveTabPath(tab, targetPath);
     if (location.pathname !== resolvedPath) {
       navigate(resolvedPath);
@@ -825,31 +826,47 @@ export default function App() {
                       onNavigateHome={() => handleNavigate('showcase', '/')}
                       onNavigatePengganti={() => handleNavigate('pengganti', '/pengganti')}
                       onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
-                      onNavigateExcel={() => handleNavigate('kelas7', '/kelas7')}
+                      onNavigateExcel={() => handleNavigate('materi', '/materi')}
                     />
                   }
                 />
               ))}
 
-              {['/kelas7', '/kelas-7', '/cek-kelas7', '/cek7', '/excel', '/lab-excel', '/laboratorium-excel'].map(
+              {/* Portal Kelas 7 (cek nilai & tugas) */}
+              {['/kelas7', '/kelas-7', '/cek-kelas7', '/cek7'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <Kelas7HubView
+                      students={students}
+                      spreadsheetId={spreadsheetId}
+                      spreadsheetUrl={spreadsheetUrl}
+                      onNavigateHome={() => handleNavigate('showcase', '/')}
+                      onNavigateCek={() => handleNavigate('cek', '/cek')}
+                      onNavigateMateri={() => handleNavigate('materi', '/materi')}
+                    />
+                  }
+                />
+              ))}
+
+              {/* Materi Pembelajaran (Kelas 7 & 8) — termasuk Laboratorium Excel */}
+              {['/materi', '/modul', '/materi-pembelajaran', '/excel', '/lab-excel', '/laboratorium-excel'].map(
                 (p) => (
                   <Route
                     key={p}
                     path={p}
                     element={
-                      <Kelas7HubView
-                        students={students}
-                        spreadsheetId={spreadsheetId}
-                        spreadsheetUrl={spreadsheetUrl}
-                        initialSubTab="excel"
+                      <MateriView
                         onNavigateHome={() => handleNavigate('showcase', '/')}
                         onNavigateCek={() => handleNavigate('cek', '/cek')}
+                        onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
+                        onNavigateKuis={() => handleNavigate('kuis', '/kuis')}
                       />
                     }
                   />
                 )
               )}
-
 
               {['/kuis', '/quiz', '/ujian'].map((p) => (
                 <Route

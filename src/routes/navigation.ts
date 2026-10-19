@@ -22,10 +22,11 @@ export type TabId =
   | 'kuis'
   | 'master_quiz'
   | 'excel'
-  | 'master_excel';
+  | 'master_excel'
+  | 'materi';
 
 /** Tab yang ditampilkan tanpa sidebar master (halaman publik / portal siswa). */
-export const PUBLIC_TABS: TabId[] = ['showcase', 'cek', 'kelas7', 'pengganti', 'kuis', 'excel'];
+export const PUBLIC_TABS: TabId[] = ['showcase', 'cek', 'kelas7', 'pengganti', 'kuis', 'excel', 'materi'];
 
 export function isPublicTab(tab: TabId): boolean {
   return PUBLIC_TABS.includes(tab);
@@ -46,8 +47,9 @@ export const TAB_PATHS: Record<TabId, string> = {
   substitute_tasks: '/master/substitute',
   kuis: '/kuis',
   master_quiz: '/master/quiz',
-  excel: '/kelas7',
+  excel: '/materi',
   master_excel: '/master/excel',
+  materi: '/materi',
 };
 
 /**
@@ -55,9 +57,13 @@ export const TAB_PATHS: Record<TabId, string> = {
  * Urutan tidak berpengaruh; React Router memilih kecocokan paling spesifik.
  */
 export const PATH_ALIASES: Array<{ path: string; tab: TabId }> = [
-  { path: '/excel', tab: 'kelas7' },
-  { path: '/lab-excel', tab: 'kelas7' },
-  { path: '/laboratorium-excel', tab: 'kelas7' },
+  { path: '/materi', tab: 'materi' },
+  { path: '/modul', tab: 'materi' },
+  { path: '/materi-pembelajaran', tab: 'materi' },
+  // Lab Excel kini menjadi bagian dari MateriView
+  { path: '/excel', tab: 'materi' },
+  { path: '/lab-excel', tab: 'materi' },
+  { path: '/laboratorium-excel', tab: 'materi' },
   { path: '/master/excel', tab: 'master_excel' },
   { path: '/master/lab-excel', tab: 'master_excel' },
   { path: '/kuis', tab: 'kuis' },
@@ -105,6 +111,7 @@ export function getTabFromPath(path: string): TabId {
 /** Hitung URL tujuan untuk sebuah tab (dapat dipaksa via targetPath). */
 export function resolveTabPath(tab: TabId, targetPath?: string): string {
   if (targetPath) return targetPath;
-  const effectiveTab = tab === 'excel' ? 'kelas7' : tab;
+  // Tab 'excel' (Laboratorium) kini dipusatkan di MateriView
+  const effectiveTab = tab === 'excel' ? 'materi' : tab;
   return TAB_PATHS[effectiveTab] || '/';
 }
