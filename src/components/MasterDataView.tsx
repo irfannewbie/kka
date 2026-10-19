@@ -22,6 +22,7 @@ import { Student, TaskSubmission, AppNotification, SubstituteTaskSubmission } fr
 import { loadSubstituteTaskSubmissions } from '../services/sheetsService';
 import { SessionTimerInfo } from '../services/firebaseAuth';
 import { SessionCountdownPanel } from './SessionCountdownPanel';
+import { TabId } from '../routes/navigation';
 
 interface MasterDataViewProps {
   students: Student[];
@@ -35,7 +36,7 @@ interface MasterDataViewProps {
   onQuickAddStudent?: (student: Omit<Student, 'id'>) => Promise<void>;
   onOpenSubmitModal: () => void;
   onClearNotifications?: () => void;
-  onNavigateTab: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'substitute_tasks' | 'master_quiz' | 'kuis') => void;
+  onNavigateTab: (tab: TabId) => void;
   sessionInfo?: SessionTimerInfo;
   masterOpenSeconds?: number;
   isLoggingIn?: boolean;
@@ -66,7 +67,7 @@ function parseTimestampToMs(ts: string, fallbackIndex: number): number {
   if (!isNaN(parsed)) return parsed;
 
   // Try DD/MM/YYYY HH:mm or DD-MM-YYYY HH:mm
-  const dmyMatch = clean.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+  const dmyMatch = clean.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
   if (dmyMatch) {
     const day = parseInt(dmyMatch[1], 10);
     const month = parseInt(dmyMatch[2], 10) - 1;
@@ -122,7 +123,7 @@ export const MasterDataView: React.FC<MasterDataViewProps> = ({
     let isMounted = true;
     async function fetchSubstituteLogs() {
       try {
-        const subs = await loadSubstituteTaskSubmissions(null, spreadsheetId);
+        const subs = await loadSubstituteTaskSubmissions(spreadsheetId, null);
         if (isMounted && Array.isArray(subs)) {
           setSubstituteTasks(subs);
         }
