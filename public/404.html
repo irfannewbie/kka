@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Mengalihkan... - Inforkka</title>
+    <script>
+      // Single Page Application (SPA) redirect helper for Vercel / GitHub Pages / Static Hosting
+      // When a user lands on a deep link like /kelas7 or /cek and the static server falls back to 404.html,
+      // this script preserves the pathname and search query and redirects to index.html
+      (function() {
+        var path = window.location.pathname;
+        var search = window.location.search;
+        var hash = window.location.hash;
+        // Redirect to root with query param route or hash
+        var redirectUrl = '/' + (path && path !== '/' ? '?route=' + encodeURIComponent(path + search) : '') + hash;
+        window.location.replace(redirectUrl);
+      })();
+    </script>
+  </head>
+  <body style="font-family: monospace; background: #F2EFEB; color: #1a1a1a; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; text-align: center;">
+    <div>
+      <h2 style="margin-bottom: 8px;">Memuat Halaman...</h2>
+      <p style="font-size: 13px; color: #555;">Mengarahkan ke aplikasi Inforkka...</p>
+      <a href="/" style="display: inline-block; margin-top: 12px; padding: 6px 16px; background: #1a1a1a; color: white; text-decoration: none; font-weight: bold; font-size: 12px;">Kembali ke Beranda</a>
+    </div>
+  </body>
+</html>
