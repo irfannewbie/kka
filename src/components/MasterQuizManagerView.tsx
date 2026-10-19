@@ -296,14 +296,14 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
         .filter(Boolean);
       if (lines.length === 0) return;
 
-      const firstLine = lines[0].replace(/^\d+[\.\)]\s*/, '').trim();
+      const firstLine = lines[0].replace(/^\d+[.)]\s*/, '').trim();
 
       // Detect if it has A/B/C/D options
-      const optLines = lines.slice(1).filter((l) => /^[A-Da-d][\.\)]\s+/.test(l));
+      const optLines = lines.slice(1).filter((l) => /^[A-Da-d][.)]\s+/.test(l));
       const keyLine = lines.find((l) => /^(kunci|jawaban|answer)\s*[:=]\s*([A-Da-d])/i.test(l));
 
       if (optLines.length >= 2) {
-        const cleanOpts = optLines.map((l) => l.replace(/^[A-Da-d][\.\)]\s+/, '').trim());
+        const cleanOpts = optLines.map((l) => l.replace(/^[A-Da-d][.)]\s+/, '').trim());
         let correctIdx = 0;
         if (keyLine) {
           const m = keyLine.match(/([A-Da-d])\s*$/i);

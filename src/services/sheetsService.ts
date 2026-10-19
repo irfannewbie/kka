@@ -89,8 +89,8 @@ export function formatGvizDate(dateVal: any): string {
 
 // Helper to parse Google API error responses
 export function parseGoogleApiError(status: number, errText: string, actionDesc: string = 'operasi'): { isAuthError: boolean; isPermissionError: boolean; message: string } {
-  let cleanMsg = '';
-  let errorObj: any = null;
+  let cleanMsg: string;
+  let errorObj: any;
   try {
     errorObj = JSON.parse(errText);
     cleanMsg = errorObj.error?.message || '';
@@ -320,7 +320,7 @@ function parseClassSheetRows(rawRows: any[][], className: string): Student[] {
     if (!row || row.length === 0) continue;
 
     // Detect attendance number column
-    let noVal = row[0];
+    const noVal = row[0];
     let nipdVal = row[1];
     let genderVal = row[2];
     let nameVal = row[3];
@@ -330,7 +330,6 @@ function parseClassSheetRows(rawRows: any[][], className: string): Student[] {
       // Check if columns are shifted by 1 column
       const shiftedNoNum = parseInt(String(row[1]).trim(), 10);
       if (!isNaN(shiftedNoNum) && shiftedNoNum > 0 && shiftedNoNum <= 50) {
-        noVal = row[1];
         nipdVal = row[2];
         genderVal = row[3];
         nameVal = row[4];
@@ -427,7 +426,7 @@ export async function loadSpreadsheetData(
     const parsedClassResults = await Promise.all(classFetchPromises);
     const combinedStudents = parsedClassResults.flat();
 
-    let finalStudents = combinedStudents.length >= 350 ? combinedStudents : ALL_STUDENTS_DATABASE;
+    const finalStudents = combinedStudents.length >= 350 ? combinedStudents : ALL_STUDENTS_DATABASE;
 
     // 2. Fetch Tasks from Tugas_Siswa or public gviz
     let tasks: TaskSubmission[] = [];
@@ -450,9 +449,9 @@ export async function loadSpreadsheetData(
           const id = row[0] ? String(row[0]) : `tsk-${Date.now()}-${index}`;
           const submittedAt = formatGvizDate(row[1]);
           let studentName = row[2] ? String(row[2]).trim() : 'Siswa';
-          let groupVal = 'Kelompok 1';
-          let taskTitle = 'Tugas';
-          let descText = '';
+          let groupVal: string;
+          let taskTitle: string;
+          let descText: string;
           let studentNis = '';
 
           // Support both 6-column (new without NIS & Status) and 8-column (legacy) layouts
@@ -968,13 +967,13 @@ export async function syncGradesToClassSheet(
     const sheetsList = meta.sheets || [];
     
     // Look for sheet matching '8G', 'Kelas 8G', '8A', etc.
-    let targetSheet = sheetsList.find(
+    const targetSheet = sheetsList.find(
       (s: any) =>
         s.properties?.title?.toLowerCase().trim() === rawClass.toLowerCase().trim() ||
         s.properties?.title?.toLowerCase().trim() === `kelas ${rawClass.toLowerCase().trim()}`
     );
 
-    let sheetTitle = targetSheet ? targetSheet.properties.title : rawClass;
+    const sheetTitle = targetSheet ? targetSheet.properties.title : rawClass;
     let sheetId = targetSheet ? targetSheet.properties.sheetId : null;
 
     // If sheet doesn't exist, create it with standard school layout
@@ -1462,7 +1461,7 @@ export async function fetchStudentAssignmentStatus(
     // Check table cols labels
     cols.forEach((col: any, idx: number) => {
       if (idx >= 4 && col && col.label) {
-        let l = String(col.label).trim().replace(/^ASPEK\s*/i, '').trim();
+        const l = String(col.label).trim().replace(/^ASPEK\s*/i, '').trim();
         if (
           l &&
           l !== '-' &&
@@ -1486,7 +1485,7 @@ export async function fetchStudentAssignmentStatus(
       if (!isStudentNum) {
         r.c.forEach((cell: any, cIdx: number) => {
           if (cIdx >= 4 && cell && cell.v) {
-            let val = String(cell.v).trim().replace(/^ASPEK\s*/i, '').trim();
+            const val = String(cell.v).trim().replace(/^ASPEK\s*/i, '').trim();
             if (
               val &&
               val !== '-' &&
@@ -2349,7 +2348,7 @@ export async function detectClassTaskColumns(
           for (let c = 4; c <= 17; c++) {
             const val5 = String(row5[c] || '').trim();
             const val4 = String(row4[c] || '').trim();
-            let header = val5 || val4;
+            const header = val5 || val4;
             if (
               header &&
               header !== '-' &&
@@ -2533,7 +2532,7 @@ export async function detectClassTaskColumns(
 
     cols.forEach((col: any, idx: number) => {
       if (idx >= 4 && col && col.label) {
-        let l = String(col.label).trim().replace(/^ASPEK\s*/i, '').trim();
+        const l = String(col.label).trim().replace(/^ASPEK\s*/i, '').trim();
         if (
           l &&
           l !== '-' &&
@@ -2556,7 +2555,7 @@ export async function detectClassTaskColumns(
       if (!isStudentNum) {
         r.c.forEach((cell: any, cIdx: number) => {
           if (cIdx >= 4 && cell && cell.v) {
-            let val = String(cell.v).trim().replace(/^ASPEK\s*/i, '').trim();
+            const val = String(cell.v).trim().replace(/^ASPEK\s*/i, '').trim();
             if (
               val &&
               val !== '-' &&
@@ -3255,7 +3254,7 @@ export async function loadStudentsMissingColumnG(
       // Find row start index and column offset
       for (const row of classRows) {
         if (!row || row.length === 0) continue;
-        let noVal = row[0];
+        const noVal = row[0];
         let nipdVal = row[1];
         let genderVal = row[2];
         let nameVal = row[3];
@@ -3266,7 +3265,6 @@ export async function loadStudentsMissingColumnG(
           // Check shifted column (index 1)
           const shiftedNoNum = parseInt(String(row[1]).trim(), 10);
           if (!isNaN(shiftedNoNum) && shiftedNoNum > 0 && shiftedNoNum <= 32) {
-            noVal = row[1];
             nipdVal = row[2];
             genderVal = row[3];
             nameVal = row[4];

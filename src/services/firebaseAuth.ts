@@ -362,12 +362,8 @@ export const googleSignIn = async (): Promise<{ user: User; accessToken: string 
         popupErr?.code === 'auth/internal-error'
       ) {
         console.warn('Storage connection closing or restricted. Recovering with inMemoryPersistence...', popupErr);
-        try {
-          await setPersistence(auth, inMemoryPersistence);
-          result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
-        } catch (retryErr) {
-          throw retryErr;
-        }
+        await setPersistence(auth, inMemoryPersistence);
+        result = await signInWithPopup(auth, provider, browserPopupRedirectResolver);
       } else {
         throw popupErr;
       }

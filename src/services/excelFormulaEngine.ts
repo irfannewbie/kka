@@ -172,7 +172,7 @@ function parseDateTime(val: any): Date | null {
   const s = String(val).trim();
 
   // Pattern DD/MM/YYYY or DD-MM-YYYY (optional HH:MM:SS)
-  const dmyMatch = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+  const dmyMatch = s.match(/^(\d{1,2})[/-](\d{1,2})[/-](\d{4})(?:\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
   if (dmyMatch) {
     const day = parseInt(dmyMatch[1], 10);
     const month = parseInt(dmyMatch[2], 10) - 1;
@@ -185,7 +185,7 @@ function parseDateTime(val: any): Date | null {
   }
 
   // Pattern YYYY-MM-DD (optional HH:MM:SS)
-  const ymdMatch = s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
+  const ymdMatch = s.match(/^(\d{4})[/-](\d{1,2})[/-](\d{1,2})(?:[T\s](\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?$/);
   if (ymdMatch) {
     const year = parseInt(ymdMatch[1], 10);
     const month = parseInt(ymdMatch[2], 10) - 1;
@@ -856,7 +856,7 @@ function findLastOperatorOutside(str: string, ops: string[]): number {
       else if (char === '(' || char === '[') depth--;
       else if (depth === 0 && ops.includes(char)) {
         // Ensure not a unary negative at start or after another operator
-        if (char === '-' && (i === 0 || /[\+\-\*\/\^\&(\[\=]\s*$/.test(str.slice(0, i)))) {
+        if (char === '-' && (i === 0 || /[-+*/^&([=]\s*$/.test(str.slice(0, i)))) {
           continue;
         }
         return i;

@@ -186,7 +186,7 @@ export function resolveTaskGroupNumber(
     // Ignore if task.group is just the class name like "8H", "Kelas 8H", "Kelompok 8H" or invalid words like "Kelompok tutor"
     const isJustClassName = /^(\s*Kelas\s*)?8[A-Ha-h]\s*$/i.test(cleanGrp) || /^Kelompok\s*8[A-Ha-h]\s*$/i.test(cleanGrp);
     if (!isJustClassName) {
-      const grpNumMatch = cleanGrp.match(/(?:Kelompok|Klp|Group|Grup)\s*[:=\s#\-]*([0-9]+|[a-zA-Z]+)/i);
+      const grpNumMatch = cleanGrp.match(/(?:Kelompok|Klp|Group|Grup)\s*[:=\s#-]*([0-9]+|[a-zA-Z]+)/i);
       if (grpNumMatch) {
         const candidate = grpNumMatch[1];
         if (!INVALID_GROUP_WORDS.includes(candidate.toLowerCase()) && !/^8[A-Ha-h]$/i.test(candidate)) {
@@ -207,7 +207,7 @@ export function resolveTaskGroupNumber(
 
   // 2. Explicit group in rawDesc (e.g. "Kelompok : 5" or "Kelompok 5")
   const descGroupMatches = rawDesc.matchAll(
-    /(?:Kelompok|Klp|Group|Grup)\s*[:=\s#\-]*([0-9]+|[IVXLCDMivxlcdm]+|\b(?:satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\b)/gi
+    /(?:Kelompok|Klp|Group|Grup)\s*[:=\s#-]*([0-9]+|[IVXLCDMivxlcdm]+|\b(?:satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\b)/gi
   );
   for (const match of descGroupMatches) {
     const candidate = match[1];
@@ -293,7 +293,7 @@ export function resolveTaskGroupNumber(
   // 5. Explicit group in taskTitle (only if strictly numeric and not a title keyword)
   if (task.taskTitle) {
     const titleGroupMatches = task.taskTitle.matchAll(
-      /(?:Kelompok|Klp|Group|Grup)\s*[:=\s#\-]*([0-9]+|[IVXLCDMivxlcdm]+|\b(?:satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\b)/gi
+      /(?:Kelompok|Klp|Group|Grup)\s*[:=\s#-]*([0-9]+|[IVXLCDMivxlcdm]+|\b(?:satu|dua|tiga|empat|lima|enam|tujuh|delapan|sembilan|sepuluh)\b)/gi
     );
     for (const match of titleGroupMatches) {
       const candidate = match[1];

@@ -216,8 +216,8 @@ export const StudentCheckView: React.FC<StudentCheckViewProps> = ({
     const cleaned = rawUser.replace(/^kelas\s*/i, '').trim();
 
     // Check if format is "absen - class" or "absen class"
-    const match1 = cleaned.match(/^(\d{1,2})\s*[-_\/,\s]\s*([0-9a-zA-Z]+)$/);
-    const match2 = cleaned.match(/^([0-9a-zA-Z]+)\s*[-_\/,\s]\s*(\d{1,2})$/);
+    const match1 = cleaned.match(/^(\d{1,2})\s*[-_/,\s]\s*([0-9a-zA-Z]+)$/);
+    const match2 = cleaned.match(/^([0-9a-zA-Z]+)\s*[-_/,\s]\s*(\d{1,2})$/);
 
     if (match1) {
       parsedAbsen = String(parseInt(match1[1], 10));
