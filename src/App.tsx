@@ -50,6 +50,7 @@ import { MasterQuizManagerView } from './components/MasterQuizManagerView';
 import { ExcelLabStudentWorkspace } from './components/excel/ExcelLabStudentWorkspace';
 import { ExcelLabMasterView } from './components/excel/ExcelLabMasterView';
 import { Kelas7HubView } from './components/Kelas7HubView';
+import { MateriView } from './components/MateriView';
 import {
   Bell,
   X,
@@ -79,7 +80,7 @@ try {
 }
 
 // Helper to determine route tab from pathname or hash
-const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' => {
+const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' | 'materi' => {
   let raw = path || '/';
   if (typeof window !== 'undefined' && window.location.hash) {
     const rawHash = window.location.hash.replace(/^#\/?/, '/');
@@ -88,7 +89,8 @@ const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'studen
     }
   }
   const cleanPath = (raw || '/').toLowerCase().replace(/\/$/, '') || '/';
-  if (cleanPath === '/excel' || cleanPath === '/lab-excel' || cleanPath === '/laboratorium-excel') return 'kelas7';
+  if (cleanPath === '/materi' || cleanPath === '/modul' || cleanPath === '/materi-pembelajaran') return 'materi';
+  if (cleanPath === '/excel' || cleanPath === '/lab-excel' || cleanPath === '/laboratorium-excel') return 'materi';
   if (cleanPath === '/master/excel' || cleanPath === '/master/lab-excel') return 'master_excel';
   if (cleanPath === '/kuis' || cleanPath === '/quiz' || cleanPath === '/ujian') return 'kuis';
   if (cleanPath === '/master/quiz' || cleanPath === '/master/kuis') return 'master_quiz';
@@ -107,7 +109,7 @@ const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'studen
 
 export default function App() {
   // Navigation state initialized based on current URL pathname
-  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel'>(() => {
+  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' | 'materi'>(() => {
     return getTabFromPath(window.location.pathname);
   });
   const [quizLaunchParams, setQuizLaunchParams] = useState<{
@@ -133,12 +135,13 @@ export default function App() {
   }, []);
 
   // Programmatic navigation that updates the browser URL
-  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel', targetPath?: string) => {
-    const effectiveTab = tab === 'excel' ? 'kelas7' : tab;
+  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' | 'materi', targetPath?: string) => {
+    const effectiveTab = tab === 'excel' ? 'materi' : tab;
     setActiveTab(effectiveTab);
     let resolvedPath = targetPath;
     if (!resolvedPath) {
       if (effectiveTab === 'showcase') resolvedPath = '/';
+      else if (effectiveTab === 'materi') resolvedPath = '/materi';
       else if (effectiveTab === 'cek') resolvedPath = '/cek';
       else if (effectiveTab === 'kelas7') resolvedPath = '/kelas7';
       else if (effectiveTab === 'pengganti') resolvedPath = '/pengganti';
@@ -752,7 +755,7 @@ export default function App() {
   return (
     <div className="flex h-screen w-full bg-[#F2EFEB] font-sans overflow-hidden text-[#1a1a1a]">
       {/* High Density Left Sidebar (Mounted ONLY for Master Admin Views) */}
-      {activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && activeTab !== 'excel' && (
+      {activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && activeTab !== 'excel' && activeTab !== 'materi' && (
         <Sidebar
           activeTab={activeTab}
           onNavigate={handleNavigate}
@@ -798,7 +801,7 @@ export default function App() {
         />
 
         {/* Real-time Toast Floating Alert (Only in Master Mode) */}
-        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && activeTab !== 'excel' && (
+        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && activeTab !== 'excel' && activeTab !== 'materi' && (
           <div className="fixed top-16 right-4 z-50 max-w-sm bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-3 font-mono-code animate-in slide-in-from-top-4 duration-200">
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
@@ -843,6 +846,15 @@ export default function App() {
             )}
 
 
+            {activeTab === 'materi' && (
+              <MateriView
+                onNavigateHome={() => handleNavigate('showcase', '/')}
+                onNavigateCek={() => handleNavigate('cek', '/cek')}
+                onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
+                onNavigateKuis={() => handleNavigate('kuis', '/kuis')}
+              />
+            )}
+
             {activeTab === 'cek' && (
               <StudentCheckView
                 key="cek-kelas8"
@@ -853,18 +865,18 @@ export default function App() {
                 onNavigateHome={() => handleNavigate('showcase', '/')}
                 onNavigatePengganti={() => handleNavigate('pengganti', '/pengganti')}
                 onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
-                onNavigateExcel={() => handleNavigate('kelas7', '/kelas7')}
+                onNavigateExcel={() => handleNavigate('materi', '/materi')}
               />
             )}
 
-            {(activeTab === 'kelas7' || activeTab === 'excel') && (
+            {activeTab === 'kelas7' && (
               <Kelas7HubView
                 students={students}
                 spreadsheetId={spreadsheetId}
                 spreadsheetUrl={spreadsheetUrl}
-                initialSubTab="excel"
                 onNavigateHome={() => handleNavigate('showcase', '/')}
                 onNavigateCek={() => handleNavigate('cek', '/cek')}
+                onNavigateMateri={() => handleNavigate('materi', '/materi')}
               />
             )}
 
@@ -906,6 +918,7 @@ export default function App() {
               activeTab !== 'pengganti' &&
               activeTab !== 'kuis' &&
               activeTab !== 'excel' &&
+              activeTab !== 'materi' &&
               activeTab !== 'master' && (
                 <SessionCountdownPanel
                   sessionInfo={sessionInfo}
