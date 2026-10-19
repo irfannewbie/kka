@@ -19,6 +19,7 @@ interface ShowcaseViewProps {
   students: Student[];
   tasks: TaskSubmission[];
   spreadsheetUrl: string;
+  onNavigate?: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel', path?: string) => void;
 }
 
 
@@ -48,6 +49,7 @@ export const ShowcaseView: React.FC<ShowcaseViewProps> = ({
   students,
   tasks,
   spreadsheetUrl,
+  onNavigate,
 }) => {
 
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('Semua Kelas');
@@ -131,6 +133,46 @@ export const ShowcaseView: React.FC<ShowcaseViewProps> = ({
           TUGAS MAPEL KODING DAN KECERDASAN ARTIFISIAL
         </span>
       </header>
+
+      {/* QUICK SHORTCUTS TO KELAS 7 EXCEL LAB, CEK NILAI, & MASTER GURU */}
+      {onNavigate && (
+        <div className="bg-[#1a1a1a] text-white p-4 border-[1.5px] border-[#1a1a1a] shadow-[4px_4px_0px_#2e59e6] flex flex-col md:flex-row items-start md:items-center justify-between gap-3 font-mono-code">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-xs font-bold text-amber-300 uppercase tracking-wider">
+                PINTASAN MODUL PEMBELAJARAN
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 mt-1">
+              Mencari Laboratorium Excel Kelas 7, Cek Nilai Siswa, atau Panel Master Guru?
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => onNavigate('kelas7', '/kelas7')}
+              className="px-3 py-1.5 bg-[#107c41] hover:bg-[#0c5c30] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-[2px_2px_0px_#ffffff] cursor-pointer"
+            >
+              <span>📊 LABORATORIUM EXCEL (KELAS 7) &rarr;</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('cek', '/cek')}
+              className="px-3 py-1.5 bg-[#2e59e6] hover:bg-[#1f3fb3] text-white text-xs font-bold transition-all flex items-center gap-1.5 shadow-[2px_2px_0px_#ffffff] cursor-pointer"
+            >
+              <span>🔍 CEK NILAI KELAS 8 &rarr;</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('master', '/master')}
+              className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold transition-all flex items-center gap-1.5 border border-slate-600 shadow-[2px_2px_0px_#ffffff] cursor-pointer"
+            >
+              <span>🔐 PANEL MASTER &rarr;</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* 2. CLASS FILTER DROPDOWN & SEARCH BAR */}
 

@@ -838,6 +838,7 @@ export default function App() {
                 students={students}
                 tasks={tasks}
                 spreadsheetUrl={spreadsheetUrl}
+                onNavigate={handleNavigate}
               />
             )}
 
