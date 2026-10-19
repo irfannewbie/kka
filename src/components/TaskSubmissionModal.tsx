@@ -145,8 +145,8 @@ export const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({
       `Pdf : ${linkPdf.trim() || '-'}`,
     ].join('\n');
 
-    let finalStudentName = '';
-    let finalNis = studentNis.trim();
+    let finalStudentName: string;
+    const finalNis = studentNis.trim();
     let finalAttendance = attendanceInput.trim();
 
     if (taskType === 'individu') {
@@ -188,9 +188,7 @@ export const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({
         studentNis: finalNis || '8400',
         attendanceNo: finalAttendance,
         taskType,
-        score: null,
-        feedback: '',
-        members:
+        groupMembers:
           taskType === 'kelompok'
             ? resolvedMembers.map((m) => ({ name: m.name, attendanceNo: m.attendanceNo }))
             : undefined,
@@ -203,7 +201,9 @@ export const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({
           spread: 60,
           origin: { y: 0.6 },
         });
-      } catch {}
+      } catch {
+        // Konfeti hanya hiasan — abaikan jika library gagal dipanggil
+      }
 
       onClose();
     } catch (err: any) {
