@@ -2,6 +2,7 @@ import {
   loadLocalCalculatorDataset,
   saveCalculatorDatasetEverywhere,
 } from './calculatorMasterStore';
+import { adminFetch } from '../config/adminToken';
 
 export type QuizQuestionType =
   | 'pg'
@@ -571,9 +572,8 @@ export async function saveQuizToServer(quiz: InteractiveQuiz): Promise<Interacti
   saveLocalQuizzes(updated);
 
   try {
-    const res = await fetch('/api/quizzes/save', {
+    const res = await adminFetch('/api/quizzes/save', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ quiz }),
     });
     if (res.ok) {
@@ -594,7 +594,7 @@ export async function deleteQuizFromServer(quizId: string): Promise<InteractiveQ
   saveLocalQuizzes(current);
 
   try {
-    const res = await fetch(`/api/quizzes/${encodeURIComponent(quizId)}`, {
+    const res = await adminFetch(`/api/quizzes/${encodeURIComponent(quizId)}`, {
       method: 'DELETE',
     });
     if (res.ok) {
@@ -630,7 +630,7 @@ export function applySubmissionToCalculatorMaster(sub: QuizAttemptSubmission): v
     isManual: true,
   };
 
-  let updatedRecord = { ...prevRecord, isManual: true };
+  let updatedRecord: typeof prevRecord;
 
   if (sub.isRemedial) {
     // Jika kuis remedial, isi nilai remedialScore (dan jika nilai utama masih kosong, isi juga rinciannya)
@@ -722,9 +722,8 @@ export async function resetStudentQuizAttemptOnServer(
   saveLocalQuizSubmissions(current);
 
   try {
-    const res = await fetch('/api/quizzes/reset-attempt', {
+    const res = await adminFetch('/api/quizzes/reset-attempt', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ quizId, className, attendanceNo }),
     });
     if (res.ok) {

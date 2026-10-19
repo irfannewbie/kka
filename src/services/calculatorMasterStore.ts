@@ -1,4 +1,5 @@
 import { INITIAL_CALCULATOR_MASTER_SEED, SeedModeARecord } from '../data/calculatorMasterSeed';
+import { adminFetch } from '../config/adminToken';
 
 export interface MasterModeARecord {
   benarPG: number | null;
@@ -161,9 +162,8 @@ export function saveCalculatorDatasetEverywhere(
     }
 
     // Kirim secara asynchronous ke server agar tab lain (/cek, ais-dev, ais-pre, HP siswa) langsung mendapat data terbaru
-    fetch('/api/calculator-master', {
+    adminFetch('/api/calculator-master', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         datasetKey: shortKey,
         dataset: payload,
@@ -285,9 +285,8 @@ export function mergeSheetBreakdownsIntoLocalStore(
   });
 
   if (Object.keys(bulkToSync).length > 0) {
-    fetch('/api/calculator-master/bulk', {
+    adminFetch('/api/calculator-master/bulk', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ datasets: bulkToSync }),
     }).catch(() => {
       // ignore
@@ -302,9 +301,8 @@ export async function syncAllCalculatorMasterWithServer(): Promise<
   const localBulk = getAllLocalCalculatorDatasets();
 
   try {
-    const res = await fetch('/api/calculator-master/bulk', {
+    const res = await adminFetch('/api/calculator-master/bulk', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ datasets: localBulk }),
     });
     if (res.ok) {

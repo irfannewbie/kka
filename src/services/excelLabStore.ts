@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { adminFetch } from '../config/adminToken';
 import {
   ExcelCellData,
   ExcelSheetData,
@@ -483,7 +484,7 @@ export function evaluateStudentWorkbook(
     }
 
     // Check 2: Computed Value matches expected value
-    let isValueMatched = false;
+    let isValueMatched: boolean;
     if (evalItem.expectedValue !== undefined && evalItem.expectedValue !== null) {
       if (typeof evalItem.expectedValue === 'number') {
         const computedNum = parseFloat(String(computedVal));
@@ -498,8 +499,8 @@ export function evaluateStudentWorkbook(
       isValueMatched = !String(computedVal).startsWith('#');
     }
 
-    let pointsEarned = 0;
-    let feedback = '';
+    let pointsEarned: number;
+    let feedback: string;
 
     if (isFormulaPatternMatched && isValueMatched) {
       pointsEarned = evalItem.points;
@@ -587,7 +588,7 @@ export function exportWorkbookToXlsx(workbook: ExcelWorkbookData, filename?: str
     XLSX.utils.book_append_sheet(wb, ws, sheet.name.slice(0, 31));
   });
 
-  const name = filename || `${workbook.title.replace(/[^a-zA-Z0-9_\-]/g, '_')}.xlsx`;
+  const name = filename || `${workbook.title.replace(/[^a-zA-Z0-9_-]/g, '_')}.xlsx`;
   XLSX.writeFile(wb, name);
 }
 
@@ -757,9 +758,8 @@ export async function saveExcelTaskToServer(task: ExcelTask): Promise<ExcelTask[
   saveLocalExcelTasks(updated);
 
   try {
-    const res = await fetch('/api/excel-lab/tasks', {
+    const res = await adminFetch('/api/excel-lab/tasks', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task }),
     });
     if (res.ok) {
@@ -782,7 +782,7 @@ export async function deleteExcelTaskOnServer(taskId: string): Promise<ExcelTask
   saveLocalExcelTasks(updated);
 
   try {
-    const res = await fetch(`/api/excel-lab/tasks/${taskId}`, { method: 'DELETE' });
+    const res = await adminFetch(`/api/excel-lab/tasks/${taskId}`, { method: 'DELETE' });
     if (res.ok) {
       const json = await res.json();
       if (Array.isArray(json.tasks)) {
@@ -819,9 +819,8 @@ export async function gradeExcelSubmissionOnServer(
   saveLocalExcelSubmissions(updated);
 
   try {
-    const res = await fetch('/api/excel-lab/grade', {
+    const res = await adminFetch('/api/excel-lab/grade', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ submissionId, finalScore, teacherFeedback, gradedBy }),
     });
     if (res.ok) {
@@ -844,9 +843,8 @@ export async function resetExcelSubmissionOnServer(submissionId: string): Promis
   saveLocalExcelSubmissions(updated);
 
   try {
-    const res = await fetch('/api/excel-lab/reset-submission', {
+    const res = await adminFetch('/api/excel-lab/reset-submission', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ submissionId }),
     });
     if (res.ok) {
