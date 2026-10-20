@@ -11,6 +11,24 @@ export interface Student {
   createdAt?: string;
 }
 
+export type TabId =
+  | 'showcase'
+  | 'master'
+  | 'tasks'
+  | 'students'
+  | 'grades'
+  | 'calculator'
+  | 'spreadsheet'
+  | 'cek'
+  | 'kelas7'
+  | 'pengganti'
+  | 'substitute_tasks'
+  | 'kuis'
+  | 'master_quiz'
+  | 'excel'
+  | 'master_excel'
+  | 'materi';
+
 export type TaskType = 'individu' | 'kelompok';
 
 export interface GroupMember {

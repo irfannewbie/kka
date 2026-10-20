@@ -18,7 +18,6 @@ import {
   HelpCircle,
   Eye,
   RotateCcw,
-  UserCheck,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import {
@@ -264,15 +263,6 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
           {/* Logo & Module Title */}
           <div className="flex items-center space-x-3">
-            <button
-              type="button"
-              onClick={onNavigateHome}
-              className="p-1.5 bg-[#FAF8F5] hover:bg-slate-200 border border-[#1a1a1a] text-[#1a1a1a] transition-all cursor-pointer"
-              title="Kembali ke Showcase Utama"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </button>
-
             <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-[#107c41] border border-[#1a1a1a] flex items-center justify-center text-white font-bold shadow-[2px_2px_0px_#1a1a1a]">
                 <FileSpreadsheet className="h-5 w-5" />
@@ -286,49 +276,6 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
                 </h1>
               </div>
             </div>
-          </div>
-
-          {/* Student Profile Identity Selector */}
-          <div className="flex flex-wrap items-center gap-2 font-mono-code text-xs bg-[#FAF8F5] border border-[#1a1a1a] px-3 py-1.5 shadow-[2px_2px_0px_#1a1a1a]">
-            <span className="text-[10px] font-bold text-slate-500 uppercase flex items-center gap-1">
-              <UserCheck className="h-3.5 w-3.5 text-[#107c41]" />
-              <span>SISWA:</span>
-            </span>
-
-            {/* Class Select */}
-            <select
-              value={selectedClass}
-              onChange={(e) => setSelectedClass(e.target.value)}
-              className="bg-white border border-slate-300 px-2 py-0.5 text-xs font-bold text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#107c41] cursor-pointer"
-            >
-              {availableClasses.map((cls) => (
-                <option key={cls} value={cls}>
-                  {cls}
-                </option>
-              ))}
-            </select>
-
-            {/* Attendance Select */}
-            <select
-              value={selectedAttendanceNo}
-              onChange={(e) => setSelectedAttendanceNo(parseInt(e.target.value, 10))}
-              className="bg-white border border-slate-300 px-2 py-0.5 text-xs font-bold text-[#1a1a1a] focus:outline-none focus:ring-1 focus:ring-[#107c41] cursor-pointer"
-            >
-              {Array.from({ length: maxAttendance }, (_, i) => i + 1).map((no) => (
-                <option key={no} value={no}>
-                  Absen {no}
-                </option>
-              ))}
-            </select>
-
-            {/* Student Name Preview */}
-            {currentStudent ? (
-              <span className="font-bold text-[#107c41] text-xs truncate max-w-[160px] sm:max-w-[220px]" title={currentStudent.name}>
-                {currentStudent.name}
-              </span>
-            ) : (
-              <span className="text-slate-400 italic text-[11px]">Siswa tidak ditemukan</span>
-            )}
           </div>
         </div>
 
@@ -402,28 +349,6 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
             )}
           </button>
 
-          <button
-            type="button"
-            onClick={() => {
-              setActiveWorkingTask(null);
-              setActiveSubTab('history');
-            }}
-            className={`px-3.5 py-1.5 font-bold transition-all flex items-center gap-1.5 cursor-pointer whitespace-nowrap border ${
-              activeSubTab === 'history'
-                ? 'bg-[#107c41] text-white border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
-                : 'bg-white text-slate-700 border-slate-300 hover:bg-slate-100'
-            }`}
-          >
-            <History className="h-3.5 w-3.5" />
-            <span>Riwayat Nilai & Umpan Balik</span>
-            {studentSubmissions.length > 0 && (
-              <span className={`px-1.5 py-0.2 text-[10px] rounded-xs font-mono-code font-bold ${
-                activeSubTab === 'history' ? 'bg-white text-[#107c41]' : 'bg-emerald-100 text-emerald-800'
-              }`}>
-                {studentSubmissions.length}
-              </span>
-            )}
-          </button>
         </div>
       </header>
 
@@ -448,53 +373,6 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
                   <p className="font-sans text-xs sm:text-sm text-slate-600 mt-2 max-w-2xl leading-relaxed">
                     Kuasai keterampilan pengolahan data angka, kalkulasi formula otomatis (SUM, AVERAGE, MIN, MAX), logika IF, serta pencarian VLOOKUP secara langsung melalui spreadsheet interaktif standar kurikulum Informatika & Koding SMP.
                   </p>
-                </div>
-
-                {/* Quick Student Badge */}
-                {currentStudent && (
-                  <div className="bg-emerald-50 border-2 border-[#107c41] p-4 font-mono-code text-xs shrink-0 shadow-[3px_3px_0px_#107c41]">
-                    <span className="text-[10px] text-slate-500 uppercase block font-bold">Identitas Siswa Aktif:</span>
-                    <strong className="text-[#107c41] font-bold text-base block mt-0.5">{currentStudent.name}</strong>
-                    <div className="text-slate-700 text-xs mt-1">
-                      Kelas: <strong>{currentStudent.className}</strong> ? Absen: <strong>{currentStudent.attendanceNo}</strong>
-                    </div>
-                    <div className="text-slate-500 text-[11px] mt-0.5">NIS/NIPD: {currentStudent.nis}</div>
-                  </div>
-                )}
-              </div>
-
-              {/* Metric Stats Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-6 pt-6 border-t-2 border-slate-200 font-mono-code">
-                <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a]">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Tugas Selesai</span>
-                  <div className="text-2xl font-black text-[#1a1a1a] mt-0.5">
-                    {studentStats.completedCount} / {studentStats.totalAssigned}
-                  </div>
-                  <span className="text-[10px] text-slate-500">Tugas Terkumpul</span>
-                </div>
-
-                <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a]">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Rata-Rata Nilai</span>
-                  <div className="text-2xl font-black text-[#107c41] mt-0.5">
-                    {studentStats.avgScore}
-                  </div>
-                  <span className="text-[10px] text-slate-500">Skala 100</span>
-                </div>
-
-                <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a]">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Status Kelulusan KKTP</span>
-                  <div className="text-xl font-black text-blue-700 mt-0.5">
-                    {studentStats.passedCount > 0 ? `${studentStats.passedCount} TUNTAS` : 'BELUM TUNTAS'}
-                  </div>
-                  <span className="text-[10px] text-slate-500">Target KKTP: 75</span>
-                </div>
-
-                <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a]">
-                  <span className="text-[10px] text-slate-500 uppercase font-bold block">Rumus Disediakan</span>
-                  <div className="text-2xl font-black text-purple-700 mt-0.5">
-                    12+
-                  </div>
-                  <span className="text-[10px] text-slate-500">Fungsi Terverifikasi</span>
                 </div>
               </div>
             </div>
@@ -602,7 +480,7 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
                   onClick={() => setActiveSubTab('guide')}
                   className="text-xs text-[#107c41] font-bold hover:underline cursor-pointer"
                 >
-                  Lihat Selengkapnya ?
+                  Lihat Selengkapnya →
                 </button>
               </div>
 
@@ -806,7 +684,7 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
                     <span className="text-[10px] text-slate-500 uppercase block">Peserta:</span>
                     <strong className="text-[#107c41] font-bold text-sm block">{currentStudent.name}</strong>
                     <span className="text-slate-600">
-                      {currentStudent.className} ? Absen {currentStudent.attendanceNo}
+                      {currentStudent.className} · Absen {currentStudent.attendanceNo}
                     </span>
                   </div>
                 )}
@@ -847,7 +725,7 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
                         <div className="space-y-2 flex-1">
                           <div className="flex flex-wrap items-center gap-2">
                             <span className="px-2 py-0.5 bg-slate-100 text-slate-800 text-[10px] font-bold uppercase border border-slate-300">
-                              {sub.className} ? Absen {sub.attendanceNo}
+                              {sub.className} · Absen {sub.attendanceNo}
                             </span>
                             <span className="text-[11px] text-slate-500">
                               Waktu Pengumpulan: {sub.submittedAt} (Percobaan ke-{sub.attemptNumber})
@@ -977,7 +855,7 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
             {/* Modal Subheader info */}
             <div className="p-3 bg-[#FAF8F5] border-b border-slate-300 text-xs flex flex-wrap items-center justify-between gap-2 shrink-0">
               <span className="text-slate-700">
-                Siswa: <strong>{inspectedSubmission.studentName}</strong> ({inspectedSubmission.className} ? Absen {inspectedSubmission.attendanceNo})
+                Siswa: <strong>{inspectedSubmission.studentName}</strong> ({inspectedSubmission.className} · Absen {inspectedSubmission.attendanceNo})
               </span>
               <span className="text-slate-500">
                 Dikumpulkan pada: {inspectedSubmission.submittedAt} (Percobaan ke-{inspectedSubmission.attemptNumber})
@@ -1015,7 +893,7 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
                 onClick={() => setShowDatasetModal(false)}
                 className="text-white hover:bg-white/20 px-2 py-1 text-xs font-bold cursor-pointer"
               >
-                ? TUTUP
+                ✕ TUTUP
               </button>
             </div>
 
@@ -1034,7 +912,7 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
                     <div>
                       <div className="flex items-center justify-between text-[10px] text-slate-500 uppercase font-bold mb-1">
                         <span>{ds.category}</span>
-                        <span>{ds.rowCount} Baris ? {ds.colCount} Kolom</span>
+                        <span>{ds.rowCount} Baris · {ds.colCount} Kolom</span>
                       </div>
                       <h4 className="font-bold text-sm text-[#1a1a1a] font-sans">{ds.title}</h4>
                       <p className="font-sans text-xs text-slate-600 mt-1 leading-relaxed">

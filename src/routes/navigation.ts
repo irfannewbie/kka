@@ -7,23 +7,8 @@
  * React Router.
  */
 
-export type TabId =
-  | 'showcase'
-  | 'master'
-  | 'tasks'
-  | 'students'
-  | 'grades'
-  | 'calculator'
-  | 'spreadsheet'
-  | 'cek'
-  | 'kelas7'
-  | 'pengganti'
-  | 'substitute_tasks'
-  | 'kuis'
-  | 'master_quiz'
-  | 'excel'
-  | 'master_excel'
-  | 'materi';
+import { TabId } from '../types';
+export type { TabId };
 
 /** Tab yang ditampilkan tanpa sidebar master (halaman publik / portal siswa). */
 export const PUBLIC_TABS: TabId[] = ['showcase', 'cek', 'kelas7', 'pengganti', 'kuis', 'excel', 'materi'];

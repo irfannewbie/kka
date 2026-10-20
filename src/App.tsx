@@ -81,8 +81,6 @@ try {
   // ignore
 }
 
-// Helper to determine route tab from pathname — dipindahkan ke src/routes/navigation.ts
-
 export default function App() {
   // Routing ditangani React Router: tab aktif diturunkan dari URL saat ini.
   const location = useLocation();
