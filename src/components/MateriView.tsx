@@ -37,6 +37,7 @@ import {
 import { ExcelLabStudentWorkspace } from './excel/ExcelLabStudentWorkspace';
 import { ExcelFormulaGuideView } from './excel/ExcelFormulaGuideView';
 import { Kelas7Semester1View } from './materi/Kelas7Semester1View';
+import { Kelas8KkaSemester1View } from './materi/Kelas8KkaSemester1View';
 
 interface MateriViewProps {
   onNavigateHome: () => void;
@@ -75,6 +76,9 @@ export const MateriView: React.FC<MateriViewProps> = ({
 
   // Selected Bab for Kelas 8 (Bab 1, Bab 2, Bab 3, Bab 4, or semua)
   const [kelas8Bab, setKelas8Bab] = useState<'semua' | 'bab1' | 'bab2' | 'bab3' | 'bab4'>('semua');
+
+  // Mata pelajaran Kelas 8: 'kka' (Koding & Kecerdasan Artifisial — Semester 1, default) atau 'informatika' (4 bab + studio)
+  const [kelas8Mapel, setKelas8Mapel] = useState<'kka' | 'informatika'>('kka');
 
   // Interactive Coding Engine Selector for Bab 3 Algoritma Pemrograman
   const [activeCodingTool, setActiveCodingTool] = useState<'blockly-code' | 'blockly-games' | 'scratch'>('blockly-code');
@@ -191,7 +195,7 @@ export const MateriView: React.FC<MateriViewProps> = ({
               <span>Materi Pembelajaran Informatika</span>
             </h1>
             <p className="font-sans text-xs sm:text-sm text-slate-600 mt-1 max-w-3xl leading-relaxed">
-              Pusat materi pembelajaran resmi mata pelajaran Informatika serta Koding dan Kecerdasan Artifisial (KKA). Dilengkapi <strong>Laboratorium Excel</strong> untuk Kelas 7 dan <strong>Studio Praktik Algoritma Pemrograman (Blockly & Scratch)</strong> untuk Kelas 8.
+              Pusat materi pembelajaran resmi mata pelajaran Informatika serta Koding dan Kecerdasan Artifisial (KKA). Dilengkapi <strong>Laboratorium Excel</strong> untuk Kelas 7, <strong>Studio Praktik Algoritma Pemrograman (Blockly & Scratch)</strong>, serta <strong>Materi KKA Semester 1</strong> (Bab Algoritma, Pemrograman, dan Pengenalan Perangkat KA Sederhana) untuk Kelas 8.
             </p>
           </div>
         </div>
@@ -244,8 +248,8 @@ export const MateriView: React.FC<MateriViewProps> = ({
                     : 'bg-blue-100 text-blue-800 border-blue-300'
                 }`}
               >
-                <span className="sm:hidden">4 BAB (KKA)</span>
-                <span className="hidden sm:inline">4 BAB: AD, BK, AP (BLOCKLY/SCRATCH), HAK DIGITAL</span>
+                <span className="sm:hidden">INFO + KKA</span>
+                <span className="hidden sm:inline">INFORMATIKA (4 BAB) & KKA SEM 1 (BAB 1-3)</span>
               </span>
             </button>
           </div>
@@ -363,10 +367,57 @@ export const MateriView: React.FC<MateriViewProps> = ({
       )}
 
       {/* ========================================================= */}
-      {/* SECTION B: KELAS 8 CONTENT (4 BAB RESMI KURIKULUM)         */}
+      {/* SECTION B: KELAS 8 CONTENT — 2 MATA PELAJARAN:            */}
+      {/*   (1) KODING & KECERDASAN ARTIFISIAL (SEM 1, BAB 1-3)     */}
+      {/*   (2) INFORMATIKA (4 BAB + STUDIO KODING)                 */}
       {/* ========================================================= */}
       {selectedGrade === '8' && (
         <div className="space-y-6">
+          {/* Mata Pelajaran Selector for Kelas 8 */}
+          <div className="bg-white border-2 border-[#1a1a1a] p-2 shadow-[2px_2px_0px_#1a1a1a] flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setKelas8Mapel('kka')}
+              className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center justify-center sm:justify-start gap-2 ${
+                kelas8Mapel === 'kka'
+                  ? 'bg-[#7c3aed] text-white border-[#7c3aed] shadow-[2px_2px_0px_#1a1a1a]'
+                  : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
+              }`}
+            >
+              <BrainCircuit className="h-3.5 w-3.5" />
+              <span>KODING & KECERDASAN ARTIFISIAL — SEM 1 (BAB 1-3)</span>
+              <span className="text-[9px] px-1.5 py-0.2 bg-amber-400 text-amber-950 rounded-xs font-black">
+                DEFAULT
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setKelas8Mapel('informatika')}
+              className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center justify-center sm:justify-start gap-2 ${
+                kelas8Mapel === 'informatika'
+                  ? 'bg-[#2e59e6] text-white border-[#2e59e6] shadow-[2px_2px_0px_#1a1a1a]'
+                  : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
+              }`}
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+              <span>INFORMATIKA (4 BAB: AD, BK, AP, HAK DIGITAL)</span>
+            </button>
+          </div>
+
+          {/* Mapel 1: Koding & Kecerdasan Artifisial — Semester 1 (Bab 1-3) */}
+          {kelas8Mapel === 'kka' && (
+            <Kelas8KkaSemester1View
+              onOpenStudio={() => {
+                setKelas8Mapel('informatika');
+                setKelas8Bab('bab3');
+              }}
+              onOpenQuiz={onNavigateKuis}
+            />
+          )}
+
+          {/* Mapel 2: Informatika (materi 4 bab + studio koding) */}
+          {kelas8Mapel === 'informatika' && (
+            <>
           {/* Chapter Selector Tabs for Kelas 8 */}
           <div className="bg-white border-2 border-[#1a1a1a] p-3 shadow-[3px_3px_0px_#1a1a1a] flex flex-wrap items-center justify-between gap-3 font-mono-code text-xs">
             <div className="flex flex-wrap items-center gap-1.5">
@@ -907,6 +958,8 @@ export const MateriView: React.FC<MateriViewProps> = ({
                 </div>
               </div>
             </div>
+          )}
+            </>
           )}
         </div>
       )}
