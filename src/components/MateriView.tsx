@@ -36,6 +36,7 @@ import {
 } from 'lucide-react';
 import { ExcelLabStudentWorkspace } from './excel/ExcelLabStudentWorkspace';
 import { ExcelFormulaGuideView } from './excel/ExcelFormulaGuideView';
+import { Kelas7Semester1View } from './materi/Kelas7Semester1View';
 
 interface MateriViewProps {
   onNavigateHome: () => void;
@@ -60,15 +61,16 @@ export const MateriView: React.FC<MateriViewProps> = ({
     return '7';
   });
 
-  // Subtab for Kelas 7
-  const [kelas7SubTab, setKelas7SubTab] = useState<'excel' | 'guide' | 'modul'>(() => {
+  // Subtab for Kelas 7: 'materi7' (Semester 1 Bab 1-3), 'excel' (Lab Praktik), 'guide' (Panduan Rumus)
+  const [kelas7SubTab, setKelas7SubTab] = useState<'materi7' | 'excel' | 'guide'>(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const tab = params.get('tab');
+      if (tab === 'excel' || tab === 'lab') return 'excel';
       if (tab === 'guide' || tab === 'rumus') return 'guide';
-      if (tab === 'modul' || tab === 'teori') return 'modul';
+      if (tab === 'materi' || tab === 'modul' || tab === 'teori') return 'materi7';
     }
-    return 'excel';
+    return 'materi7';
   });
 
   // Selected Bab for Kelas 8 (Bab 1, Bab 2, Bab 3, Bab 4, or semua)
@@ -256,7 +258,7 @@ export const MateriView: React.FC<MateriViewProps> = ({
       </div>
 
       {/* ========================================================= */}
-      {/* SECTION A: KELAS 7 CONTENT (LAB EXCEL + MODUL TEORI)       */}
+      {/* SECTION A: KELAS 7 CONTENT (SEMESTER 1 BAB 1-3 & LAB)      */}
       {/* ========================================================= */}
       {selectedGrade === '7' && (
         <div className="space-y-4">
@@ -265,20 +267,33 @@ export const MateriView: React.FC<MateriViewProps> = ({
             <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5 w-full sm:w-auto">
               <button
                 type="button"
-                onClick={() => setKelas7SubTab('excel')}
+                onClick={() => setKelas7SubTab('materi7')}
                 className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center justify-between sm:justify-start gap-2 ${
+                  kelas7SubTab === 'materi7'
+                    ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
+                    : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Layers className="h-3.5 w-3.5 shrink-0" />
+                  <span>MATERI SEMESTER 1 (BAB 1 - 3)</span>
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 bg-amber-400 text-amber-950 font-black shrink-0">
+                  UTAMA
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setKelas7SubTab('excel')}
+                className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
                   kelas7SubTab === 'excel'
                     ? 'bg-[#107c41] text-white border-[#107c41] shadow-[2px_2px_0px_#1a1a1a]'
                     : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
-                  <span>LABORATORIUM EXCEL (PRAKTIK & TUGAS)</span>
-                </div>
-                <span className="text-[9px] px-1.5 py-0.5 bg-amber-400 text-amber-950 font-black shrink-0">
-                  UTAMA
-                </span>
+                <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
+                <span>LABORATORIUM EXCEL (PRAKTIK BAB 2)</span>
               </button>
 
               <button
@@ -291,29 +306,25 @@ export const MateriView: React.FC<MateriViewProps> = ({
                 }`}
               >
                 <Calculator className="h-3.5 w-3.5 shrink-0" />
-                <span>PANDUAN LENGKAP RUMUS & FUNGSI</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setKelas7SubTab('modul')}
-                className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
-                  kelas7SubTab === 'modul'
-                    ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
-                    : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
-                }`}
-              >
-                <Layers className="h-3.5 w-3.5 shrink-0" />
-                <span>MODUL TEORI KELAS 7 (BK, TIK, SK, JKI, AD)</span>
+                <span>PANDUAN RUMUS SPREADSHEET</span>
               </button>
             </div>
 
             <div className="font-mono-code text-[11px] text-slate-500 px-2 hidden md:block">
-              Lab Excel kini terpusat di /materi
+              Kurikulum Merdeka • Semester 1
             </div>
           </div>
 
-          {/* Sub-tab 1: Interactive Excel Lab Workspace */}
+          {/* Sub-tab 1: Kelas 7 Semester 1 Full Kurikulum Merdeka (Bab 1, 2, 3) */}
+          {kelas7SubTab === 'materi7' && (
+            <Kelas7Semester1View
+              onOpenExcelLab={() => setKelas7SubTab('excel')}
+              onOpenFormulaGuide={() => setKelas7SubTab('guide')}
+              onOpenQuiz={onNavigateKuis}
+            />
+          )}
+
+          {/* Sub-tab 2: Interactive Excel Lab Workspace */}
           {kelas7SubTab === 'excel' && (
             <div className="space-y-4">
               <ExcelLabStudentWorkspace
@@ -324,7 +335,7 @@ export const MateriView: React.FC<MateriViewProps> = ({
             </div>
           )}
 
-          {/* Sub-tab 2: Complete Formula Guide */}
+          {/* Sub-tab 3: Complete Formula Guide */}
           {kelas7SubTab === 'guide' && (
             <div className="space-y-4">
               <div className="bg-white border-2 border-[#1a1a1a] p-4 shadow-[4px_4px_0px_#1a1a1a] flex items-center justify-between">
@@ -346,193 +357,6 @@ export const MateriView: React.FC<MateriViewProps> = ({
                 </button>
               </div>
               <ExcelFormulaGuideView onTryFormulaInPlayground={() => setKelas7SubTab('excel')} />
-            </div>
-          )}
-
-          {/* Sub-tab 3: Kelas 7 Theory Modules */}
-          {kelas7SubTab === 'modul' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {/* Card 1: BK */}
-              <div className="bg-white border-2 border-[#1a1a1a] p-4 shadow-[3px_3px_0px_#1a1a1a] flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 bg-blue-100 text-blue-900 border border-blue-400 font-mono-code text-[10px] font-bold">
-                      MODUL 1 • BK
-                    </span>
-                    <BrainCircuit className="h-4 w-4 text-[#2e59e6]" />
-                  </div>
-                  <h3 className="font-mono-code text-sm font-bold text-[#1a1a1a]">
-                    Berpikir Komputasional (BK)
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    Mempelajari 4 pilar computational thinking: Dekomposisi, Pengenalan Pola, Abstraksi, dan Perancangan Algoritma untuk menyelesaikan masalah kompleks dalam kehidupan sehari-hari.
-                  </p>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] font-mono-code text-slate-500 space-y-1">
-                    <div>• Dekomposisi masalah besar menjadi bagian kecil</div>
-                    <div>• Mencari pola berulang dan tren data</div>
-                    <div>• Menyusun langkah algoritma terstruktur</div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between font-mono-code text-xs">
-                  <span className="text-emerald-700 font-bold">✓ Tersedia</span>
-                  <button
-                    type="button"
-                    onClick={() => onNavigateKuis?.()}
-                    className="text-[#2e59e6] font-bold hover:underline flex items-center gap-1"
-                  >
-                    <span>Latihan Soal</span>
-                    <ChevronRight className="h-3 w-3" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Card 2: TIK */}
-              <div className="bg-white border-2 border-[#1a1a1a] p-4 shadow-[3px_3px_0px_#1a1a1a] flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 bg-emerald-100 text-emerald-900 border border-emerald-400 font-mono-code text-[10px] font-bold">
-                      MODUL 2 • TIK
-                    </span>
-                    <Compass className="h-4 w-4 text-[#107c41]" />
-                  </div>
-                  <h3 className="font-mono-code text-sm font-bold text-[#1a1a1a]">
-                    Teknologi Informasi & Komunikasi
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    Pengoperasian sistem antarmuka berbasis GUI, manajemen pengelolaan berkas dan folder, pembuatan dokumen pengolah kata, serta pembuatan slide presentasi yang efektif.
-                  </p>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] font-mono-code text-slate-500 space-y-1">
-                    <div>• Ekstensi file (.docx, .xlsx, .pdf, .zip)</div>
-                    <div>• Struktur hierarki folder komputer</div>
-                    <div>• Teknik pencarian informasi efektif (Web Search)</div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between font-mono-code text-xs">
-                  <span className="text-emerald-700 font-bold">✓ Tersedia</span>
-                  <span className="text-slate-400 font-mono-code">SMP Kls 7</span>
-                </div>
-              </div>
-
-              {/* Card 3: SK */}
-              <div className="bg-white border-2 border-[#1a1a1a] p-4 shadow-[3px_3px_0px_#1a1a1a] flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-400 font-mono-code text-[10px] font-bold">
-                      MODUL 3 • SK
-                    </span>
-                    <Cpu className="h-4 w-4 text-amber-700" />
-                  </div>
-                  <h3 className="font-mono-code text-sm font-bold text-[#1a1a1a]">
-                    Sistem Komputer (Hardware & OS)
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    Mengenal anatomi komputer: Perangkat Masukan (Input), Pemrosesan (CPU/ALU), Penyimpanan (RAM, ROM, SSD/HDD), Perangkat Keluaran (Output), serta interaksi dengan Sistem Operasi.
-                  </p>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] font-mono-code text-slate-500 space-y-1">
-                    <div>• Siklus kerja: Input &rarr; Proses &rarr; Output</div>
-                    <div>• Perbedaan RAM (Volatile) vs ROM/Storage</div>
-                    <div>• Peran OS (Windows, Linux, Android)</div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between font-mono-code text-xs">
-                  <span className="text-emerald-700 font-bold">✓ Tersedia</span>
-                  <span className="text-slate-400 font-mono-code">SMP Kls 7</span>
-                </div>
-              </div>
-
-              {/* Card 4: JKI */}
-              <div className="bg-white border-2 border-[#1a1a1a] p-4 shadow-[3px_3px_0px_#1a1a1a] flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 bg-cyan-100 text-cyan-900 border border-cyan-400 font-mono-code text-[10px] font-bold">
-                      MODUL 4 • JKI
-                    </span>
-                    <Globe className="h-4 w-4 text-cyan-700" />
-                  </div>
-                  <h3 className="font-mono-code text-sm font-bold text-[#1a1a1a]">
-                    Jaringan Komputer & Internet (JKI)
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    Prinsip dasar konektivitas jaringan lokal (LAN), jaringan nirkabel (Wi-Fi, Bluetooth), tethering ponsel pintar, serta proteksi keamanan saat berselancar di internet.
-                  </p>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] font-mono-code text-slate-500 space-y-1">
-                    <div>• Koneksi kabel (UTP/LAN) vs Nirkabel (Wi-Fi)</div>
-                    <div>• Konsep dasar bandwidth & kecepatan data</div>
-                    <div>• Keamanan berinternet & proteksi kata sandi</div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between font-mono-code text-xs">
-                  <span className="text-emerald-700 font-bold">✓ Tersedia</span>
-                  <span className="text-slate-400 font-mono-code">SMP Kls 7</span>
-                </div>
-              </div>
-
-              {/* Card 5: AD & Lab Excel */}
-              <div className="bg-white border-2 border-[#1a1a1a] p-4 shadow-[3px_3px_0px_#1a1a1a] flex flex-col justify-between border-l-4 border-l-[#107c41]">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 bg-[#107c41] text-white font-mono-code text-[10px] font-bold">
-                      MODUL 5 • AD (UTAMA)
-                    </span>
-                    <FileSpreadsheet className="h-4 w-4 text-[#107c41]" />
-                  </div>
-                  <h3 className="font-mono-code text-sm font-bold text-[#1a1a1a]">
-                    Analisis Data & Spreadsheet
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    Pengolahan data tabular dengan spreadsheet: sintaks formula dasar (SUM, COUNT), bersyarat (SUMIF, COUNTIF), statistik (AVERAGE, MEDIAN, MAX, MIN, LARGE, SMALL), manipulasi teks, dan logika IF.
-                  </p>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] font-mono-code text-slate-500 space-y-1">
-                    <div>• Formula dasar aritmatika & tanggal</div>
-                    <div>• Fungsi teks (UPPER, LOWER, CONCATENATE)</div>
-                    <div>• Evaluasi otomatis dan auto-grading</div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between font-mono-code text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setKelas7SubTab('excel')}
-                    className="px-2.5 py-1 bg-[#107c41] text-white font-bold hover:bg-[#0c5c30] transition-colors flex items-center gap-1"
-                  >
-                    <Play className="h-3 w-3" />
-                    <span>Buka Lab Excel</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setKelas7SubTab('guide')}
-                    className="text-[#2e59e6] font-bold hover:underline"
-                  >
-                    Buku Rumus
-                  </button>
-                </div>
-              </div>
-
-              {/* Card 6: DSI */}
-              <div className="bg-white border-2 border-[#1a1a1a] p-4 shadow-[3px_3px_0px_#1a1a1a] flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="px-2 py-0.5 bg-rose-100 text-rose-900 border border-rose-400 font-mono-code text-[10px] font-bold">
-                      MODUL 6 • DSI
-                    </span>
-                    <ShieldCheck className="h-4 w-4 text-rose-700" />
-                  </div>
-                  <h3 className="font-mono-code text-sm font-bold text-[#1a1a1a]">
-                    Dampak Sosial Informatika
-                  </h3>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    Etika dan norma dalam dunia digital, pencegahan cyberbullying, menjaga jejak digital positif, serta hukum dasar perlindungan data pribadi dan privasi.
-                  </p>
-                  <div className="mt-3 pt-2 border-t border-slate-200 text-[11px] font-mono-code text-slate-500 space-y-1">
-                    <div>• Jejak digital (Digital Footprint)</div>
-                    <div>• Etika bermedia sosial & anti-hoaks</div>
-                    <div>• Keamanan akun & autentikasi 2 langkah</div>
-                  </div>
-                </div>
-                <div className="mt-4 pt-3 border-t border-slate-200 flex items-center justify-between font-mono-code text-xs">
-                  <span className="text-emerald-700 font-bold">✓ Tersedia</span>
-                  <span className="text-slate-400 font-mono-code">SMP Kls 7</span>
-                </div>
-              </div>
             </div>
           )}
         </div>
