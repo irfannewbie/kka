@@ -94,13 +94,13 @@ export const Header: React.FC<HeaderProps> = ({
         )}
 
         <div
-          onClick={() => onNavigate('showcase', '/')}
+          onClick={() => onNavigate('materi', '/')}
           className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-1.5 sm:gap-2 shrink-0"
         >
           <span>[ SISWAHUB v2.0 ]</span>
           {!isMasterMode && !isCekMode && !isKelas7Mode && !isPenggantiMode && !isKuisMode && !isExcelMode && !isMasterExcelMode && !isMateriMode && (
             <span className="hidden sm:inline-block text-[11px] font-normal text-slate-500 font-mono-code border-l border-[#1a1a1a] pl-2">
-              SHOWCASE KARYA SISWA
+              ARSIP KARYA SISWA
             </span>
           )}
           {isMateriMode && (
@@ -149,7 +149,7 @@ export const Header: React.FC<HeaderProps> = ({
           <div className="hidden sm:flex items-center gap-1.5 mr-1 font-mono-code">
             <button
               type="button"
-              onClick={() => onNavigate('materi', '/materi')}
+              onClick={() => onNavigate('materi', '/')}
               className="px-2 py-1 font-bold border border-[#1a1a1a] bg-[#2e59e6] hover:bg-[#1f3fb3] text-white text-[10px] transition-all flex items-center gap-1 cursor-pointer shadow-[1px_1px_0px_#1a1a1a]"
               title="Buka Materi Pembelajaran Kelas 7 & 8 (termasuk Lab Excel)"
             >
@@ -157,9 +157,9 @@ export const Header: React.FC<HeaderProps> = ({
               <span>MATERI</span>
             </button>
             <button
-              onClick={() => onNavigate('showcase', '/')}
+              onClick={() => onNavigate('showcase', '/arsip-karya')}
               className="px-2 py-1 font-bold border border-[#1a1a1a] bg-white hover:bg-slate-100 text-[#1a1a1a] text-[10px] transition-all flex items-center gap-1 cursor-pointer shadow-[1px_1px_0px_#1a1a1a]"
-              title="Kembali ke Web Publik / Showcase"
+              title="Buka Arsip Karya Siswa (Web Publik)"
             >
               <span>🌐 WEB PUBLIK</span>
             </button>

@@ -131,21 +131,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="p-3 pb-1 space-y-1.5">
           <button
             onClick={() => {
-              onNavigate('showcase', '/');
+              onNavigate('showcase', '/arsip-karya');
               onCloseMobile();
             }}
             className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-white/10 hover:bg-white hover:text-[#1a1a1a] text-white border border-white/20 transition-all cursor-pointer"
           >
             <span className="flex items-center gap-1.5">
               <ArrowLeft className="h-3 w-3" />
-              <span>SHOWCASE SISWA</span>
+              <span>ARSIP KARYA SISWA</span>
             </span>
-            <span className="text-[10px] text-slate-300 font-mono-code">/</span>
+            <span className="text-[10px] text-slate-300 font-mono-code">/arsip-karya</span>
           </button>
 
           <button
             onClick={() => {
-              onNavigate('materi', '/materi');
+              onNavigate('materi', '/');
               onCloseMobile();
             }}
             className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-[#2e59e6]/25 hover:bg-[#2e59e6] hover:text-white text-blue-200 border border-blue-400/40 transition-all cursor-pointer shadow-[2px_2px_0px_#000]"
@@ -154,7 +154,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <BookOpen className="h-3 w-3 text-blue-300" />
               <span>MATERI (KELAS 7 & 8)</span>
             </span>
-            <span className="text-[10px] text-blue-300 font-mono-code">/materi</span>
+            <span className="text-[10px] text-blue-300 font-mono-code">/</span>
           </button>
 
           <button

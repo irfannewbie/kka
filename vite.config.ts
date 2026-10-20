@@ -43,15 +43,9 @@ function spaRoutesPlugin(): Plugin {
         'tugas-pengganti',
         'pengganti-kka2',
         'kka2',
-        // Materi pembelajaran (termasuk Lab Excel)
-        'materi',
-        'materi/kelas7',
-        'materi/kelas8',
-        'modul',
-        'materi-pembelajaran',
-        'excel',
-        'lab-excel',
-        'laboratorium-excel',
+        // Arsip Karya Siswa (showcase lama; materi kini menjadi beranda "/")
+        'arsip-karya',
+        'showcase',
         // Panel master
         'master',
         'master/students',

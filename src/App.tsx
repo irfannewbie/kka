@@ -799,16 +799,33 @@ export default function App() {
 
             {/* View Switching — React Router (alias URL lama dipertahankan) */}
             <Routes>
+              {/* Beranda baru = Materi Pembelajaran (showcase lama pindah ke /arsip-karya) */}
               <Route
                 path="/"
                 element={
-                  <ShowcaseView
-                    students={students}
-                    tasks={tasks}
-                    spreadsheetUrl={spreadsheetUrl}
+                  <MateriView
+                    onNavigateHome={() => handleNavigate('showcase', '/arsip-karya')}
+                    onNavigateCek={() => handleNavigate('cek', '/cek')}
+                    onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
+                    onNavigateKuis={() => handleNavigate('kuis', '/kuis')}
                   />
                 }
               />
+
+              {/* Arsip Karya Siswa (hasil tugas KKA Kelas 8) */}
+              {['/arsip-karya', '/showcase'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <ShowcaseView
+                      students={students}
+                      tasks={tasks}
+                      spreadsheetUrl={spreadsheetUrl}
+                    />
+                  }
+                />
+              ))}
 
               {['/cek', '/check', '/login-siswa'].map((p) => (
                 <Route
@@ -821,10 +838,10 @@ export default function App() {
                       students={students}
                       spreadsheetId={spreadsheetId}
                       spreadsheetUrl={spreadsheetUrl}
-                      onNavigateHome={() => handleNavigate('showcase', '/')}
+                      onNavigateHome={() => handleNavigate('showcase', '/arsip-karya')}
                       onNavigatePengganti={() => handleNavigate('pengganti', '/pengganti')}
                       onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
-                      onNavigateExcel={() => handleNavigate('materi', '/materi')}
+                      onNavigateExcel={() => handleNavigate('materi', '/')}
                     />
                   }
                 />
@@ -840,31 +857,13 @@ export default function App() {
                       students={students}
                       spreadsheetId={spreadsheetId}
                       spreadsheetUrl={spreadsheetUrl}
-                      onNavigateHome={() => handleNavigate('showcase', '/')}
+                      onNavigateHome={() => handleNavigate('showcase', '/arsip-karya')}
                       onNavigateCek={() => handleNavigate('cek', '/cek')}
-                      onNavigateMateri={() => handleNavigate('materi', '/materi')}
+                      onNavigateMateri={() => handleNavigate('materi', '/')}
                     />
                   }
                 />
               ))}
-
-              {/* Materi Pembelajaran (Kelas 7 & 8) — termasuk Laboratorium Excel */}
-              {['/materi', '/modul', '/materi-pembelajaran', '/excel', '/lab-excel', '/laboratorium-excel'].map(
-                (p) => (
-                  <Route
-                    key={p}
-                    path={p}
-                    element={
-                      <MateriView
-                        onNavigateHome={() => handleNavigate('showcase', '/')}
-                        onNavigateCek={() => handleNavigate('cek', '/cek')}
-                        onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
-                        onNavigateKuis={() => handleNavigate('kuis', '/kuis')}
-                      />
-                    }
-                  />
-                )
-              )}
 
               {['/kuis', '/quiz', '/ujian'].map((p) => (
                 <Route
@@ -875,7 +874,7 @@ export default function App() {
                       initialPin={quizLaunchParams.pin}
                       initialClassName={quizLaunchParams.className}
                       initialAttendanceNo={quizLaunchParams.attendanceNo}
-                      onNavigateHome={() => handleNavigate('showcase', '/')}
+                      onNavigateHome={() => handleNavigate('showcase', '/arsip-karya')}
                       onNavigateCek={(gl) =>
                         handleNavigate(gl === '7' ? 'kelas7' : 'cek', gl === '7' ? '/kelas7' : '/cek')
                       }
@@ -895,7 +894,7 @@ export default function App() {
                       spreadsheetUrl={spreadsheetUrl}
                       token={token}
                       onLogin={handleGoogleLogin}
-                      onNavigateShowcase={() => handleNavigate('showcase', '/')}
+                      onNavigateShowcase={() => handleNavigate('showcase', '/arsip-karya')}
                       onNavigateCek={() => handleNavigate('cek', '/cek')}
                       onNotifySubmission={(sName, cName, aNo) => {
                         triggerNewTaskAlert(
@@ -1088,14 +1087,15 @@ export default function App() {
                 />
               ))}
 
-              {/* Fallback: halaman tidak dikenal -> Showcase */}
+              {/* Fallback: halaman tidak dikenal -> beranda Materi (tautan lama seperti /materi?grade=7 ikut terbuka) */}
               <Route
                 path="*"
                 element={
-                  <ShowcaseView
-                    students={students}
-                    tasks={tasks}
-                    spreadsheetUrl={spreadsheetUrl}
+                  <MateriView
+                    onNavigateHome={() => handleNavigate('showcase', '/arsip-karya')}
+                    onNavigateCek={() => handleNavigate('cek', '/cek')}
+                    onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
+                    onNavigateKuis={() => handleNavigate('kuis', '/kuis')}
                   />
                 }
               />

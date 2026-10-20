@@ -19,7 +19,7 @@ export function isPublicTab(tab: TabId): boolean {
 
 /** Jalur URL kanonik untuk setiap tab. */
 export const TAB_PATHS: Record<TabId, string> = {
-  showcase: '/',
+  showcase: '/arsip-karya',
   master: '/master',
   tasks: '/master/tasks',
   students: '/master/students',
@@ -32,23 +32,20 @@ export const TAB_PATHS: Record<TabId, string> = {
   substitute_tasks: '/master/substitute',
   kuis: '/kuis',
   master_quiz: '/master/quiz',
-  excel: '/materi',
+  excel: '/',
   master_excel: '/master/excel',
-  materi: '/materi',
+  materi: '/',
 };
 
 /**
  * Alias URL -> tab (dipertahankan agar tautan lama tetap berfungsi).
+ * Halaman /materi sudah dihapus — materi kini menjadi beranda ("/"); tautan
+ * lama jatuh ke fallback React Router yang juga merender MateriView.
  * Urutan tidak berpengaruh; React Router memilih kecocokan paling spesifik.
  */
 export const PATH_ALIASES: Array<{ path: string; tab: TabId }> = [
-  { path: '/materi', tab: 'materi' },
-  { path: '/modul', tab: 'materi' },
-  { path: '/materi-pembelajaran', tab: 'materi' },
-  // Lab Excel kini menjadi bagian dari MateriView
-  { path: '/excel', tab: 'materi' },
-  { path: '/lab-excel', tab: 'materi' },
-  { path: '/laboratorium-excel', tab: 'materi' },
+  { path: '/arsip-karya', tab: 'showcase' },
+  { path: '/showcase', tab: 'showcase' },
   { path: '/master/excel', tab: 'master_excel' },
   { path: '/master/lab-excel', tab: 'master_excel' },
   { path: '/kuis', tab: 'kuis' },
@@ -90,7 +87,8 @@ export function getTabFromPath(path: string): TabId {
   const cleanPath = (path || '/').toLowerCase().replace(/\/$/, '') || '/';
   const alias = PATH_ALIASES.find((a) => a.path === cleanPath);
   if (alias) return alias.tab;
-  return 'showcase';
+  // Default — termasuk "/" dan path lama yang tak dikenal — adalah beranda Materi.
+  return 'materi';
 }
 
 /** Hitung URL tujuan untuk sebuah tab (dapat dipaksa via targetPath). */

@@ -252,7 +252,7 @@ export const MateriView: React.FC<MateriViewProps> = ({
 
           <div className="font-mono-code text-[11px] text-slate-500 flex items-center justify-center sm:justify-start gap-1.5 self-center sm:self-center">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-            <span>Rute Aktif: /materi?grade={selectedGrade}</span>
+            <span>Rute Aktif: /?grade={selectedGrade}</span>
           </div>
         </div>
       </div>
