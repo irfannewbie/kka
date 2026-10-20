@@ -16,4 +16,4 @@ chmod +x .githooks/pre-commit
 
 What it does:
 
-- The `pre-commit` hook automatically unstages any files under `node_modules/` that were accidentally staged (for example via `git add *`).
+- The `pre-commit` hook rejects any commit that would ADD files under `node_modules/` (for example via `git add *`), while allowing the staged deletions from the repository cleanup to pass through.

@@ -55,6 +55,8 @@ import {
   Bell,
   X,
 } from 'lucide-react';
+import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { TabId, getTabFromPath, isPublicTab, resolveTabPath } from './routes/navigation';
 
 
 const STORAGE_KEYS = {
@@ -79,39 +81,13 @@ try {
   // ignore
 }
 
-// Helper to determine route tab from pathname or hash
-const getTabFromPath = (path: string): 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' | 'materi' => {
-  let raw = path || '/';
-  if (typeof window !== 'undefined' && window.location.hash) {
-    const rawHash = window.location.hash.replace(/^#\/?/, '/');
-    if (rawHash && rawHash !== '/') {
-      raw = rawHash;
-    }
-  }
-  const cleanPath = (raw || '/').toLowerCase().replace(/\/$/, '') || '/';
-  if (cleanPath === '/materi' || cleanPath === '/modul' || cleanPath === '/materi-pembelajaran') return 'materi';
-  if (cleanPath === '/excel' || cleanPath === '/lab-excel' || cleanPath === '/laboratorium-excel') return 'materi';
-  if (cleanPath === '/master/excel' || cleanPath === '/master/lab-excel') return 'master_excel';
-  if (cleanPath === '/kuis' || cleanPath === '/quiz' || cleanPath === '/ujian') return 'kuis';
-  if (cleanPath === '/master/quiz' || cleanPath === '/master/kuis') return 'master_quiz';
-  if (cleanPath === '/kelas7' || cleanPath === '/kelas-7' || cleanPath === '/cek-kelas7' || cleanPath === '/cek7') return 'kelas7';
-  if (cleanPath === '/cek' || cleanPath === '/check' || cleanPath === '/login-siswa') return 'cek';
-  if (cleanPath === '/pengganti' || cleanPath === '/tugas-pengganti' || cleanPath === '/pengganti-kka2' || cleanPath === '/kka2') return 'pengganti';
-  if (cleanPath === '/master') return 'master';
-  if (cleanPath === '/master/students' || cleanPath === '/students') return 'students';
-  if (cleanPath === '/master/grades' || cleanPath === '/grades') return 'grades';
-  if (cleanPath === '/master/calculator' || cleanPath === '/calculator' || cleanPath === '/kalkulator') return 'calculator';
-  if (cleanPath === '/master/tasks' || cleanPath === '/tasks') return 'tasks';
-  if (cleanPath === '/master/substitute' || cleanPath === '/master/pengganti' || cleanPath === '/master/tugas-pengganti' || cleanPath === '/substitute') return 'substitute_tasks';
-  if (cleanPath === '/master/spreadsheet' || cleanPath === '/spreadsheet') return 'spreadsheet';
-  return 'showcase';
-};
+// Helper to determine route tab from pathname — dipindahkan ke src/routes/navigation.ts
 
 export default function App() {
-  // Navigation state initialized based on current URL pathname
-  const [activeTab, setActiveTab] = useState<'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' | 'materi'>(() => {
-    return getTabFromPath(window.location.pathname);
-  });
+  // Routing ditangani React Router: tab aktif diturunkan dari URL saat ini.
+  const location = useLocation();
+  const navigate = useNavigate();
+  const activeTab: TabId = getTabFromPath(location.pathname);
   const [quizLaunchParams, setQuizLaunchParams] = useState<{
     pin?: string;
     className?: string;
@@ -121,39 +97,14 @@ export default function App() {
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
-  // Sync route on popstate and hashchange (browser back / forward button clicks or hash anchors)
-  useEffect(() => {
-    const handlePopState = () => {
-      setActiveTab(getTabFromPath(window.location.pathname));
-    };
-    window.addEventListener('popstate', handlePopState);
-    window.addEventListener('hashchange', handlePopState);
-    return () => {
-      window.removeEventListener('popstate', handlePopState);
-      window.removeEventListener('hashchange', handlePopState);
-    };
-  }, []);
-
-  // Programmatic navigation that updates the browser URL
-  const handleNavigate = (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' | 'materi', targetPath?: string) => {
+  // Programmatic navigation — URL & history dikelola React Router
+  const handleNavigate = (tab: TabId, targetPath?: string) => {
     const effectiveTab = tab === 'excel' ? 'materi' : tab;
-    setActiveTab(effectiveTab);
-    let resolvedPath = targetPath;
-    if (!resolvedPath) {
-      if (effectiveTab === 'showcase') resolvedPath = '/';
-      else if (effectiveTab === 'materi') resolvedPath = '/materi';
-      else if (effectiveTab === 'cek') resolvedPath = '/cek';
-      else if (effectiveTab === 'kelas7') resolvedPath = '/kelas7';
-      else if (effectiveTab === 'pengganti') resolvedPath = '/pengganti';
-      else if (effectiveTab === 'kuis') resolvedPath = '/kuis';
-      else if (effectiveTab === 'master_quiz') resolvedPath = '/master/quiz';
-      else if (effectiveTab === 'master_excel') resolvedPath = '/master/excel';
-      else if (effectiveTab === 'substitute_tasks') resolvedPath = '/master/substitute';
-      else resolvedPath = `/master${effectiveTab === 'master' ? '' : `/${effectiveTab}`}`;
+    const resolvedPath = resolveTabPath(tab, targetPath);
+    if (location.pathname !== resolvedPath) {
+      navigate(resolvedPath);
     }
-    if (window.location.pathname !== resolvedPath) {
-      window.history.pushState({}, '', resolvedPath);
-    }
+    return effectiveTab;
   };
 
   // Auth & Google Sheets State - Default logged in as irfandwi.hs@gmail.com / irfannewbie7@gmail.com
@@ -755,7 +706,7 @@ export default function App() {
   return (
     <div className="flex h-screen w-full bg-[#F2EFEB] font-sans overflow-hidden text-[#1a1a1a]">
       {/* High Density Left Sidebar (Mounted ONLY for Master Admin Views) */}
-      {activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && activeTab !== 'excel' && activeTab !== 'materi' && (
+      {!isPublicTab(activeTab) && (
         <Sidebar
           activeTab={activeTab}
           onNavigate={handleNavigate}
@@ -801,7 +752,7 @@ export default function App() {
         />
 
         {/* Real-time Toast Floating Alert (Only in Master Mode) */}
-        {toastAlert && activeTab !== 'showcase' && activeTab !== 'cek' && activeTab !== 'kelas7' && activeTab !== 'pengganti' && activeTab !== 'kuis' && activeTab !== 'excel' && activeTab !== 'materi' && (
+        {toastAlert && !isPublicTab(activeTab) && (
           <div className="fixed top-16 right-4 z-50 max-w-sm bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-3 font-mono-code animate-in slide-in-from-top-4 duration-200">
             <div className="flex items-start justify-between gap-2.5">
               <div className="flex items-start gap-2.5">
@@ -835,216 +786,322 @@ export default function App() {
         {/* Scrollable Dashboard Canvas */}
         <main className="flex-1 overflow-y-auto p-3.5 sm:p-5">
           <div className="max-w-7xl mx-auto space-y-4">
-            {/* View Switching */}
-            {activeTab === 'showcase' && (
-              <ShowcaseView
-                students={students}
-                tasks={tasks}
-                spreadsheetUrl={spreadsheetUrl}
-                onNavigate={handleNavigate}
-              />
-            )}
-
-
-            {activeTab === 'materi' && (
-              <MateriView
-                onNavigateHome={() => handleNavigate('showcase', '/')}
-                onNavigateCek={() => handleNavigate('cek', '/cek')}
-                onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
-                onNavigateKuis={() => handleNavigate('kuis', '/kuis')}
-              />
-            )}
-
-            {activeTab === 'cek' && (
-              <StudentCheckView
-                key="cek-kelas8"
-                gradeLevel="8"
-                students={students}
-                spreadsheetId={spreadsheetId}
-                spreadsheetUrl={spreadsheetUrl}
-                onNavigateHome={() => handleNavigate('showcase', '/')}
-                onNavigatePengganti={() => handleNavigate('pengganti', '/pengganti')}
-                onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
-                onNavigateExcel={() => handleNavigate('materi', '/materi')}
-              />
-            )}
-
-            {activeTab === 'kelas7' && (
-              <Kelas7HubView
-                students={students}
-                spreadsheetId={spreadsheetId}
-                spreadsheetUrl={spreadsheetUrl}
-                onNavigateHome={() => handleNavigate('showcase', '/')}
-                onNavigateCek={() => handleNavigate('cek', '/cek')}
-                onNavigateMateri={() => handleNavigate('materi', '/materi')}
-              />
-            )}
-
-
-            {activeTab === 'kuis' && (
-              <StudentQuizView
-                initialPin={quizLaunchParams.pin}
-                initialClassName={quizLaunchParams.className}
-                initialAttendanceNo={quizLaunchParams.attendanceNo}
-                onNavigateHome={() => handleNavigate('showcase', '/')}
-                onNavigateCek={(gl) =>
-                  handleNavigate(gl === '7' ? 'kelas7' : 'cek', gl === '7' ? '/kelas7' : '/cek')
-                }
-              />
-            )}
-
-            {activeTab === 'pengganti' && (
-              <SubstituteTaskView
-                students={students}
-                spreadsheetId={spreadsheetId}
-                spreadsheetUrl={spreadsheetUrl}
-                token={token}
-                onLogin={handleGoogleLogin}
-                onNavigateShowcase={() => handleNavigate('showcase', '/')}
-                onNavigateCek={() => handleNavigate('cek', '/cek')}
-                onNotifySubmission={(sName, cName, aNo) => {
-                  triggerNewTaskAlert(
-                    'Tugas Pengganti Masuk!',
-                    `Siswa ${sName} (${cName} - Absen ${aNo}) telah mengumpulkan link video tugas pengganti KKA 2.`
-                  );
-                }}
-              />
-            )}
-
             {/* Compact Session Countdown Banner for Master Sub-Views (Grades, Calculator, Students, Tasks, Spreadsheet) */}
-            {activeTab !== 'showcase' &&
-              activeTab !== 'cek' &&
-              activeTab !== 'kelas7' &&
-              activeTab !== 'pengganti' &&
-              activeTab !== 'kuis' &&
-              activeTab !== 'excel' &&
-              activeTab !== 'materi' &&
-              activeTab !== 'master' && (
-                <SessionCountdownPanel
-                  sessionInfo={sessionInfo}
-                  masterOpenSeconds={masterOpenSeconds}
-                  isLoggingIn={isLoggingIn}
-                  onRefreshSession={handleGoogleLogin}
-                  onLogout={handleGoogleLogout}
-                  userEmail={user?.email}
-                  variant="compact-banner"
-                />
-              )}
-
-            {activeTab === 'master' && (
-              <MasterDataView
-                students={students}
-                tasks={tasks}
-                notifications={notifications}
-                spreadsheetUrl={spreadsheetUrl}
-                spreadsheetId={spreadsheetId}
-                isSyncing={isSyncing}
-                lastSyncedAt={lastSyncedAt}
-                onManualSync={handleManualSync}
-                onQuickAddStudent={handleAddStudent}
-                onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
-                onClearNotifications={handleClearAllNotifs}
-                onNavigateTab={(tab) => handleNavigate(tab)}
+            {!isPublicTab(activeTab) && activeTab !== 'master' && (
+              <SessionCountdownPanel
                 sessionInfo={sessionInfo}
                 masterOpenSeconds={masterOpenSeconds}
                 isLoggingIn={isLoggingIn}
                 onRefreshSession={handleGoogleLogin}
                 onLogout={handleGoogleLogout}
                 userEmail={user?.email}
+                variant="compact-banner"
               />
             )}
 
-            {activeTab === 'tasks' && (
-              <TaskListView
-                tasks={tasks}
-                students={students}
-                onUpdateTask={handleUpdateTask}
-                onDeleteTask={handleDeleteTask}
-                onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
-                groupsList={groupsList}
-                onSyncAllTasksToSheet={handleSyncAllTasksToSheet}
-                isConnectedToSheet={!!token}
-                onLogin={handleGoogleLogin}
+            {/* View Switching — React Router (alias URL lama dipertahankan) */}
+            <Routes>
+              <Route
+                path="/"
+                element={
+                  <ShowcaseView
+                    students={students}
+                    tasks={tasks}
+                    spreadsheetUrl={spreadsheetUrl}
+                  />
+                }
               />
-            )}
 
-            {activeTab === 'students' && (
-              <StudentManagerView
-                students={students}
-                onAddStudent={handleAddStudent}
-                onUpdateStudent={handleUpdateStudent}
-                onDeleteStudent={handleDeleteStudent}
-                onSyncStudentsToSheet={handleSyncStudentsToSheet}
-                isSyncing={isSyncing}
-                isConnectedToSheet={!!token}
+              {['/cek', '/check', '/login-siswa'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <StudentCheckView
+                      key="cek-kelas8"
+                      gradeLevel="8"
+                      students={students}
+                      spreadsheetId={spreadsheetId}
+                      spreadsheetUrl={spreadsheetUrl}
+                      onNavigateHome={() => handleNavigate('showcase', '/')}
+                      onNavigatePengganti={() => handleNavigate('pengganti', '/pengganti')}
+                      onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
+                      onNavigateExcel={() => handleNavigate('materi', '/materi')}
+                    />
+                  }
+                />
+              ))}
+
+              {/* Portal Kelas 7 (cek nilai & tugas) */}
+              {['/kelas7', '/kelas-7', '/cek-kelas7', '/cek7'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <Kelas7HubView
+                      students={students}
+                      spreadsheetId={spreadsheetId}
+                      spreadsheetUrl={spreadsheetUrl}
+                      onNavigateHome={() => handleNavigate('showcase', '/')}
+                      onNavigateCek={() => handleNavigate('cek', '/cek')}
+                      onNavigateMateri={() => handleNavigate('materi', '/materi')}
+                    />
+                  }
+                />
+              ))}
+
+              {/* Materi Pembelajaran (Kelas 7 & 8) — termasuk Laboratorium Excel */}
+              {['/materi', '/modul', '/materi-pembelajaran', '/excel', '/lab-excel', '/laboratorium-excel'].map(
+                (p) => (
+                  <Route
+                    key={p}
+                    path={p}
+                    element={
+                      <MateriView
+                        onNavigateHome={() => handleNavigate('showcase', '/')}
+                        onNavigateCek={() => handleNavigate('cek', '/cek')}
+                        onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
+                        onNavigateKuis={() => handleNavigate('kuis', '/kuis')}
+                      />
+                    }
+                  />
+                )
+              )}
+
+              {['/kuis', '/quiz', '/ujian'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <StudentQuizView
+                      initialPin={quizLaunchParams.pin}
+                      initialClassName={quizLaunchParams.className}
+                      initialAttendanceNo={quizLaunchParams.attendanceNo}
+                      onNavigateHome={() => handleNavigate('showcase', '/')}
+                      onNavigateCek={(gl) =>
+                        handleNavigate(gl === '7' ? 'kelas7' : 'cek', gl === '7' ? '/kelas7' : '/cek')
+                      }
+                    />
+                  }
+                />
+              ))}
+
+              {['/pengganti', '/tugas-pengganti', '/pengganti-kka2', '/kka2'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <SubstituteTaskView
+                      students={students}
+                      spreadsheetId={spreadsheetId}
+                      spreadsheetUrl={spreadsheetUrl}
+                      token={token}
+                      onLogin={handleGoogleLogin}
+                      onNavigateShowcase={() => handleNavigate('showcase', '/')}
+                      onNavigateCek={() => handleNavigate('cek', '/cek')}
+                      onNotifySubmission={(sName, cName, aNo) => {
+                        triggerNewTaskAlert(
+                          'Tugas Pengganti Masuk!',
+                          `Siswa ${sName} (${cName} - Absen ${aNo}) telah mengumpulkan link video tugas pengganti KKA 2.`
+                        );
+                      }}
+                    />
+                  }
+                />
+              ))}
+
+              <Route
+                path="/master"
+                element={
+                  <MasterDataView
+                    students={students}
+                    tasks={tasks}
+                    notifications={notifications}
+                    spreadsheetUrl={spreadsheetUrl}
+                    spreadsheetId={spreadsheetId}
+                    isSyncing={isSyncing}
+                    lastSyncedAt={lastSyncedAt}
+                    onManualSync={handleManualSync}
+                    onQuickAddStudent={handleAddStudent}
+                    onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
+                    onClearNotifications={handleClearAllNotifs}
+                    onNavigateTab={(tab) => handleNavigate(tab)}
+                    sessionInfo={sessionInfo}
+                    masterOpenSeconds={masterOpenSeconds}
+                    isLoggingIn={isLoggingIn}
+                    onRefreshSession={handleGoogleLogin}
+                    onLogout={handleGoogleLogout}
+                    userEmail={user?.email}
+                  />
+                }
               />
-            )}
 
-            {activeTab === 'grades' && (
-              <GradeMappingView
-                spreadsheetId={spreadsheetId}
-                spreadsheetUrl={spreadsheetUrl}
-                token={token}
-                onLogin={handleGoogleLogin}
-                onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
+              {['/master/tasks', '/tasks'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <TaskListView
+                      tasks={tasks}
+                      students={students}
+                      onUpdateTask={handleUpdateTask}
+                      onDeleteTask={handleDeleteTask}
+                      onOpenSubmitModal={() => setIsSubmitModalOpen(true)}
+                      groupsList={groupsList}
+                      onSyncAllTasksToSheet={handleSyncAllTasksToSheet}
+                      isConnectedToSheet={!!token}
+                      onLogin={handleGoogleLogin}
+                    />
+                  }
+                />
+              ))}
+
+              {['/master/students', '/students'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <StudentManagerView
+                      students={students}
+                      onAddStudent={handleAddStudent}
+                      onUpdateStudent={handleUpdateStudent}
+                      onDeleteStudent={handleDeleteStudent}
+                      onSyncStudentsToSheet={handleSyncStudentsToSheet}
+                      isSyncing={isSyncing}
+                      isConnectedToSheet={!!token}
+                    />
+                  }
+                />
+              ))}
+
+              {['/master/grades', '/grades'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <GradeMappingView
+                      spreadsheetId={spreadsheetId}
+                      spreadsheetUrl={spreadsheetUrl}
+                      token={token}
+                      onLogin={handleGoogleLogin}
+                      onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
+                    />
+                  }
+                />
+              ))}
+
+              {['/master/calculator', '/calculator', '/kalkulator'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <AcademicCalculatorView
+                      spreadsheetId={spreadsheetId}
+                      spreadsheetUrl={spreadsheetUrl}
+                      token={token}
+                      onLogin={handleGoogleLogin}
+                      onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
+                    />
+                  }
+                />
+              ))}
+
+              <Route
+                path="/master/quiz"
+                element={
+                  <MasterQuizManagerView
+                    spreadsheetId={spreadsheetId}
+                    spreadsheetUrl={spreadsheetUrl}
+                    token={token}
+                    onLogin={handleGoogleLogin}
+                    onNavigateToStudentQuiz={(pin) => {
+                      setQuizLaunchParams({ pin });
+                      handleNavigate('kuis', '/kuis');
+                    }}
+                    onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
+                  />
+                }
               />
-            )}
-
-            {activeTab === 'calculator' && (
-              <AcademicCalculatorView
-                spreadsheetId={spreadsheetId}
-                spreadsheetUrl={spreadsheetUrl}
-                token={token}
-                onLogin={handleGoogleLogin}
-                onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
+              <Route
+                path="/master/kuis"
+                element={
+                  <MasterQuizManagerView
+                    spreadsheetId={spreadsheetId}
+                    spreadsheetUrl={spreadsheetUrl}
+                    token={token}
+                    onLogin={handleGoogleLogin}
+                    onNavigateToStudentQuiz={(pin) => {
+                      setQuizLaunchParams({ pin });
+                      handleNavigate('kuis', '/kuis');
+                    }}
+                    onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
+                  />
+                }
               />
-            )}
 
-            {activeTab === 'master_quiz' && (
-              <MasterQuizManagerView
-                spreadsheetId={spreadsheetId}
-                spreadsheetUrl={spreadsheetUrl}
-                token={token}
-                onLogin={handleGoogleLogin}
-                onNavigateToStudentQuiz={(pin) => {
-                  setQuizLaunchParams({ pin });
-                  handleNavigate('kuis', '/kuis');
-                }}
-                onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
+              {['/master/excel', '/master/lab-excel'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <ExcelLabMasterView
+                      spreadsheetUrl={spreadsheetUrl}
+                      onNavigateTab={(tab, path) => handleNavigate(tab, path)}
+                    />
+                  }
+                />
+              ))}
+
+              {['/master/substitute', '/master/pengganti', '/master/tugas-pengganti', '/substitute'].map(
+                (p) => (
+                  <Route
+                    key={p}
+                    path={p}
+                    element={
+                      <MasterSubstituteTaskView
+                        students={students}
+                        spreadsheetId={spreadsheetId}
+                        spreadsheetUrl={spreadsheetUrl}
+                        token={token}
+                        onLogin={handleGoogleLogin}
+                      />
+                    }
+                  />
+                )
+              )}
+
+              {['/master/spreadsheet', '/spreadsheet'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <SpreadsheetIframeView
+                      spreadsheetId={spreadsheetId}
+                      spreadsheetUrl={spreadsheetUrl}
+                      lastSyncedAt={lastSyncedAt}
+                      onManualSync={handleManualSync}
+                      isSyncing={isSyncing}
+                      onSyncAllTasksToSheet={handleSyncAllTasksToSheet}
+                      isConnectedToSheet={!!token}
+                      onLogin={handleGoogleLogin}
+                      tasksCount={tasks.length}
+                    />
+                  }
+                />
+              ))}
+
+              {/* Fallback: halaman tidak dikenal -> Showcase */}
+              <Route
+                path="*"
+                element={
+                  <ShowcaseView
+                    students={students}
+                    tasks={tasks}
+                    spreadsheetUrl={spreadsheetUrl}
+                  />
+                }
               />
-            )}
-
-            {activeTab === 'master_excel' && (
-              <ExcelLabMasterView
-                spreadsheetUrl={spreadsheetUrl}
-                onNavigateTab={(tab, path) => handleNavigate(tab, path)}
-              />
-            )}
-
-
-            {activeTab === 'substitute_tasks' && (
-              <MasterSubstituteTaskView
-                students={students}
-                spreadsheetId={spreadsheetId}
-                spreadsheetUrl={spreadsheetUrl}
-                token={token}
-                onLogin={handleGoogleLogin}
-              />
-            )}
-
-            {activeTab === 'spreadsheet' && (
-              <SpreadsheetIframeView
-                spreadsheetId={spreadsheetId}
-                spreadsheetUrl={spreadsheetUrl}
-                lastSyncedAt={lastSyncedAt}
-                onManualSync={handleManualSync}
-                isSyncing={isSyncing}
-                onSyncAllTasksToSheet={handleSyncAllTasksToSheet}
-                isConnectedToSheet={!!token}
-                onLogin={handleGoogleLogin}
-                tasksCount={tasks.length}
-              />
-            )}
+            </Routes>
           </div>
         </main>
       </div>

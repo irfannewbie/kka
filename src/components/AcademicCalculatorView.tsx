@@ -882,7 +882,7 @@ export const AcademicCalculatorView: React.FC<AcademicCalculatorViewProps> = ({
       const stdScore = standarData[attNo] ?? null;
 
       // Nilai utama untuk Format A (mengambil dari mode yang sedang aktif, atau fallback ke nilai sheet jika rincian PG/MJ/Uraian belum diisi)
-      let primaryScore: number | null = null;
+      let primaryScore: number | null;
       if (calcMode === 'MODE_A') primaryScore = modeARes.totalNilai ?? stdScore;
       else if (calcMode === 'MODE_B') primaryScore = modeBRes.nilaiAkhir;
       else primaryScore = stdScore;

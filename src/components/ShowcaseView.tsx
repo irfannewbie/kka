@@ -19,7 +19,6 @@ interface ShowcaseViewProps {
   students: Student[];
   tasks: TaskSubmission[];
   spreadsheetUrl: string;
-  onNavigate?: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' | 'materi', path?: string) => void;
 }
 
 
@@ -49,7 +48,6 @@ export const ShowcaseView: React.FC<ShowcaseViewProps> = ({
   students,
   tasks,
   spreadsheetUrl,
-  onNavigate,
 }) => {
 
   const [selectedClassFilter, setSelectedClassFilter] = useState<string>('Semua Kelas');

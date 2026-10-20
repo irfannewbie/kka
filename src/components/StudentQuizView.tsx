@@ -162,7 +162,9 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
 
   const currentStudent = useMemo(
     () =>
-      classStudents.find((s) => s.attendanceNo === selectedAttendanceNo) ||
+      // `attendanceNo` disimpan sebagai string di data siswa, sedangkan state
+      // ini bertipe number — dibandingkan secara numerik agar cocok.
+      classStudents.find((s) => Number(s.attendanceNo) === selectedAttendanceNo) ||
       classStudents[0] ||
       null,
     [classStudents, selectedAttendanceNo]
@@ -438,7 +440,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         quizTitle: activeQuiz.title,
         tokenPin: activeQuiz.tokenPin,
         className: selectedClass,
-        attendanceNo: currentStudent.attendanceNo,
+        attendanceNo: Number(currentStudent.attendanceNo ?? 0),
         studentName: currentStudent.name,
         nis: currentStudent.nis,
         subject: activeQuiz.subject,

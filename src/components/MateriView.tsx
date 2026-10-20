@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import type { LucideIcon } from 'lucide-react';
 import {
   FileSpreadsheet,
   BookOpen,
@@ -9,7 +10,6 @@ import {
   Layers,
   Sparkles,
   ChevronRight,
-  ArrowLeft,
   CheckCircle2,
   Terminal,
   ShieldCheck,
@@ -113,7 +113,20 @@ export const MateriView: React.FC<MateriViewProps> = ({
   };
 
   // Coding Tools Configurations
-  const CODING_TOOLS = {
+  const CODING_TOOLS: Record<
+    'blockly-code' | 'blockly-games' | 'scratch',
+    {
+      title: string;
+      subtitle: string;
+      url: string;
+      /** URL opsional untuk tombol "Buka Tab Baru" bila berbeda dari sumber iframe. */
+      openUrl?: string;
+      badge: string;
+      description: string;
+      icon: LucideIcon;
+      externalUrl?: string;
+    }
+  > = {
     'blockly-code': {
       title: 'Google Blockly Code Workspace',
       subtitle: 'Visual Block Coding → Export ke JavaScript, Python, Dart, PHP & XML',
@@ -131,11 +144,16 @@ export const MateriView: React.FC<MateriViewProps> = ({
       icon: Gamepad2,
     },
     'scratch': {
-      title: 'Scratch 3.0 Studio (Turbowarp Engine)',
+      title: 'Scratch 3.0 Studio (PenguinMod Editor)',
       subtitle: 'Pemrograman Blok Visual Animasi & Game Siswa',
-      url: 'https://turbowarp.org/editor?embed=true',
+      // TurboWarp menolak dimuat di dalam iframe ("Invalid TurboWarp Embed"),
+      // jadi editor di halaman ini memakai PenguinMod (mod Scratch 3.0 yang kompatibel).
+      url: 'https://studio.penguinmod.com/editor.html',
+      // TurboWarp tetap tersedia sebagai editor penuh, dibuka di tab baru.
+      openUrl: 'https://turbowarp.org/editor',
       badge: 'SCRATCH 3.0',
-      description: 'Workspace Scratch 3.0 berkecepatan tinggi yang dapat dijalankan langsung di browser sekolah tanpa memerlukan akun login. Mendukung sprite, audio, dan kanvas game.',
+      description:
+        'Workspace Scratch 3.0 yang langsung bisa dipakai di dalam halaman tanpa akun login (PenguinMod). Karena TurboWarp dan Scratch MIT tidak mengizinkan editor mereka disematkan di iframe, gunakan tombol "Buka Tab Baru" untuk membuka TurboWarp dengan performa maksimal.',
       externalUrl: 'https://scratch.mit.edu/create',
       icon: Puzzle,
     },
@@ -174,79 +192,63 @@ export const MateriView: React.FC<MateriViewProps> = ({
               Pusat materi pembelajaran resmi mata pelajaran Informatika serta Koding dan Kecerdasan Artifisial (KKA). Dilengkapi <strong>Laboratorium Excel</strong> untuk Kelas 7 dan <strong>Studio Praktik Algoritma Pemrograman (Blockly & Scratch)</strong> untuk Kelas 8.
             </p>
           </div>
-
-          {/* Quick Header External Actions */}
-          <div className="flex flex-wrap items-center gap-2 font-mono-code text-xs self-start lg:self-center shrink-0">
-            <button
-              type="button"
-              onClick={onNavigateHome}
-              className="px-3 py-1.5 bg-white hover:bg-slate-100 text-[#1a1a1a] font-bold border border-[#1a1a1a] transition-all cursor-pointer flex items-center gap-1.5 shadow-[2px_2px_0px_#1a1a1a]"
-            >
-              <ArrowLeft className="h-3.5 w-3.5" />
-              <span>Beranda Showcase</span>
-            </button>
-            {onNavigateCek && (
-              <button
-                type="button"
-                onClick={onNavigateCek}
-                className="px-3 py-1.5 bg-[#2e59e6] hover:bg-[#1f3fb3] text-white font-bold border border-[#1a1a1a] transition-all cursor-pointer flex items-center gap-1.5 shadow-[2px_2px_0px_#1a1a1a]"
-              >
-                <span>Cek Nilai Siswa</span>
-                <ChevronRight className="h-3.5 w-3.5" />
-              </button>
-            )}
-          </div>
         </div>
 
         {/* 2. DUAL GRADE SELECTOR TABS (KELAS 7 & KELAS 8) */}
         <div className="pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3 w-full sm:w-auto">
             <button
               type="button"
               onClick={() => handleSwitchGrade('7')}
-              className={`flex-1 sm:flex-initial px-5 py-3 font-mono-code text-sm font-bold border-2 transition-all cursor-pointer flex items-center justify-center gap-2.5 ${
+              className={`w-full sm:w-auto px-2 py-2.5 sm:px-5 sm:py-3 font-mono-code text-xs sm:text-sm font-bold border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 ${
                 selectedGrade === '7'
-                  ? 'bg-[#107c41] text-white border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a]'
-                  : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
+                  ? 'bg-[#107c41] text-white border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] sm:shadow-[4px_4px_0px_#1a1a1a]'
+                  : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300 hover:border-slate-400'
               }`}
             >
-              <FileSpreadsheet className="h-4 w-4 shrink-0" />
-              <span>MATERI KELAS 7</span>
+              <div className="flex items-center justify-center gap-1.5 shrink-0">
+                <FileSpreadsheet className="h-4 w-4 shrink-0" />
+                <span className="tracking-tight text-[11px] xs:text-xs sm:text-sm">MATERI KELAS 7</span>
+              </div>
               <span
-                className={`text-[10px] px-2 py-0.5 border font-mono-code font-bold ${
+                className={`text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 border font-mono-code font-bold text-center leading-none ${
                   selectedGrade === '7'
                     ? 'bg-white text-[#107c41] border-white'
                     : 'bg-emerald-100 text-emerald-800 border-emerald-300'
                 }`}
               >
-                LAB EXCEL & ANALISIS DATA
+                <span className="sm:hidden">LAB EXCEL</span>
+                <span className="hidden sm:inline">LAB EXCEL & ANALISIS DATA</span>
               </span>
             </button>
 
             <button
               type="button"
               onClick={() => handleSwitchGrade('8')}
-              className={`flex-1 sm:flex-initial px-5 py-3 font-mono-code text-sm font-bold border-2 transition-all cursor-pointer flex items-center justify-center gap-2.5 ${
+              className={`w-full sm:w-auto px-2 py-2.5 sm:px-5 sm:py-3 font-mono-code text-xs sm:text-sm font-bold border-2 transition-all cursor-pointer flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2.5 ${
                 selectedGrade === '8'
-                  ? 'bg-[#2e59e6] text-white border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a]'
-                  : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
+                  ? 'bg-[#2e59e6] text-white border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] sm:shadow-[4px_4px_0px_#1a1a1a]'
+                  : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300 hover:border-slate-400'
               }`}
             >
-              <Code2 className="h-4 w-4 shrink-0" />
-              <span>MATERI KELAS 8</span>
+              <div className="flex items-center justify-center gap-1.5 shrink-0">
+                <Code2 className="h-4 w-4 shrink-0" />
+                <span className="tracking-tight text-[11px] xs:text-xs sm:text-sm">MATERI KELAS 8</span>
+              </div>
               <span
-                className={`text-[10px] px-2 py-0.5 border font-mono-code font-bold ${
+                className={`text-[9px] sm:text-[10px] px-1.5 sm:px-2 py-0.5 border font-mono-code font-bold text-center leading-none ${
                   selectedGrade === '8'
                     ? 'bg-white text-[#2e59e6] border-white'
                     : 'bg-blue-100 text-blue-800 border-blue-300'
                 }`}
               >
-                4 BAB: AD, BK, AP (BLOCKLY/SCRATCH), HAK DIGITAL
+                <span className="sm:hidden">4 BAB (KKA)</span>
+                <span className="hidden sm:inline">4 BAB: AD, BK, AP (BLOCKLY/SCRATCH), HAK DIGITAL</span>
               </span>
             </button>
           </div>
 
-          <div className="font-mono-code text-[11px] text-slate-500 flex items-center gap-1.5 self-end sm:self-center">
+          <div className="font-mono-code text-[11px] text-slate-500 flex items-center justify-center sm:justify-start gap-1.5 self-center sm:self-center">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             <span>Rute Aktif: /materi?grade={selectedGrade}</span>
           </div>
@@ -260,19 +262,21 @@ export const MateriView: React.FC<MateriViewProps> = ({
         <div className="space-y-4">
           {/* Sub-tab Navigation for Kelas 7 */}
           <div className="bg-white border-2 border-[#1a1a1a] p-2 flex flex-wrap items-center justify-between gap-2 shadow-[2px_2px_0px_#1a1a1a]">
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5 w-full sm:w-auto">
               <button
                 type="button"
                 onClick={() => setKelas7SubTab('excel')}
-                className={`px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
+                className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center justify-between sm:justify-start gap-2 ${
                   kelas7SubTab === 'excel'
                     ? 'bg-[#107c41] text-white border-[#107c41] shadow-[2px_2px_0px_#1a1a1a]'
                     : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
                 }`}
               >
-                <FileSpreadsheet className="h-3.5 w-3.5" />
-                <span>LABORATORIUM EXCEL (PRAKTIK & TUGAS)</span>
-                <span className="text-[9px] px-1.5 py-0.5 bg-amber-400 text-amber-950 font-black">
+                <div className="flex items-center gap-2">
+                  <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
+                  <span>LABORATORIUM EXCEL (PRAKTIK & TUGAS)</span>
+                </div>
+                <span className="text-[9px] px-1.5 py-0.5 bg-amber-400 text-amber-950 font-black shrink-0">
                   UTAMA
                 </span>
               </button>
@@ -280,26 +284,26 @@ export const MateriView: React.FC<MateriViewProps> = ({
               <button
                 type="button"
                 onClick={() => setKelas7SubTab('guide')}
-                className={`px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
+                className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
                   kelas7SubTab === 'guide'
                     ? 'bg-[#2e59e6] text-white border-[#2e59e6] shadow-[2px_2px_0px_#1a1a1a]'
                     : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
                 }`}
               >
-                <Calculator className="h-3.5 w-3.5" />
+                <Calculator className="h-3.5 w-3.5 shrink-0" />
                 <span>PANDUAN LENGKAP RUMUS & FUNGSI</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => setKelas7SubTab('modul')}
-                className={`px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
+                className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
                   kelas7SubTab === 'modul'
                     ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
                     : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
                 }`}
               >
-                <Layers className="h-3.5 w-3.5" />
+                <Layers className="h-3.5 w-3.5 shrink-0" />
                 <span>MODUL TEORI KELAS 7 (BK, TIK, SK, JKI, AD)</span>
               </button>
             </div>
@@ -341,7 +345,7 @@ export const MateriView: React.FC<MateriViewProps> = ({
                   <span>Coba di Laboratorium Excel &rarr;</span>
                 </button>
               </div>
-              <ExcelFormulaGuideView onOpenPracticeSheet={() => setKelas7SubTab('excel')} />
+              <ExcelFormulaGuideView onTryFormulaInPlayground={() => setKelas7SubTab('excel')} />
             </div>
           )}
 
@@ -735,7 +739,7 @@ export const MateriView: React.FC<MateriViewProps> = ({
                     </button>
 
                     <a
-                      href={currentTool.url}
+                      href={currentTool.openUrl ?? currentTool.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#2e59e6] text-white font-bold border border-[#1a1a1a] transition-all flex items-center gap-1.5 shadow-[2px_2px_0px_#1a1a1a]"

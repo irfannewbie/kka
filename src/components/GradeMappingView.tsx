@@ -181,7 +181,7 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
       }
 
       // Pattern 2: Two tokens separated by any whitespace or comma (e.g. "Absen 1 85" or "1 85")
-      const tokens = line.split(/[\s,;=:\-]+/).filter(Boolean);
+      const tokens = line.split(/[\s,;=:-]+/).filter(Boolean);
       if (tokens.length >= 2) {
         const firstNum = parseInt(tokens[0].replace(/\D/g, ''), 10);
         const lastNum = parseFloat(tokens[tokens.length - 1].replace(',', '.'));
@@ -352,9 +352,13 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
     let totalScore = 0;
     let gradedCount = 0;
     let maxScore = -1;
-    let maxStudent: Student | null = null;
     let minScore = 101;
-    let minStudent: Student | null = null;
+    // Disimpan sebagai properti objek (bukan variabel `let`) agar tipe yang
+    // di-infer useMemo tidak menyempit menjadi `null`/`never` oleh TypeScript.
+    const extrema: { maxStudent: Student | null; minStudent: Student | null } = {
+      maxStudent: null,
+      minStudent: null,
+    };
     let tuntasCount = 0;
     let remidiCount = 0;
     let pendingCount = 0;
@@ -378,11 +382,11 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
 
         if (score > maxScore) {
           maxScore = score;
-          maxStudent = student;
+          extrema.maxStudent = student;
         }
         if (score < minScore) {
           minScore = score;
-          minStudent = student;
+          extrema.minStudent = student;
         }
 
         if (score >= kkm) {
@@ -412,9 +416,9 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
       remidiCount,
       average,
       maxScore: maxScore >= 0 ? maxScore : null,
-      maxStudent,
+      maxStudent: extrema.maxStudent,
       minScore: minScore <= 100 ? minScore : null,
-      minStudent,
+      minStudent: extrema.minStudent,
       tuntasPercent,
       remidiPercent,
       pendingPercent,
@@ -546,7 +550,7 @@ export const GradeMappingView: React.FC<GradeMappingViewProps> = ({
         return parseInt(a.attendanceNo || '0', 10) - parseInt(b.attendanceNo || '0', 10);
       });
 
-      const worksheetData = [
+      const worksheetData: (string | number)[][] = [
         ['SMP NEGERI 1 WEDI - DAFTAR REKAPITULASI & PEMETAAN NILAI SISWA'],
         [`Kelas: ${selectedClass} | Aspek/Tugas: ${taskTitle} | Tanggal: ${assessmentDate} | KKM: ${kkm}`],
         [`Statistik: Rata-Rata: ${stats.average} | Tuntas: ${stats.tuntasCount} (${stats.tuntasPercent}%) | Remidi: ${stats.remidiCount} (${stats.remidiPercent}%) | Pending: ${stats.pendingCount}`],

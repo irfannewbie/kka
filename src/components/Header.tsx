@@ -11,11 +11,13 @@ import {
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { ADMIN_EMAILS, SessionTimerInfo, formatDurationMMSS } from '../services/firebaseAuth';
+import { TabId } from '../routes/navigation';
 
 interface HeaderProps {
-  activeTab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' | 'materi';
-  onNavigate: (tab: 'showcase' | 'master' | 'tasks' | 'students' | 'grades' | 'calculator' | 'spreadsheet' | 'cek' | 'kelas7' | 'pengganti' | 'substitute_tasks' | 'kuis' | 'master_quiz' | 'excel' | 'master_excel' | 'materi', path?: string) => void;
+  activeTab: TabId;
+  onNavigate: (tab: TabId, path?: string) => void;
   user: User | null;
+
   token: string | null;
   onLogin: () => void;
   onLogout: () => void;
@@ -138,6 +140,7 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
       </div>
+
 
       {/* Top Right Navigation Anchor */}
       <div className="flex items-center space-x-2 sm:space-x-3 shrink-0">
