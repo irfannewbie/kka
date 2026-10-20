@@ -22,7 +22,7 @@ import { Student, TaskSubmission, AppNotification, SubstituteTaskSubmission } fr
 import { loadSubstituteTaskSubmissions } from '../services/sheetsService';
 import { SessionTimerInfo } from '../services/firebaseAuth';
 import { SessionCountdownPanel } from './SessionCountdownPanel';
-import { TabId } from '../routes/navigation';
+import { TabId } from '../types';
 
 interface MasterDataViewProps {
   students: Student[];

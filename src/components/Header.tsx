@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { ADMIN_EMAILS, SessionTimerInfo, formatDurationMMSS } from '../services/firebaseAuth';
-import { TabId } from '../routes/navigation';
+import { TabId } from '../types';
 
 interface HeaderProps {
   activeTab: TabId;

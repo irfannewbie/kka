@@ -55,8 +55,91 @@ import {
   Bell,
   X,
 } from 'lucide-react';
-import { Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { TabId, getTabFromPath, isPublicTab, resolveTabPath } from './routes/navigation';
+import { useLocation, useNavigate, Routes, Route } from 'react-router-dom';
+import { TabId } from './types';
+
+// Tab yang ditampilkan tanpa sidebar master (halaman publik / portal siswa)
+export const PUBLIC_TABS: TabId[] = ['showcase', 'cek', 'kelas7', 'pengganti', 'kuis', 'excel', 'materi'];
+
+export function isPublicTab(tab: TabId): boolean {
+  return PUBLIC_TABS.includes(tab);
+}
+
+// Jalur URL kanonik untuk setiap tab
+export const TAB_PATHS: Record<TabId, string> = {
+  showcase: '/',
+  master: '/master',
+  tasks: '/master/tasks',
+  students: '/master/students',
+  grades: '/master/grades',
+  calculator: '/master/calculator',
+  spreadsheet: '/master/spreadsheet',
+  cek: '/cek',
+  kelas7: '/kelas7',
+  pengganti: '/pengganti',
+  substitute_tasks: '/master/substitute',
+  kuis: '/kuis',
+  master_quiz: '/master/quiz',
+  excel: '/materi',
+  master_excel: '/master/excel',
+  materi: '/materi',
+};
+
+export const PATH_ALIASES: Array<{ path: string; tab: TabId }> = [
+  { path: '/materi', tab: 'materi' },
+  { path: '/modul', tab: 'materi' },
+  { path: '/materi-pembelajaran', tab: 'materi' },
+  { path: '/excel', tab: 'materi' },
+  { path: '/lab-excel', tab: 'materi' },
+  { path: '/laboratorium-excel', tab: 'materi' },
+  { path: '/master/excel', tab: 'master_excel' },
+  { path: '/master/lab-excel', tab: 'master_excel' },
+  { path: '/kuis', tab: 'kuis' },
+  { path: '/quiz', tab: 'kuis' },
+  { path: '/ujian', tab: 'kuis' },
+  { path: '/master/quiz', tab: 'master_quiz' },
+  { path: '/master/kuis', tab: 'master_quiz' },
+  { path: '/kelas7', tab: 'kelas7' },
+  { path: '/kelas-7', tab: 'kelas7' },
+  { path: '/cek-kelas7', tab: 'kelas7' },
+  { path: '/cek7', tab: 'kelas7' },
+  { path: '/cek', tab: 'cek' },
+  { path: '/check', tab: 'cek' },
+  { path: '/login-siswa', tab: 'cek' },
+  { path: '/pengganti', tab: 'pengganti' },
+  { path: '/tugas-pengganti', tab: 'pengganti' },
+  { path: '/pengganti-kka2', tab: 'pengganti' },
+  { path: '/kka2', tab: 'pengganti' },
+  { path: '/master', tab: 'master' },
+  { path: '/master/students', tab: 'students' },
+  { path: '/students', tab: 'students' },
+  { path: '/master/grades', tab: 'grades' },
+  { path: '/grades', tab: 'grades' },
+  { path: '/master/calculator', tab: 'calculator' },
+  { path: '/calculator', tab: 'calculator' },
+  { path: '/kalkulator', tab: 'calculator' },
+  { path: '/master/tasks', tab: 'tasks' },
+  { path: '/tasks', tab: 'tasks' },
+  { path: '/master/substitute', tab: 'substitute_tasks' },
+  { path: '/master/pengganti', tab: 'substitute_tasks' },
+  { path: '/master/tugas-pengganti', tab: 'substitute_tasks' },
+  { path: '/substitute', tab: 'substitute_tasks' },
+  { path: '/master/spreadsheet', tab: 'spreadsheet' },
+  { path: '/spreadsheet', tab: 'spreadsheet' },
+];
+
+export function getTabFromPath(path: string): TabId {
+  const cleanPath = (path || '/').toLowerCase().replace(/\/$/, '') || '/';
+  const alias = PATH_ALIASES.find((a) => a.path === cleanPath);
+  if (alias) return alias.tab;
+  return 'showcase';
+}
+
+export function resolveTabPath(tab: TabId, targetPath?: string): string {
+  if (targetPath) return targetPath;
+  const effectiveTab = tab === 'excel' ? 'materi' : tab;
+  return TAB_PATHS[effectiveTab] || '/';
+}
 
 
 const STORAGE_KEYS = {
@@ -80,8 +163,6 @@ try {
 } catch (e) {
   // ignore
 }
-
-// Helper to determine route tab from pathname — dipindahkan ke src/routes/navigation.ts
 
 export default function App() {
   // Routing ditangani React Router: tab aktif diturunkan dari URL saat ini.
