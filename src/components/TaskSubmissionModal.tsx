@@ -188,9 +188,7 @@ export const TaskSubmissionModal: React.FC<TaskSubmissionModalProps> = ({
         studentNis: finalNis || '8400',
         attendanceNo: finalAttendance,
         taskType,
-        score: null,
-        feedback: '',
-        members:
+        groupMembers:
           taskType === 'kelompok'
             ? resolvedMembers.map((m) => ({ name: m.name, attendanceNo: m.attendanceNo }))
             : undefined,
