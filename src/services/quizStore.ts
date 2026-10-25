@@ -3,6 +3,7 @@ import {
   saveCalculatorDatasetEverywhere,
 } from './calculatorMasterStore';
 import { adminFetch } from '../config/adminToken';
+import type { QuizModeId } from './quizModes';
 
 export type QuizQuestionType =
   | 'pg'
@@ -92,6 +93,19 @@ export interface QuizAttemptSubmission {
   answersDetail: Record<string, any>;
   submittedAt: string;
   syncedToCalculator: boolean;
+  /** Mode sesi yang dipilih siswa (opsional agar data lama tetap kompatibel). */
+  mode?: QuizModeId;
+  teamId?: string;
+  teamName?: string;
+  masteryGoal?: number;
+  masteryRounds?: number;
+  accuracyFirstPass?: number;
+  accuracyFinal?: number;
+  masteryGoalAchieved?: boolean;
+  powerUpsUsed?: string[];
+  strikeShieldEnabled?: boolean;
+  strikeCount?: number;
+  shieldCount?: number;
 }
 
 export const DEFAULT_QUIZZES_SEED: InteractiveQuiz[] = [
@@ -682,8 +696,11 @@ export async function submitQuizAttemptToServer(
   const updated = [submission, ...filtered];
   saveLocalQuizSubmissions(updated);
 
-  // 2. Langsung masukkan ke Kalkulator Akademik (Local + Server /api/calculator-master)
-  applySubmissionToCalculatorMaster(submission);
+  // 2. Langsung masukkan ke Kalkulator Akademik (Local + Server /api/calculator-master).
+  // Mode Practice sengaja tidak masuk nilai akademik.
+  if (submission.mode !== 'practice') {
+    applySubmissionToCalculatorMaster(submission);
+  }
 
   // 3. Simpan ke /api/quizzes/submit di server
   try {

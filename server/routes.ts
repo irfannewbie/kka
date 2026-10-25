@@ -236,9 +236,11 @@ export function registerApiRoutes(app: Express): void {
     qdb.submissions = [submission, ...filtered];
     writeQuizDb(qdb);
 
-    // Otomatis simpan juga ke calculator-master-db.json
-    try {
-      const masterDb = readMasterDb();
+    // Otomatis simpan juga ke calculator-master-db.json.
+    // Mode Practice hanya untuk latihan, jadi tidak boleh mengubah nilai akademik.
+    if (raw.mode !== 'practice') {
+      try {
+        const masterDb = readMasterDb();
       const shortKey = getDatasetShortKey(
         submission.className,
         submission.subject || 'Informatika',
@@ -287,8 +289,9 @@ export function registerApiRoutes(app: Express): void {
       existing.updatedAt = new Date().toLocaleTimeString('id-ID');
       masterDb[shortKey] = existing;
       writeMasterDb(masterDb);
-    } catch (err) {
-      console.warn('Auto-sync quiz submission to masterDb warning:', err);
+      } catch (err) {
+        console.warn('Auto-sync quiz submission to masterDb warning:', err);
+      }
     }
 
     res.json({ success: true, submissions: qdb.submissions });

@@ -7,16 +7,22 @@ import {
   Trophy,
   ArrowUp,
   ArrowDown,
-  Sparkles,
-  Code2,
   AlertTriangle,
   ArrowLeft,
-  Check,
-  Send,
   BookOpen,
   Zap,
-  Award,
-  RefreshCw,
+  Users,
+  ClipboardCheck,
+  Mountain,
+  Presentation,
+  Printer,
+  Target,
+  Shield,
+  Scissors,
+  Snowflake,
+  Timer,
+  Flame,
+  Info,
 } from 'lucide-react';
 import {
   InteractiveQuiz,
@@ -25,6 +31,18 @@ import {
   fetchQuizzesAndSubmissionsFromServer,
   submitQuizAttemptToServer,
 } from '../services/quizStore';
+import {
+  POWER_UP_DEFINITIONS,
+  QUIZ_MODE_GROUPS,
+  QUIZ_TEAMS,
+  QuizModeId,
+  calculateAccuracy,
+  getMasteryStage,
+  getQuizMode,
+  getTeamForAttendance,
+  type PowerUpId,
+} from '../services/quizModes';
+import { PaperQuizSheet } from './quiz/PaperQuizSheet';
 import {
   ALL_CLASSES,
   GRADE_7_CLASSES,
@@ -46,6 +64,35 @@ interface ShuffledOptionItem {
   originalIndex: number;
   text: string;
 }
+
+interface MasteryGateState {
+  wrongQuestionIds: string[];
+  firstPassCorrect: number;
+  total: number;
+  firstPassAccuracy: number;
+  goal: number;
+}
+
+interface PracticeFeedback {
+  correct: boolean;
+  detail: string;
+  correctAnswer?: string;
+}
+
+const MODE_ICONS: Record<
+  ReturnType<typeof getQuizMode>['icon'],
+  React.ComponentType<{ className?: string }>
+> = {
+  play: Play,
+  users: Users,
+  clipboard: ClipboardCheck,
+  mountain: Mountain,
+  presentation: Presentation,
+  printer: Printer,
+  book: BookOpen,
+  target: Target,
+  shield: Shield,
+};
 
 // Deterministic simple seeded shuffle so options don't re-shuffle on every re-render
 function seededShuffle<T>(arr: T[], seedStr: string): T[] {
@@ -118,6 +165,45 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
 
   const submitLockRef = useRef<boolean>(false);
 
+  // Mode sesi & fitur gamifikasi
+  const [selectedMode, setSelectedMode] = useState<QuizModeId>('classic');
+  const [activeMode, setActiveMode] = useState<QuizModeId>('classic');
+  const [strikeShieldEnabled, setStrikeShieldEnabled] = useState<boolean>(false);
+  const [paperQuiz, setPaperQuiz] = useState<InteractiveQuiz | null>(null);
+  const [questionRemainingSeconds, setQuestionRemainingSeconds] = useState<number>(30);
+  const [powerUpsUsed, setPowerUpsUsed] = useState<PowerUpId[]>([]);
+  const [hiddenOptionIndexes, setHiddenOptionIndexes] = useState<
+    Record<string, number[]>
+  >({});
+  const [strikeShieldCharges, setStrikeShieldCharges] = useState<number>(0);
+  const [strikeCount, setStrikeCount] = useState<number>(0);
+  const [shieldCount, setShieldCount] = useState<number>(0);
+  const [rivalScore, setRivalScore] = useState<number>(1000);
+  const [awardedQuestionIds, setAwardedQuestionIds] = useState<string[]>([]);
+  const [practiceFeedback, setPracticeFeedback] = useState<
+    Record<string, PracticeFeedback>
+  >({});
+
+  // Mastery Peak / Accuracy gate
+  const [masteryGate, setMasteryGate] = useState<MasteryGateState | null>(null);
+  const [masteryRound, setMasteryRound] = useState<number>(1);
+  const [masteryQuestionIds, setMasteryQuestionIds] = useState<string[] | null>(null);
+  const [masteryFirstPassCorrect, setMasteryFirstPassCorrect] = useState<number>(0);
+  const [masteryFirstPassTotal, setMasteryFirstPassTotal] = useState<number>(0);
+
+  // Testing mode review
+  const [testingReviewOpen, setTestingReviewOpen] = useState<boolean>(false);
+
+  const instructorAdvanceRef = useRef<() => void>(() => {});
+  const finishRef = useRef<
+    (
+      byTimeout?: boolean,
+      byTabLimit?: boolean,
+      overrideTabCount?: number,
+      skipTestingReview?: boolean
+    ) => void
+  >(() => {});
+
   // Load quizzes and submissions from server
   useEffect(() => {
     let mounted = true;
@@ -186,11 +272,93 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
   const preparedQuestions = useMemo<QuizQuestion[]>(() => {
     if (!activeQuiz || !currentStudent) return [];
     const seedKey = `${activeQuiz.id}-${selectedClass}-${currentStudent.attendanceNo}`;
-    if (activeQuiz.shuffleQuestions) {
-      return seededShuffle(activeQuiz.questions, seedKey);
+    const baseQuestions = masteryQuestionIds
+      ? (masteryQuestionIds
+          .map((id) => activeQuiz.questions.find((q) => q.id === id))
+          .filter(Boolean) as QuizQuestion[])
+      : activeQuiz.questions;
+    // Putaran ulang mastery mempertahankan urutan soal yang salah.
+    if (activeQuiz.shuffleQuestions && !masteryQuestionIds) {
+      return seededShuffle(baseQuestions, seedKey);
     }
-    return activeQuiz.questions;
-  }, [activeQuiz, currentStudent, selectedClass]);
+    return baseQuestions;
+  }, [activeQuiz, currentStudent, selectedClass, masteryQuestionIds]);
+
+  const currentMode = getQuizMode(activeMode);
+  const selectedModeDef = getQuizMode(selectedMode);
+  const myTeam = useMemo(
+    () => getTeamForAttendance(Number(currentStudent?.attendanceNo ?? 1)),
+    [currentStudent]
+  );
+
+  /**
+   * Evaluasi satu soal dari jawaban saat ini. Dipakai untuk gerbang Mastery
+   * Peak, umpan balik Practice, dan pengecekan Strike & Shield.
+   */
+  const evaluateQuestion = (q: QuizQuestion): PracticeFeedback => {
+    if (q.type === 'pg' || q.type === 'code_output') {
+      const chosen = pgAnswers[q.id];
+      const correctAnswer = q.options?.[q.correctOptionIndex ?? 0] || '';
+      const correct = chosen !== undefined && chosen === (q.correctOptionIndex ?? 0);
+      return {
+        correct,
+        detail: correct
+          ? 'Jawaban benar.'
+          : chosen === undefined
+          ? 'Belum dijawab.'
+          : `Jawaban yang benar: ${correctAnswer}`,
+        correctAnswer,
+      };
+    }
+
+    if (q.type === 'matching') {
+      const pairs = q.matchingPairs || [];
+      const studentMap = matchingAnswers[q.id] || {};
+      const correctPairs = pairs.filter((p) => studentMap[p.id] === p.rightText).length;
+      const correct = pairs.length > 0 && correctPairs === pairs.length;
+      return {
+        correct,
+        detail: `${correctPairs} dari ${pairs.length} pasangan benar.`,
+      };
+    }
+
+    if (q.type === 'parsons') {
+      const targetBlocks = q.parsonsBlocks || [];
+      const studentBlocks = parsonsAnswers[q.id] || [];
+      let correctPositions = 0;
+      targetBlocks.forEach((blk, idx) => {
+        if (studentBlocks[idx] === blk) correctPositions += 1;
+      });
+      return {
+        correct: targetBlocks.length > 0 && correctPositions === targetBlocks.length,
+        detail: `${correctPositions} dari ${targetBlocks.length} posisi blok benar.`,
+      };
+    }
+
+    if (q.type === 'essay') {
+      const maxPts = q.maxPoints || 10;
+      const ansText = (essayAnswers[q.id] || '').trim().toLowerCase();
+      if (ansText.length < 5) {
+        return { correct: false, detail: 'Jawaban uraian belum diisi.' };
+      }
+      const kws = q.expectedKeywords || [];
+      if (kws.length === 0) {
+        return { correct: true, detail: 'Jawaban uraian diterima.' };
+      }
+      const matched = kws.filter((kw) => ansText.includes(kw.toLowerCase())).length;
+      const kwRatio = Math.min(1, matched / Math.max(1, Math.min(3, kws.length)));
+      const lengthBonus = ansText.length >= 25 ? 0.35 : 0.15;
+      const ratio = Math.min(1, kwRatio * 0.75 + lengthBonus);
+      return {
+        correct: ratio >= 0.6,
+        detail: `Kecocokan kata kunci: ${matched}/${kws.length}. Skor perkiraan ${Math.round(
+          ratio * maxPts
+        )}/${maxPts}.`,
+      };
+    }
+
+    return { correct: false, detail: 'Jenis soal tidak dikenali.' };
+  };
 
   // Start Quiz Handler
   const handleStartQuiz = (targetQuiz?: InteractiveQuiz) => {
@@ -217,7 +385,17 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
       return;
     }
 
-    // Check if student already submitted this quiz
+    // Mode kertas langsung membuka lembar cetak, tidak membuat attempt digital.
+    if (selectedMode === 'paper') {
+      setActiveQuiz(foundQuiz);
+      setPaperQuiz(foundQuiz);
+      setCompletedSubmission(null);
+      setIsExamRunning(false);
+      return;
+    }
+
+    // Check if student already submitted this quiz.
+    // Practice tetap boleh diulang karena tidak masuk nilai akademik.
     const existingAttempt = submissions.find(
       (s) =>
         s.quizId === foundQuiz.id &&
@@ -225,8 +403,9 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         Number(s.attendanceNo) === Number(currentStudent.attendanceNo)
     );
 
-    if (existingAttempt) {
+    if (existingAttempt && selectedMode !== 'practice') {
       setActiveQuiz(foundQuiz);
+      setActiveMode(existingAttempt.mode || selectedMode);
       setCompletedSubmission(existingAttempt);
       setIsExamRunning(false);
       return;
@@ -249,6 +428,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     });
 
     submitLockRef.current = false;
+    setActiveMode(selectedMode);
     setPgAnswers({});
     setMatchingAnswers({});
     setParsonsAnswers(initParsons);
@@ -257,22 +437,44 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     setTabWarningBanner(null);
     setCurrentQuestionIdx(0);
     setCompletedSubmission(null);
+    setPaperQuiz(null);
     setActiveQuiz(foundQuiz);
-    setRemainingSeconds((foundQuiz.durationMinutes || 20) * 60);
+    setPowerUpsUsed([]);
+    setHiddenOptionIndexes({});
+    setStrikeShieldCharges(0);
+    setStrikeCount(0);
+    setShieldCount(0);
+    setRivalScore(1000);
+    setAwardedQuestionIds([]);
+    setPracticeFeedback({});
+    setMasteryGate(null);
+    setMasteryRound(1);
+    setMasteryQuestionIds(null);
+    setMasteryFirstPassCorrect(0);
+    setMasteryFirstPassTotal(0);
+    setTestingReviewOpen(false);
+    setQuestionRemainingSeconds(getQuizMode(selectedMode).autoAdvanceSeconds || 30);
+    setRemainingSeconds(
+      getQuizMode(selectedMode).usesOverallTimer
+        ? (foundQuiz.durationMinutes || 20) * 60
+        : 0
+    );
     setElapsedSeconds(0);
     setIsExamRunning(true);
   };
 
-  // 1-Second Exam Countdown Timer
+  // 1-Second Exam Countdown Timer (hanya mode yang memakai timer keseluruhan)
   useEffect(() => {
     if (!isExamRunning || !activeQuiz) return;
+    const usesTimer = getQuizMode(activeMode).usesOverallTimer;
 
     const timer = setInterval(() => {
       setElapsedSeconds((prev) => prev + 1);
+      if (!usesTimer) return;
       setRemainingSeconds((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleFinishAndSubmit(true, false);
+          finishRef.current(true, false);
           return 0;
         }
         return prev - 1;
@@ -280,7 +482,22 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [isExamRunning, activeQuiz]);
+  }, [isExamRunning, activeQuiz, activeMode]);
+
+  // Instructor-Paced: hitung mundur per soal, lalu auto-lanjut.
+  useEffect(() => {
+    if (!isExamRunning || !activeQuiz || activeMode !== 'instructor') return;
+    const timer = setInterval(() => {
+      setQuestionRemainingSeconds((prev) => {
+        if (prev <= 1) {
+          instructorAdvanceRef.current();
+          return 30;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isExamRunning, activeQuiz, activeMode, currentQuestionIdx]);
 
   // Anti-Cheat: Detect Tab Switch / Window Blur while exam is running
   useEffect(() => {
@@ -296,7 +513,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
               `Batas pindah tab (${maxAllowed}x) terlampaui! Jawaban Anda dikirimkan secara otomatis.`
             );
             setTimeout(() => {
-              handleFinishAndSubmit(false, true, nextCount);
+              finishRef.current(false, true, nextCount);
             }, 400);
           } else {
             setTabWarningBanner(
@@ -314,15 +531,34 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     };
   }, [isExamRunning, activeQuiz]);
 
-  // Grade & Submit Quiz Attempt
-  const handleFinishAndSubmit = async (
-    byTimeout = false,
-    byTabLimit = false,
-    overrideTabCount?: number
-  ) => {
+  const evaluateCurrentRound = () => {
+    const evaluated = preparedQuestions.map((q) => ({
+      question: q,
+      result: evaluateQuestion(q),
+    }));
+    const roundCorrect = evaluated.filter((item) => item.result.correct).length;
+    return {
+      roundCorrect,
+      roundTotal: evaluated.length,
+      wrongQuestionIds: evaluated
+        .filter((item) => !item.result.correct)
+        .map((item) => item.question.id),
+    };
+  };
+
+  const finalizeSubmission = async (meta: {
+    accuracyFirstPass?: number;
+    accuracyFinal?: number;
+    masteryRounds?: number;
+    masteryGoalAchieved?: boolean;
+    byTimeout?: boolean;
+    byTabLimit?: boolean;
+    overrideTabCount?: number;
+  }) => {
     if (submitLockRef.current || !activeQuiz || !currentStudent) return;
     submitLockRef.current = true;
     setIsSubmitting(true);
+    setTestingReviewOpen(false);
 
     try {
       let rawPGCorrect = 0;
@@ -390,7 +626,6 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
               rawEssayAndLabPoints += maxPts;
             } else {
               const matchedCount = kws.filter((kw) => ansText.includes(kw.toLowerCase())).length;
-              // Base points for writing a thoughtful sentence + keyword accuracy
               const kwRatio = Math.min(1, matchedCount / Math.max(1, Math.min(3, kws.length)));
               const lengthBonus = ansText.length >= 25 ? 0.35 : 0.15;
               const finalRatio = Math.min(1, kwRatio * 0.75 + lengthBonus);
@@ -400,7 +635,6 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         }
       });
 
-      // Convert to Calculator Academic Scale (Benar PG max 25, Benar MJ max 10, Skor Uraian max 25)
       let calcBenarPG = rawPGCorrect;
       let calcBenarMJ = rawMatchingCorrect;
       let calcSkorUraian = Math.min(25, rawEssayAndLabPoints);
@@ -422,17 +656,24 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
       const mjPoints = Math.min(25, calcBenarMJ * 2.5);
       const finalScore = Math.min(100, Math.round(pgPoints + mjPoints + calcSkorUraian));
 
-      // Calculate Live Arena Speed & Streak Bonus Points
+      const modeDef = getQuizMode(activeMode);
       const totalAllowedSec = (activeQuiz.durationMinutes || 20) * 60;
       const speedRatio = Math.max(
         0,
         (totalAllowedSec - elapsedSeconds) / Math.max(1, totalAllowedSec)
       );
       const speedBonusPoints =
-        finalScore >= 50
+        modeDef.formalAssessment || activeMode === 'practice' || activeMode === 'instructor'
+          ? 0
+          : finalScore >= 50
           ? Math.round(speedRatio * 1200) + maxStreak * 250
           : maxStreak * 100;
-      const arenaTotalPoints = finalScore * 100 + speedBonusPoints;
+      const arenaTotalPoints =
+        finalScore * 100 +
+        speedBonusPoints +
+        strikeCount * 150 +
+        shieldCount * 100 +
+        (meta.masteryGoalAchieved ? 500 : 0);
 
       const submissionPayload: QuizAttemptSubmission = {
         id: `qsub-${Date.now()}-${currentStudent.attendanceNo}`,
@@ -460,9 +701,9 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         arenaTotalPoints,
         maxStreak,
         durationSpentSeconds: elapsedSeconds,
-        tabSwitchCount: overrideTabCount ?? tabSwitchCount,
-        autoSubmittedByTimeout: byTimeout,
-        autoSubmittedByTabLimit: byTabLimit,
+        tabSwitchCount: meta.overrideTabCount ?? tabSwitchCount,
+        autoSubmittedByTimeout: meta.byTimeout ?? false,
+        autoSubmittedByTabLimit: meta.byTabLimit ?? false,
         answersDetail: {
           pgAnswers,
           matchingAnswers,
@@ -476,8 +717,28 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           hour: '2-digit',
           minute: '2-digit',
         }),
-        syncedToCalculator: true,
+        syncedToCalculator: activeMode !== 'practice',
+        mode: activeMode,
+        teamId: activeMode === 'team' ? myTeam.id : undefined,
+        teamName: activeMode === 'team' ? myTeam.name : undefined,
+        masteryGoal: modeDef.targetAccuracy,
+        masteryRounds: meta.masteryRounds,
+        accuracyFirstPass: meta.accuracyFirstPass,
+        accuracyFinal: meta.accuracyFinal,
+        masteryGoalAchieved: meta.masteryGoalAchieved,
+        powerUpsUsed,
+        strikeShieldEnabled,
+        strikeCount,
+        shieldCount,
       };
+
+      // Mode Practice tidak masuk server/Kalkulator Akademik.
+      if (activeMode === 'practice') {
+        setCompletedSubmission(submissionPayload);
+        setIsExamRunning(false);
+        playNotificationChime();
+        return;
+      }
 
       const res = await submitQuizAttemptToServer(submissionPayload);
       setSubmissions(res.submissions);
@@ -487,6 +748,256 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleFinishAndSubmit = async (
+    byTimeout = false,
+    byTabLimit = false,
+    overrideTabCount?: number,
+    skipTestingReview = false
+  ) => {
+    if (isSubmitting || !activeQuiz || !currentStudent) return;
+    const modeDef = getQuizMode(activeMode);
+
+    // Testing Mode: tinjau semua jawaban sebelum mengirim.
+    if (modeDef.id === 'testing' && !skipTestingReview && !testingReviewOpen) {
+      setTestingReviewOpen(true);
+      setIsExamRunning(false);
+      return;
+    }
+
+    const round = evaluateCurrentRound();
+    const goal = modeDef.targetAccuracy || 80;
+
+    if ((activeMode === 'mastery' || activeMode === 'accuracy') && masteryRound === 1) {
+      const firstPassAccuracy = calculateAccuracy(round.roundCorrect, round.roundTotal);
+      if (firstPassAccuracy < goal && round.wrongQuestionIds.length > 0) {
+        setMasteryFirstPassCorrect(round.roundCorrect);
+        setMasteryFirstPassTotal(round.roundTotal);
+        setMasteryGate({
+          wrongQuestionIds: round.wrongQuestionIds,
+          firstPassCorrect: round.roundCorrect,
+          total: round.roundTotal,
+          firstPassAccuracy,
+          goal,
+        });
+        setIsExamRunning(false);
+        return;
+      }
+      await finalizeSubmission({
+        accuracyFirstPass: firstPassAccuracy,
+        accuracyFinal: firstPassAccuracy,
+        masteryRounds: 1,
+        masteryGoalAchieved: firstPassAccuracy >= goal,
+        byTimeout,
+        byTabLimit,
+        overrideTabCount,
+      });
+      return;
+    }
+
+    const total = masteryRound > 1 ? masteryFirstPassTotal : round.roundTotal;
+    const firstPassCorrect =
+      masteryRound > 1 ? masteryFirstPassCorrect : round.roundCorrect;
+    const finalCorrect =
+      masteryRound > 1 ? masteryFirstPassCorrect + round.roundCorrect : round.roundCorrect;
+    const accuracyFinal = calculateAccuracy(finalCorrect, total);
+
+    await finalizeSubmission({
+      accuracyFirstPass: calculateAccuracy(firstPassCorrect, total),
+      accuracyFinal,
+      masteryRounds: masteryRound,
+      masteryGoalAchieved:
+        activeMode === 'mastery' || activeMode === 'accuracy'
+          ? accuracyFinal >= goal
+          : undefined,
+      byTimeout,
+      byTabLimit,
+      overrideTabCount,
+    });
+  };
+
+  // Sinkronkan callback ke ref agar timer tidak memanggil fungsi basi.
+  useEffect(() => {
+    finishRef.current = handleFinishAndSubmit;
+    instructorAdvanceRef.current = () => {
+      if (!isExamRunning || activeMode !== 'instructor') return;
+      if (currentQuestionIdx < preparedQuestions.length - 1) {
+        setSelectedLeftPairId(null);
+        setCurrentQuestionIdx((prev) => prev + 1);
+        setQuestionRemainingSeconds(30);
+      } else {
+        void handleFinishAndSubmit(false, false);
+      }
+    };
+  });
+
+  const handleRetryMastery = () => {
+    if (!masteryGate || !activeQuiz || !currentStudent) return;
+    const wrongIds = masteryGate.wrongQuestionIds;
+    setMasteryFirstPassCorrect(masteryGate.firstPassCorrect);
+    setMasteryFirstPassTotal(masteryGate.total);
+    setMasteryQuestionIds(wrongIds);
+    setMasteryRound(2);
+    setMasteryGate(null);
+    setCurrentQuestionIdx(0);
+    setSelectedLeftPairId(null);
+    setCompletedSubmission(null);
+    setTestingReviewOpen(false);
+
+    const seedBase = `${activeQuiz.id}-${currentStudent.attendanceNo}`;
+    setPgAnswers((prev) => {
+      const copy = { ...prev };
+      wrongIds.forEach((id) => delete copy[id]);
+      return copy;
+    });
+    setMatchingAnswers((prev) => {
+      const copy = { ...prev };
+      wrongIds.forEach((id) => delete copy[id]);
+      return copy;
+    });
+    setEssayAnswers((prev) => {
+      const copy = { ...prev };
+      wrongIds.forEach((id) => delete copy[id]);
+      return copy;
+    });
+    setParsonsAnswers((prev) => {
+      const copy = { ...prev };
+      wrongIds.forEach((id) => {
+        const q = activeQuiz.questions.find((item) => item.id === id);
+        if (q?.parsonsBlocks?.length) {
+          copy[id] = seededShuffle(
+            q.parsonsBlocks,
+            `${seedBase}-${q.id}-retry`
+          );
+        }
+      });
+      return copy;
+    });
+    setPracticeFeedback({});
+    setIsExamRunning(true);
+  };
+
+  const handleSkipMastery = () => {
+    if (!masteryGate) return;
+    const gate = masteryGate;
+    setMasteryGate(null);
+    setMasteryQuestionIds(null);
+    setMasteryRound(2);
+    setMasteryFirstPassCorrect(gate.firstPassCorrect);
+    setMasteryFirstPassTotal(gate.total);
+    void finalizeSubmission({
+      accuracyFirstPass: gate.firstPassAccuracy,
+      accuracyFinal: gate.firstPassAccuracy,
+      masteryRounds: 1,
+      masteryGoalAchieved: false,
+    });
+  };
+
+  const handleCheckPractice = () => {
+    const q = preparedQuestions[currentQuestionIdx];
+    if (!q) return;
+    setPracticeFeedback((prev) => ({ ...prev, [q.id]: evaluateQuestion(q) }));
+  };
+
+  const handleClearCurrentAnswer = () => {
+    const q = preparedQuestions[currentQuestionIdx];
+    if (!q || !activeQuiz || !currentStudent) return;
+    setPgAnswers((prev) => {
+      const copy = { ...prev };
+      delete copy[q.id];
+      return copy;
+    });
+    setMatchingAnswers((prev) => {
+      const copy = { ...prev };
+      delete copy[q.id];
+      return copy;
+    });
+    setEssayAnswers((prev) => {
+      const copy = { ...prev };
+      delete copy[q.id];
+      return copy;
+    });
+    setParsonsAnswers((prev) => {
+      const copy = { ...prev };
+      if (q.parsonsBlocks?.length) {
+        copy[q.id] = seededShuffle(
+          q.parsonsBlocks,
+          `${activeQuiz.id}-${q.id}-${currentStudent.attendanceNo}-retry`
+        );
+      }
+      return copy;
+    });
+    setPracticeFeedback((prev) => {
+      const copy = { ...prev };
+      delete copy[q.id];
+      return copy;
+    });
+    setSelectedLeftPairId(null);
+  };
+
+  const activatePowerUp = (id: PowerUpId) => {
+    if (!currentMode.powerUps || powerUpsUsed.includes(id)) return;
+    const q = preparedQuestions[currentQuestionIdx];
+    if (id === 'fifty') {
+      if (!q || (q.type !== 'pg' && q.type !== 'code_output') || !q.options) return;
+      const correct = q.correctOptionIndex ?? 0;
+      const wrongIndexes = q.options
+        .map((_, idx) => idx)
+        .filter((idx) => idx !== correct);
+      if (wrongIndexes.length < 2) return;
+      setHiddenOptionIndexes((prev) => ({
+        ...prev,
+        [q.id]: wrongIndexes.slice(0, 2),
+      }));
+    } else if (id === 'freeze') {
+      if (!currentMode.usesOverallTimer) return;
+      setRemainingSeconds((prev) => prev + 30);
+    } else if (id === 'shield') {
+      if (!strikeShieldEnabled) return;
+      setShieldCount((prev) => Math.min(3, prev + 1));
+    }
+    setPowerUpsUsed((prev) => [...prev, id]);
+  };
+
+  const handleStrike = () => {
+    if (!strikeShieldEnabled || strikeShieldCharges <= 0) return;
+    setStrikeShieldCharges((prev) => prev - 1);
+    setStrikeCount((prev) => prev + 1);
+    setRivalScore((prev) => Math.max(0, prev - 150));
+  };
+
+  const handleShield = () => {
+    if (!strikeShieldEnabled || strikeShieldCharges <= 0 || shieldCount >= 3) return;
+    setStrikeShieldCharges((prev) => prev - 1);
+    setShieldCount((prev) => Math.min(3, prev + 1));
+  };
+
+  const handleAwardStrikeCharge = (q: QuizQuestion) => {
+    if (!strikeShieldEnabled || activeMode !== 'classic') return;
+    if (awardedQuestionIds.includes(q.id)) return;
+    if (evaluateQuestion(q).correct) {
+      setAwardedQuestionIds((prev) => [...prev, q.id]);
+      setStrikeShieldCharges((prev) => prev + 1);
+    }
+  };
+
+  const handleNextQuestion = () => {
+    const q = preparedQuestions[currentQuestionIdx];
+    if (q) handleAwardStrikeCharge(q);
+    setSelectedLeftPairId(null);
+    if (currentQuestionIdx < preparedQuestions.length - 1) {
+      setCurrentQuestionIdx((prev) => prev + 1);
+      if (activeMode === 'instructor') setQuestionRemainingSeconds(30);
+    } else {
+      void handleFinishAndSubmit(false, false);
+    }
+  };
+
+  const handlePreviousQuestion = () => {
+    if (!currentMode.allowsBackNavigation) return;
+    setSelectedLeftPairId(null);
+    setCurrentQuestionIdx((prev) => Math.max(0, prev - 1));
   };
 
   // Current active question
@@ -519,6 +1030,226 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
       .sort((a, b) => b.arenaTotalPoints - a.arenaTotalPoints || b.finalScore - a.finalScore);
   }, [submissions, activeQuiz]);
 
+  // Klasemen tim untuk mode Team.
+  const currentTeamLeaderboard = useMemo(() => {
+    if (!activeQuiz) return [];
+    const map = new Map<
+      string,
+      { teamId: string; teamName: string; points: number; members: number; totalScore: number }
+    >();
+    submissions
+      .filter((s) => s.quizId === activeQuiz.id)
+      .forEach((s) => {
+        const team = getTeamForAttendance(Number(s.attendanceNo || 1));
+        const key = s.teamId || team.id;
+        const current =
+          map.get(key) || {
+            teamId: team.id,
+            teamName: s.teamName || team.name,
+            points: 0,
+            members: 0,
+            totalScore: 0,
+          };
+        current.points += Number(s.arenaTotalPoints || 0);
+        current.totalScore += Number(s.finalScore || 0);
+        current.members += 1;
+        map.set(key, current);
+      });
+    return Array.from(map.values()).sort((a, b) => b.points - a.points);
+  }, [submissions, activeQuiz]);
+
+  // =========================================================================
+  // VIEW 0A: PAPER MODE (LEMBAR CETAK, TANPA NILAI DIGITAL)
+  // =========================================================================
+  if (paperQuiz && currentStudent) {
+    return (
+      <PaperQuizSheet
+        quiz={paperQuiz}
+        className={selectedClass}
+        studentName={currentStudent.name}
+        attendanceNo={Number(currentStudent.attendanceNo ?? 1)}
+        onBack={() => setPaperQuiz(null)}
+      />
+    );
+  }
+
+  // =========================================================================
+  // VIEW 0B: MASTERY PEAK / ACCURACY GATE
+  // =========================================================================
+  if (masteryGate && activeQuiz && currentStudent) {
+    const gateMode = getQuizMode(activeMode);
+    const stage = getMasteryStage(masteryGate.firstPassAccuracy);
+    return (
+      <div className="space-y-5 pb-16 font-sans">
+        <div className="bg-[#1a1a1a] text-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#2e59e6] p-4 sm:p-6">
+          <div className="font-mono-code text-[10px] font-bold text-amber-300 uppercase tracking-wider">
+            {gateMode.name.toUpperCase()} · EVALUASI PUTARAN 1 · TIMER DIJEDA
+          </div>
+          <h2 className="font-serif-display italic font-bold text-2xl sm:text-3xl mt-1">
+            {stage.emoji} {stage.label}
+          </h2>
+          <p className="font-mono-code text-xs text-slate-300 mt-1">
+            {gateMode.id === 'mastery'
+              ? 'Naik ke puncak dengan mengulang soal yang belum tepat.'
+              : 'Kejar target akurasi sebelum jawaban dikirim.'}
+          </p>
+        </div>
+
+        <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] p-5 sm:p-7 space-y-4">
+          <div className="flex flex-wrap items-end justify-between gap-3 border-b-2 border-[#1a1a1a] pb-4">
+            <div>
+              <div className="font-mono-code text-[10px] font-bold text-slate-500 uppercase">
+                AKURASI PUTARAN 1
+              </div>
+              <div className="font-black text-4xl tabular-nums text-[#1a1a1a]">
+                {masteryGate.firstPassAccuracy}%
+              </div>
+              <div className="font-mono-code text-xs text-slate-600">
+                {masteryGate.firstPassCorrect} benar dari {masteryGate.total} soal
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="font-mono-code text-[10px] font-bold text-slate-500 uppercase">
+                TARGET
+              </div>
+              <div className="font-black text-2xl text-[#2e59e6] tabular-nums">
+                {masteryGate.goal}%
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <div className="h-5 bg-[#F2EFEB] border-2 border-[#1a1a1a] overflow-hidden">
+              <div
+                className="h-full bg-[#2e59e6]"
+                style={{ width: `${Math.min(100, masteryGate.firstPassAccuracy)}%` }}
+              />
+            </div>
+            <div className="flex justify-between font-mono-code text-[10px] text-slate-500 mt-1">
+              <span>0%</span>
+              <span>{stage.hint}</span>
+              <span>100%</span>
+            </div>
+          </div>
+
+          <div className="bg-amber-50 border-2 border-[#1a1a1a] p-3.5 font-mono-code text-xs text-amber-950">
+            <strong>{masteryGate.wrongQuestionIds.length} soal</strong> perlu diulang. Jawaban
+            benar pada putaran ulang akan menaikkan akurasi akhir. Putaran ulang hanya memuat soal
+            yang salah.
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2 font-mono-code">
+            <button
+              type="button"
+              onClick={handleRetryMastery}
+              className="flex-1 px-5 py-3 text-xs font-black bg-[#2e59e6] hover:bg-blue-700 text-white border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] cursor-pointer"
+            >
+              ULANGI {masteryGate.wrongQuestionIds.length} SOAL SALAH →
+            </button>
+            <button
+              type="button"
+              onClick={handleSkipMastery}
+              disabled={isSubmitting}
+              className="px-5 py-3 text-xs font-bold bg-white hover:bg-slate-100 text-slate-700 border-2 border-[#1a1a1a] disabled:opacity-40 cursor-pointer"
+            >
+              {isSubmitting ? 'MENYELESAIKAN...' : 'LEWATI & LIHAT HASIL'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // =========================================================================
+  // VIEW 0C: TESTING MODE REVIEW
+  // =========================================================================
+  if (testingReviewOpen && activeQuiz && currentStudent) {
+    return (
+      <div className="space-y-5 pb-16 font-sans">
+        <div className="bg-[#1a1a1a] text-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#2e59e6] p-4 sm:p-6">
+          <div className="font-mono-code text-[10px] font-bold text-amber-300 uppercase tracking-wider">
+            TESTING MODE · REVIEW &amp; SUBMIT · TIMER DIJEDA
+          </div>
+          <h2 className="font-serif-display italic font-bold text-2xl sm:text-3xl mt-1">
+            Tinjau Jawaban Sebelum Kirim
+          </h2>
+          <p className="font-mono-code text-xs text-slate-300 mt-1">
+            {currentStudent.name} · {selectedClass} · {activeQuiz.title}
+          </p>
+        </div>
+
+        <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] p-4 sm:p-6 space-y-3">
+          <div className="font-mono-code text-xs font-bold text-slate-600 flex items-center gap-1.5">
+            <Info className="h-4 w-4" /> Setelah dikirim, jawaban tidak bisa diubah.
+          </div>
+          <div className="divide-y-2 divide-[#1a1a1a]/10 border-2 border-[#1a1a1a]">
+            {preparedQuestions.map((q, idx) => {
+              const done = isQuestionAnswered(q);
+              let answerPreview = 'Belum dijawab';
+              if (q.type === 'pg' || q.type === 'code_output') {
+                const chosen = pgAnswers[q.id];
+                answerPreview =
+                  chosen !== undefined ? q.options?.[chosen] || `Pilihan ${chosen + 1}` : answerPreview;
+              } else if (q.type === 'matching') {
+                const pairs = q.matchingPairs || [];
+                const map = matchingAnswers[q.id] || {};
+                const count = pairs.filter((p) => map[p.id] === p.rightText).length;
+                answerPreview = `${count}/${pairs.length} pasangan terisi`;
+              } else if (q.type === 'parsons') {
+                answerPreview = `${(parsonsAnswers[q.id] || []).length} blok tersusun`;
+              } else if (q.type === 'essay') {
+                const text = (essayAnswers[q.id] || '').trim();
+                answerPreview = text ? `${text.slice(0, 80)}${text.length > 80 ? '…' : ''}` : answerPreview;
+              }
+              return (
+                <div key={q.id} className="p-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="font-mono-code text-[10px] font-bold text-[#2e59e6]">
+                      SOAL {idx + 1} · {q.type.toUpperCase()}
+                    </div>
+                    <div className="text-sm font-semibold text-[#1a1a1a] line-clamp-2">
+                      {q.questionText}
+                    </div>
+                    <div className="text-xs text-slate-600 mt-1">{answerPreview}</div>
+                  </div>
+                  <span
+                    className={`shrink-0 px-2 py-1 font-mono-code text-[10px] font-black border ${
+                      done
+                        ? 'bg-emerald-50 text-emerald-800 border-emerald-600'
+                        : 'bg-rose-50 text-rose-800 border-rose-600'
+                    }`}
+                  >
+                    {done ? 'TERJAWAB' : 'KOSONG'}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="flex flex-col sm:flex-row gap-2 font-mono-code pt-2">
+            <button
+              type="button"
+              onClick={() => {
+                setTestingReviewOpen(false);
+                setIsExamRunning(true);
+              }}
+              className="flex-1 px-5 py-3 text-xs font-bold bg-[#F2EFEB] hover:bg-slate-200 text-[#1a1a1a] border-2 border-[#1a1a1a] cursor-pointer"
+            >
+              ← KEMBALI MENGERJAKAN
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFinishAndSubmit(false, false, undefined, true)}
+              disabled={isSubmitting}
+              className="flex-1 px-5 py-3 text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] disabled:opacity-40 cursor-pointer"
+            >
+              {isSubmitting ? 'MENGIRIM...' : 'KIRIM JAWABAN FINAL →'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // =========================================================================
   // VIEW 1: EXAM RUNNING WORKSPACE
   // =========================================================================
@@ -545,7 +1276,21 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           )
         : [];
 
+    const hiddenForQuestion = hiddenOptionIndexes[currentQuestion.id] || [];
+    const visibleOptions = displayOptions.filter(
+      (item) =>
+        !hiddenForQuestion.includes(item.originalIndex) ||
+        pgAnswers[currentQuestion.id] === item.originalIndex
+    );
+
     const answeredCount = preparedQuestions.filter((q) => isQuestionAnswered(q)).length;
+    const currentFeedback = practiceFeedback[currentQuestion.id];
+    const masteryStage = getMasteryStage(
+      calculateAccuracy(
+        masteryRound > 1 ? masteryFirstPassCorrect : 0,
+        masteryRound > 1 ? masteryFirstPassTotal : Math.max(1, preparedQuestions.length)
+      )
+    );
 
     return (
       <div className="space-y-5 pb-16 font-sans">
@@ -553,12 +1298,28 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         <div className="bg-[#1a1a1a] text-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#2e59e6] p-4 font-mono-code">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">
-                UJIAN / KUIS INTERAKTIF BERLANGSUNG · PIN: {activeQuiz.tokenPin}
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">
+                  {currentMode.formalAssessment ? 'UJIAN FORMAL' : 'KUIS INTERAKTIF'} · {currentMode.name.toUpperCase()} · PIN: {activeQuiz.tokenPin}
+                </span>
+                {activeMode === 'team' && (
+                  <span className={`px-2 py-0.5 text-[10px] font-black ${myTeam.badgeClass}`}>
+                    {myTeam.mascot} {myTeam.name.toUpperCase()}
+                  </span>
+                )}
+                {strikeShieldEnabled && activeMode === 'classic' && (
+                  <span className="px-2 py-0.5 text-[10px] font-black bg-fuchsia-500 text-white">
+                    PREMIUM · STRIKE &amp; SHIELD
+                  </span>
+                )}
               </div>
               <h2 className="font-sans font-bold text-base sm:text-lg text-white">
                 {currentStudent.name} ({selectedClass} · No. Absen {currentStudent.attendanceNo})
               </h2>
+              <div className="text-[10px] text-slate-300 mt-0.5">
+                {currentMode.tagline}
+                {masteryRound > 1 ? ` · Putaran mastery ${masteryRound}` : ''}
+              </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2.5">
@@ -573,17 +1334,35 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                 PENGAWAS TAB: {tabSwitchCount} / {activeQuiz.maxTabSwitches}x
               </div>
 
-              {/* Countdown Timer */}
-              <div
-                className={`px-3.5 py-1.5 text-sm sm:text-base font-black border-2 border-white flex items-center gap-2 tabular-nums ${
-                  remainingSeconds <= 180
-                    ? 'bg-rose-600 text-white animate-pulse'
-                    : 'bg-amber-400 text-[#1a1a1a]'
-                }`}
-              >
-                <Clock className="h-4 w-4" />
-                <span>{formatDurationMMSS(remainingSeconds)}</span>
-              </div>
+              {/* Countdown Timer / Mode tanpa timer */}
+              {currentMode.usesOverallTimer ? (
+                <div
+                  className={`px-3.5 py-1.5 text-sm sm:text-base font-black border-2 border-white flex items-center gap-2 tabular-nums ${
+                    remainingSeconds <= 180
+                      ? 'bg-rose-600 text-white animate-pulse'
+                      : 'bg-amber-400 text-[#1a1a1a]'
+                  }`}
+                >
+                  <Clock className="h-4 w-4" />
+                  <span>{formatDurationMMSS(remainingSeconds)}</span>
+                </div>
+              ) : (
+                <div className="px-3 py-1.5 text-xs font-bold border border-white/40 bg-white/10 text-white flex items-center gap-1.5">
+                  <Info className="h-3.5 w-3.5" /> TANPA TIMER
+                </div>
+              )}
+
+              {activeMode === 'instructor' && (
+                <div className="px-3 py-1.5 text-xs font-black border-2 border-white bg-[#2e59e6] text-white flex items-center gap-1.5 tabular-nums">
+                  <Timer className="h-4 w-4" /> SOAL: {questionRemainingSeconds} dtk
+                </div>
+              )}
+
+              {(activeMode === 'mastery' || activeMode === 'accuracy') && (
+                <div className="px-3 py-1.5 text-xs font-bold border border-white/40 bg-white/10 text-white flex items-center gap-1.5">
+                  <Target className="h-3.5 w-3.5" /> TARGET {currentMode.targetAccuracy || 80}%
+                </div>
+              )}
 
               <button
                 type="button"
@@ -591,44 +1370,139 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                 disabled={isSubmitting}
                 className="px-4 py-2 text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-[#1a1a1a] border-2 border-white cursor-pointer"
               >
-                {isSubmitting ? 'MENGIRIM...' : 'SELESAI & KIRIM'}
+                {isSubmitting ? 'MENGIRIM...' : activeMode === 'testing' ? 'TINJAU & KIRIM' : 'SELESAI & KIRIM'}
               </button>
             </div>
           </div>
 
           {/* Question Number Navigation Bar */}
           <div className="mt-3 pt-3 border-t border-white/20 flex flex-wrap items-center justify-between gap-2">
-            <div className="flex flex-wrap items-center gap-1.5">
-              {preparedQuestions.map((q, idx) => {
-                const isCurr = idx === currentQuestionIdx;
-                const isDone = isQuestionAnswered(q);
+            {activeMode === 'instructor' ? (
+              <div className="font-mono-code text-[11px] text-slate-300 flex items-center gap-2">
+                <Presentation className="h-3.5 w-3.5 text-amber-300" />
+                MODE GURU: soal berganti otomatis setiap 30 detik. Tidak bisa kembali.
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-1.5">
+                {preparedQuestions.map((q, idx) => {
+                  const isCurr = idx === currentQuestionIdx;
+                  const isDone = isQuestionAnswered(q);
+                  return (
+                    <button
+                      key={q.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedLeftPairId(null);
+                        setCurrentQuestionIdx(idx);
+                      }}
+                      className={`w-8 h-8 text-xs font-bold border transition-all cursor-pointer tabular-nums ${
+                        isCurr
+                          ? 'bg-[#2e59e6] text-white border-white shadow-[2px_2px_0px_#fff]'
+                          : isDone
+                          ? 'bg-emerald-500 text-[#1a1a1a] border-emerald-300'
+                          : 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20'
+                      }`}
+                    >
+                      {idx + 1}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 font-bold">
+              {activeMode === 'mastery' || activeMode === 'accuracy' ? (
+                <span className="px-2 py-1 bg-white/10 border border-white/20">
+                  {masteryStage.emoji} {masteryStage.label}
+                </span>
+              ) : null}
+              <span>Terjawab: {answeredCount} / {preparedQuestions.length} Soal</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Power-Up & fitur premium */}
+        {currentMode.powerUps && (
+          <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-3 font-mono-code">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="text-[10px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
+                <Zap className="h-3.5 w-3.5 text-amber-500" /> POWER-UP · FITUR GAMIFIKASI PREMIUM
+              </div>
+              <div className="text-[10px] text-slate-500">
+                Sisa: {POWER_UP_DEFINITIONS.length - powerUpsUsed.length}
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+              {POWER_UP_DEFINITIONS.map((pu) => {
+                const used = powerUpsUsed.includes(pu.id as PowerUpId);
+                const Icon = pu.id === 'fifty' ? Scissors : pu.id === 'freeze' ? Snowflake : Shield;
+                const disabled =
+                  used ||
+                  (pu.id === 'fifty' &&
+                    (currentQuestion.type !== 'pg' && currentQuestion.type !== 'code_output')) ||
+                  (pu.id === 'freeze' && !currentMode.usesOverallTimer) ||
+                  (pu.id === 'shield' && !strikeShieldEnabled);
                 return (
                   <button
-                    key={q.id}
+                    key={pu.id}
                     type="button"
-                    onClick={() => {
-                      setSelectedLeftPairId(null);
-                      setCurrentQuestionIdx(idx);
-                    }}
-                    className={`w-8 h-8 text-xs font-bold border transition-all cursor-pointer tabular-nums ${
-                      isCurr
-                        ? 'bg-[#2e59e6] text-white border-white shadow-[2px_2px_0px_#fff]'
-                        : isDone
-                        ? 'bg-emerald-500 text-[#1a1a1a] border-emerald-300'
-                        : 'bg-white/10 text-slate-300 border-white/20 hover:bg-white/20'
+                    disabled={disabled}
+                    onClick={() => activatePowerUp(pu.id as PowerUpId)}
+                    className={`text-left p-2.5 border-2 transition-all cursor-pointer disabled:cursor-not-allowed ${
+                      used
+                        ? 'bg-slate-100 text-slate-400 border-slate-300'
+                        : disabled
+                        ? 'bg-slate-50 text-slate-400 border-slate-300'
+                        : 'bg-amber-50 hover:bg-amber-100 text-[#1a1a1a] border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
                     }`}
                   >
-                    {idx + 1}
+                    <div className="flex items-center gap-1.5 text-xs font-black">
+                      <Icon className="h-3.5 w-3.5" /> {pu.name}
+                    </div>
+                    <div className="text-[10px] mt-0.5 leading-snug">{pu.description}</div>
                   </button>
                 );
               })}
             </div>
+          </div>
+        )}
 
-            <div className="text-xs text-slate-300 font-bold">
-              Terjawab: {answeredCount} / {preparedQuestions.length} Soal
+        {strikeShieldEnabled && activeMode === 'classic' && (
+          <div className="bg-fuchsia-50 border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#a21caf] p-3.5 font-mono-code">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <div className="text-[10px] font-black uppercase tracking-wider text-fuchsia-700">
+                  STRIKE &amp; SHIELD · PREMIUM · LAWAN: BOT WAYGROUND
+                </div>
+                <div className="text-xs text-slate-700 mt-1">
+                  Energi serangan: <strong>{strikeShieldCharges}</strong> · Skor lawan:{' '}
+                  <strong>{rivalScore}</strong> · Perisai: <strong>{shieldCount}/3</strong>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={strikeShieldCharges <= 0}
+                  onClick={handleStrike}
+                  className="px-3 py-2 text-[11px] font-black bg-fuchsia-700 hover:bg-fuchsia-600 text-white border-2 border-[#1a1a1a] disabled:opacity-40 cursor-pointer flex items-center gap-1"
+                >
+                  <Flame className="h-3.5 w-3.5" /> STRIKE -150
+                </button>
+                <button
+                  type="button"
+                  disabled={strikeShieldCharges <= 0 || shieldCount >= 3}
+                  onClick={handleShield}
+                  className="px-3 py-2 text-[11px] font-black bg-white hover:bg-fuchsia-100 text-fuchsia-900 border-2 border-[#1a1a1a] disabled:opacity-40 cursor-pointer flex items-center gap-1"
+                >
+                  <Shield className="h-3.5 w-3.5" /> SHIELD
+                </button>
+              </div>
+            </div>
+            <div className="text-[10px] text-slate-500 mt-1.5">
+              Dapatkan 1 energi setiap jawaban benar. Serangan mengurangi skor lawan; perisai menambah bonus akhir.
             </div>
           </div>
-        </div>
+        )}
 
         {/* Anti-Cheat Warning Banner if triggered */}
         {tabWarningBanner && (
@@ -709,7 +1583,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           {/* 1. INTERACTION FOR PG & CODE OUTPUT */}
           {(currentQuestion.type === 'pg' || currentQuestion.type === 'code_output') && (
             <div className="grid grid-cols-1 gap-3 pt-2">
-              {displayOptions.map((item, dispIdx) => {
+              {visibleOptions.map((item, dispIdx) => {
                 const letter = ['A', 'B', 'C', 'D'][dispIdx] || String(dispIdx + 1);
                 const isSelected = pgAnswers[currentQuestion.id] === item.originalIndex;
                 return (
@@ -950,43 +1824,85 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
             </div>
           )}
 
+          {/* Umpan balik langsung untuk Practice Mode */}
+          {currentFeedback && activeMode === 'practice' && (
+            <div
+              className={`border-2 border-[#1a1a1a] p-3.5 font-mono-code text-xs ${
+                currentFeedback.correct
+                  ? 'bg-emerald-50 text-emerald-900'
+                  : 'bg-rose-50 text-rose-900'
+              }`}
+            >
+              <div className="flex items-center gap-2 font-black uppercase">
+                {currentFeedback.correct ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4" />
+                )}
+                {currentFeedback.correct ? 'BENAR!' : 'BELUM TEPAT'}
+              </div>
+              <p className="mt-1">{currentFeedback.detail}</p>
+            </div>
+          )}
+
           {/* Bottom Prev / Next / Submit Navigation */}
-          <div className="pt-4 border-t-2 border-[#1a1a1a] flex items-center justify-between gap-3 font-mono-code">
+          <div className="pt-4 border-t-2 border-[#1a1a1a] flex flex-wrap items-center justify-between gap-3 font-mono-code">
             <button
               type="button"
-              disabled={currentQuestionIdx === 0}
-              onClick={() => {
-                setSelectedLeftPairId(null);
-                setCurrentQuestionIdx((prev) => Math.max(0, prev - 1));
-              }}
-              className="px-4 py-2.5 text-xs font-bold bg-[#F2EFEB] hover:bg-slate-200 text-[#1a1a1a] border-2 border-[#1a1a1a] disabled:opacity-40 cursor-pointer"
+              disabled={currentQuestionIdx === 0 || !currentMode.allowsBackNavigation}
+              onClick={handlePreviousQuestion}
+              className="px-4 py-2.5 text-xs font-bold bg-[#F2EFEB] hover:bg-slate-200 text-[#1a1a1a] border-2 border-[#1a1a1a] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               ← SOAL SEBELUMNYA
             </button>
 
-            {currentQuestionIdx < preparedQuestions.length - 1 ? (
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedLeftPairId(null);
-                  setCurrentQuestionIdx((prev) =>
-                    Math.min(preparedQuestions.length - 1, prev + 1)
-                  );
-                }}
-                className="px-5 py-2.5 text-xs font-bold bg-[#2e59e6] hover:bg-blue-700 text-white border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] cursor-pointer"
-              >
-                SOAL BERIKUTNYA →
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => handleFinishAndSubmit(false, false)}
-                disabled={isSubmitting}
-                className="px-6 py-2.5 text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] cursor-pointer"
-              >
-                ✓ KIRIM JAWABAN KUIS SEKARANG
-              </button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {activeMode === 'practice' && !currentFeedback && (
+                <button
+                  type="button"
+                  onClick={handleCheckPractice}
+                  disabled={!isQuestionAnswered(currentQuestion)}
+                  className="px-4 py-2.5 text-xs font-black bg-amber-400 hover:bg-amber-300 text-[#1a1a1a] border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] disabled:opacity-40 cursor-pointer"
+                >
+                  CEK JAWABAN
+                </button>
+              )}
+
+              {activeMode === 'practice' && currentFeedback && (
+                <button
+                  type="button"
+                  onClick={handleClearCurrentAnswer}
+                  className="px-4 py-2.5 text-xs font-bold bg-white hover:bg-rose-50 text-rose-800 border-2 border-[#1a1a1a] cursor-pointer"
+                >
+                  COBA LAGI
+                </button>
+              )}
+
+              {currentQuestionIdx < preparedQuestions.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={handleNextQuestion}
+                  className="px-5 py-2.5 text-xs font-bold bg-[#2e59e6] hover:bg-blue-700 text-white border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] cursor-pointer"
+                >
+                  {activeMode === 'instructor' ? 'LANJUT SEKARANG →' : 'SOAL BERIKUTNYA →'}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleFinishAndSubmit(false, false)}
+                  disabled={isSubmitting}
+                  className="px-6 py-2.5 text-xs font-black bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] cursor-pointer"
+                >
+                  {isSubmitting
+                    ? 'MENGIRIM...'
+                    : activeMode === 'testing'
+                    ? 'TINJAU JAWABAN →'
+                    : activeMode === 'mastery' || activeMode === 'accuracy'
+                    ? 'SELESAIKAN PUTARAN →'
+                    : 'KIRIM JAWABAN KUIS SEKARANG'}
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -998,21 +1914,53 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
   // =========================================================================
   if (completedSubmission && activeQuiz) {
     const isGrade7 = completedSubmission.className.includes('7');
+    const completedMode = getQuizMode(completedSubmission.mode || 'classic');
+    const isPracticeResult = completedSubmission.mode === 'practice';
+    const isTeamResult = completedSubmission.mode === 'team';
+    const isFormalResult = completedMode.formalAssessment;
+    const completedAccuracy =
+      completedSubmission.accuracyFinal ?? completedSubmission.accuracyFirstPass;
 
     return (
       <div className="space-y-6 pb-16 font-sans">
         <div className="bg-white border-2 border-[#1a1a1a] shadow-[5px_5px_0px_#1a1a1a] p-6 sm:p-8 space-y-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b-2 border-[#1a1a1a] pb-5">
             <div>
-              <div className="font-mono-code text-xs font-bold text-emerald-700 uppercase">
-                ✓ JAWABAN KUIS TERSIMPAN & MASUK KE KALKULATOR AKADEMIK
+              <div className="flex flex-wrap items-center gap-2 font-mono-code text-[10px] font-bold uppercase">
+                <span className="px-2 py-1 bg-[#1a1a1a] text-amber-300">
+                  {completedMode.name}
+                </span>
+                <span
+                  className={`px-2 py-1 border ${
+                    isPracticeResult
+                      ? 'bg-amber-50 text-amber-800 border-amber-600'
+                      : 'bg-emerald-50 text-emerald-800 border-emerald-600'
+                  }`}
+                >
+                  {isPracticeResult
+                    ? 'LATIHAN · TIDAK MASUK NILAI'
+                    : 'TERSIMPAN · MASUK KALKULATOR AKADEMIK'}
+                </span>
+                {isTeamResult && completedSubmission.teamName && (
+                  <span className="px-2 py-1 bg-blue-50 text-blue-800 border border-blue-600">
+                    {completedSubmission.teamName}
+                  </span>
+                )}
               </div>
-              <h1 className="font-serif-display italic font-bold text-3xl sm:text-4xl text-[#1a1a1a] mt-1">
+              <h1 className="font-serif-display italic font-bold text-3xl sm:text-4xl text-[#1a1a1a] mt-2">
                 Hasil Kuis: {completedSubmission.studentName}
               </h1>
               <p className="font-mono-code text-xs text-slate-600 mt-1">
                 {completedSubmission.className} · No. Absen {completedSubmission.attendanceNo} ·{' '}
                 {completedSubmission.quizTitle}
+              </p>
+              <p className="font-mono-code text-[11px] text-slate-500 mt-1">
+                {completedMode.tagline}
+                {isPracticeResult
+                  ? ' Mode latihan boleh diulang dan tidak mengubah nilai akademik.'
+                  : isFormalResult
+                  ? ' Mode formal: poin arena dan bonus kecepatan tidak dipakai.'
+                  : ''}
               </p>
             </div>
 
@@ -1024,7 +1972,11 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                 {completedSubmission.finalScore}
               </div>
               <div className="text-[10px] text-emerald-400 font-bold mt-1">
-                {completedSubmission.arenaTotalPoints.toLocaleString('id-ID')} Poin Arena
+                {isFormalResult
+                  ? 'MODE FORMAL · TANPA POIN ARENA'
+                  : isPracticeResult
+                  ? 'MODE LATIHAN'
+                  : `${completedSubmission.arenaTotalPoints.toLocaleString('id-ID')} Poin Arena`}
               </div>
             </div>
           </div>
@@ -1068,6 +2020,77 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
             </div>
           </div>
 
+          {/* Statistik khusus mode */}
+          {(completedMode.id === 'mastery' || completedMode.id === 'accuracy') &&
+            completedAccuracy !== undefined && (
+              <div className="bg-blue-50 border-2 border-[#1a1a1a] p-4 font-mono-code">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <div className="text-[10px] font-black uppercase text-blue-800">
+                      {completedMode.id === 'mastery' ? 'MASTERY PEAK' : 'ACCURACY MODE'} ·{' '}
+                      {completedSubmission.masteryGoalAchieved ? 'TARGET TERCAPAI' : 'TARGET BELUM TERCAPAI'}
+                    </div>
+                    <div className="font-black text-2xl text-[#1a1a1a] tabular-nums mt-0.5">
+                      {getMasteryStage(completedAccuracy).emoji}{' '}
+                      {getMasteryStage(completedAccuracy).label} · {completedAccuracy}%
+                    </div>
+                  </div>
+                  <div className="text-right text-xs text-slate-600">
+                    <div>Awal: {completedSubmission.accuracyFirstPass ?? 0}%</div>
+                    <div>Target: {completedSubmission.masteryGoal ?? completedMode.targetAccuracy ?? 80}%</div>
+                    <div>Putaran: {completedSubmission.masteryRounds ?? 1}</div>
+                  </div>
+                </div>
+                <div className="h-3 bg-white border border-[#1a1a1a] mt-2 overflow-hidden">
+                  <div
+                    className="h-full bg-[#2e59e6]"
+                    style={{ width: `${Math.min(100, completedAccuracy)}%` }}
+                  />
+                </div>
+              </div>
+            )}
+
+          {isTeamResult && (
+            <div className="bg-emerald-50 border-2 border-[#1a1a1a] p-4 font-mono-code">
+              <div className="text-[10px] font-black uppercase text-emerald-800">
+                KONTRIBUSI TIM
+              </div>
+              <div className="text-lg font-black text-[#1a1a1a] mt-0.5">
+                {completedSubmission.teamName || myTeam.name} ·{' '}
+                {completedSubmission.arenaTotalPoints.toLocaleString('id-ID')} poin
+              </div>
+              <p className="text-[11px] text-slate-600 mt-1">
+                Poin individu otomatis digabung ke klasemen tim pada panel di bawah.
+              </p>
+            </div>
+          )}
+
+          {((completedSubmission.powerUpsUsed?.length || 0) > 0 ||
+            completedSubmission.strikeShieldEnabled) && (
+            <div className="bg-fuchsia-50 border-2 border-[#1a1a1a] p-4 font-mono-code text-xs">
+              <div className="text-[10px] font-black uppercase text-fuchsia-800">
+                FITUR GAMIFIKASI PREMIUM
+              </div>
+              <div className="flex flex-wrap gap-2 mt-1.5">
+                {(completedSubmission.powerUpsUsed || []).map((pu) => (
+                  <span key={pu} className="px-2 py-1 bg-white border border-fuchsia-600 text-fuchsia-900">
+                    Power-Up: {pu}
+                  </span>
+                ))}
+                {completedSubmission.strikeShieldEnabled && (
+                  <>
+                    <span className="px-2 py-1 bg-white border border-fuchsia-600 text-fuchsia-900">
+                      Strike: {completedSubmission.strikeCount ?? 0}
+                    </span>
+                    <span className="px-2 py-1 bg-white border border-fuchsia-600 text-fuchsia-900">
+                      Shield: {completedSubmission.shieldCount ?? 0}
+                    </span>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Navigation Buttons */}
           <div className="flex flex-wrap items-center justify-between gap-3 pt-2 font-mono-code">
             <button
@@ -1091,56 +2114,116 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           </div>
         </div>
 
-        {/* Live Leaderboard Card */}
-        <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] font-mono-code overflow-hidden">
-          <div className="bg-[#1a1a1a] text-white px-4 py-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-amber-400" />
-              <span className="text-xs font-bold uppercase">
-                KLASEMEN LIVE ARENA ({activeQuiz.title})
-              </span>
-            </div>
-            <span className="text-[11px] text-amber-300 font-bold">
-              {currentQuizLeaderboard.length} Peserta
-            </span>
-          </div>
-
-          <div className="divide-y divide-[#1a1a1a]/15 max-h-[380px] overflow-y-auto">
-            {currentQuizLeaderboard.slice(0, 15).map((sub, idx) => {
-              const isMe = sub.id === completedSubmission.id;
-              return (
-                <div
-                  key={sub.id}
-                  className={`px-4 py-3 flex items-center justify-between ${
-                    isMe ? 'bg-blue-50 font-bold' : 'bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="w-7 h-7 flex items-center justify-center text-xs font-black bg-[#F2EFEB] border border-[#1a1a1a]">
-                      #{idx + 1}
-                    </span>
-                    <div>
-                      <div className="font-sans text-xs sm:text-sm font-bold text-[#1a1a1a]">
-                        {sub.studentName} {isMe ? '(Anda)' : ''}
-                      </div>
-                      <div className="text-[10px] text-slate-500">
-                        {sub.className} · Absen {sub.attendanceNo}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="text-right tabular-nums">
-                    <div className="text-xs font-black text-[#2e59e6]">
-                      {sub.arenaTotalPoints.toLocaleString('id-ID')} PTS
-                    </div>
-                    <div className="text-[10px] text-emerald-800 font-bold">
-                      Nilai: {sub.finalScore}
-                    </div>
-                  </div>
+        {/* Leaderboard: tim, individu, atau tidak ada sesuai mode */}
+        {completedMode.showLeaderboard ? (
+          isTeamResult ? (
+            <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] font-mono-code overflow-hidden">
+              <div className="bg-[#1a1a1a] text-white px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-amber-400" />
+                  <span className="text-xs font-bold uppercase">
+                    KLASEMEN TIM ({activeQuiz.title})
+                  </span>
                 </div>
-              );
-            })}
+                <span className="text-[11px] text-amber-300 font-bold">
+                  {currentTeamLeaderboard.length} Tim
+                </span>
+              </div>
+              <div className="divide-y divide-[#1a1a1a]/15 max-h-[380px] overflow-y-auto">
+                {currentTeamLeaderboard.map((team, idx) => {
+                  const teamInfo =
+                    QUIZ_TEAMS.find((item) => item.id === team.teamId) ||
+                    getTeamForAttendance(1);
+                  const isMyTeam = team.teamId === completedSubmission.teamId;
+                  return (
+                    <div
+                      key={team.teamId}
+                      className={`px-4 py-3 flex items-center justify-between ${
+                        isMyTeam ? 'bg-blue-50 font-bold' : 'bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-7 h-7 flex items-center justify-center text-xs font-black bg-[#F2EFEB] border border-[#1a1a1a]">
+                          #{idx + 1}
+                        </span>
+                        <div>
+                          <div className="font-sans text-xs sm:text-sm font-bold text-[#1a1a1a]">
+                            {teamInfo.mascot} {team.teamName} {isMyTeam ? '(Tim Anda)' : ''}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {team.members} anggota · rata-rata nilai{' '}
+                            {Math.round(team.totalScore / Math.max(1, team.members))}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right tabular-nums">
+                        <div className="text-xs font-black text-[#2e59e6]">
+                          {team.points.toLocaleString('id-ID')} PTS
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] font-mono-code overflow-hidden">
+              <div className="bg-[#1a1a1a] text-white px-4 py-3 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-4 w-4 text-amber-400" />
+                  <span className="text-xs font-bold uppercase">
+                    KLASEMEN LIVE ARENA ({activeQuiz.title})
+                  </span>
+                </div>
+                <span className="text-[11px] text-amber-300 font-bold">
+                  {currentQuizLeaderboard.length} Peserta
+                </span>
+              </div>
+
+              <div className="divide-y divide-[#1a1a1a]/15 max-h-[380px] overflow-y-auto">
+                {currentQuizLeaderboard.slice(0, 15).map((sub, idx) => {
+                  const isMe = sub.id === completedSubmission.id;
+                  return (
+                    <div
+                      key={sub.id}
+                      className={`px-4 py-3 flex items-center justify-between ${
+                        isMe ? 'bg-blue-50 font-bold' : 'bg-white'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="w-7 h-7 flex items-center justify-center text-xs font-black bg-[#F2EFEB] border border-[#1a1a1a]">
+                          #{idx + 1}
+                        </span>
+                        <div>
+                          <div className="font-sans text-xs sm:text-sm font-bold text-[#1a1a1a]">
+                            {sub.studentName} {isMe ? '(Anda)' : ''}
+                          </div>
+                          <div className="text-[10px] text-slate-500">
+                            {sub.className} · Absen {sub.attendanceNo}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right tabular-nums">
+                        <div className="text-xs font-black text-[#2e59e6]">
+                          {sub.arenaTotalPoints.toLocaleString('id-ID')} PTS
+                        </div>
+                        <div className="text-[10px] text-emerald-800 font-bold">
+                          Nilai: {sub.finalScore}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )
+        ) : (
+          <div className="bg-slate-50 border-2 border-[#1a1a1a] p-4 font-mono-code text-xs text-slate-700 flex items-center gap-2">
+            <Info className="h-4 w-4 shrink-0 text-slate-500" />
+            Mode {completedMode.name} tidak menampilkan leaderboard. Fokus mode ini adalah{' '}
+            {isPracticeResult ? 'latihan dan umpan balik.' : 'hasil akademik masing-masing siswa.'}
           </div>
-        </div>
+        )}
       </div>
     );
   }
@@ -1260,9 +2343,17 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
             <button
               type="button"
               onClick={() => handleStartQuiz()}
-              className="w-full py-2.5 px-4 bg-[#2e59e6] hover:bg-blue-700 text-white font-black text-xs border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] cursor-pointer flex items-center justify-center gap-1.5"
+              className="w-full py-2.5 px-3 bg-[#2e59e6] hover:bg-blue-700 text-white font-black text-[10px] border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] cursor-pointer flex items-center justify-center gap-1.5"
             >
-              <Play className="h-3.5 w-3.5" /> MULAI KUIS
+              {selectedMode === 'paper' ? (
+                <>
+                  <Printer className="h-3.5 w-3.5" /> KERTAS
+                </>
+              ) : (
+                <>
+                  <Play className="h-3.5 w-3.5" /> {selectedModeDef.shortName.toUpperCase()}
+                </>
+              )}
             </button>
           </div>
         </div>
@@ -1274,11 +2365,166 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         )}
       </div>
 
+      {/* Mode Selector */}
+      <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-5 sm:p-6 font-mono-code space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-2 border-b-2 border-[#1a1a1a] pb-2.5">
+          <div>
+            <h2 className="text-sm font-bold uppercase text-[#1a1a1a]">
+              02. PILIH MODE KUIS (9 MODE)
+            </h2>
+            <p className="text-[11px] text-slate-600 mt-1">
+              6 mode live + 3 mode tugas. Mode dipilih sebelum kuis dimulai.
+            </p>
+          </div>
+          <div className="text-[10px] font-bold text-slate-500">
+            REFERENSI: MODE SESI WAYGROUND 2026
+          </div>
+        </div>
+
+        {QUIZ_MODE_GROUPS.map((group) => (
+          <div key={group.id} className="space-y-2">
+            <div className="flex flex-wrap items-baseline justify-between gap-1">
+              <h3 className="text-[11px] font-black text-[#2e59e6] uppercase tracking-wider">
+                {group.label}
+              </h3>
+              <span className="text-[10px] text-slate-500">{group.description}</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
+              {group.modes.map((mode) => {
+                const Icon = MODE_ICONS[mode.icon];
+                const isSelected = selectedMode === mode.id;
+                const isPremiumFeature = mode.id === 'classic';
+                return (
+                  <button
+                    key={mode.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMode(mode.id);
+                      if (mode.id !== 'classic') setStrikeShieldEnabled(false);
+                    }}
+                    className={`text-left p-3 border-2 transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-[4px_4px_0px_#2e59e6]'
+                        : 'bg-white text-[#1a1a1a] border-[#1a1a1a] hover:bg-[#F2EFEB]'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`w-8 h-8 flex items-center justify-center border-2 shrink-0 ${
+                            isSelected
+                              ? 'bg-amber-400 text-[#1a1a1a] border-white'
+                              : 'bg-[#F2EFEB] text-[#1a1a1a] border-[#1a1a1a]'
+                          }`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <div className="min-w-0">
+                          <div className="text-xs font-black uppercase truncate">{mode.name}</div>
+                          <div
+                            className={`text-[9px] font-bold uppercase ${
+                              isSelected ? 'text-amber-300' : 'text-[#2e59e6]'
+                            }`}
+                          >
+                            {mode.category === 'live'
+                              ? 'LIVE'
+                              : mode.category === 'device-free'
+                              ? 'TANPA HP'
+                              : 'TUGAS'}
+                            {isPremiumFeature ? ' · PREMIUM FEATURE' : ''}
+                          </div>
+                        </div>
+                      </div>
+                      {isSelected && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />}
+                    </div>
+                    <p
+                      className={`text-[10px] mt-2 leading-snug ${
+                        isSelected ? 'text-slate-300' : 'text-slate-600'
+                      }`}
+                    >
+                      {mode.tagline}
+                    </p>
+                    <div className="flex flex-wrap gap-1 mt-2">
+                      {mode.features.slice(0, 3).map((feature) => (
+                        <span
+                          key={feature}
+                          className={`px-1.5 py-0.5 text-[9px] font-bold border ${
+                            isSelected
+                              ? 'border-white/30 text-slate-200'
+                              : 'border-[#1a1a1a]/20 text-slate-600'
+                          }`}
+                        >
+                          {feature}
+                        </span>
+                      ))}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+
+        {selectedMode === 'classic' && (
+          <label className="flex items-start gap-2.5 p-3 bg-fuchsia-50 border-2 border-[#1a1a1a] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={strikeShieldEnabled}
+              onChange={(e) => setStrikeShieldEnabled(e.target.checked)}
+              className="mt-0.5 h-4 w-4 accent-fuchsia-700"
+            />
+            <span>
+              <span className="block text-xs font-black text-fuchsia-900 uppercase">
+                Aktifkan Strike &amp; Shield <span className="bg-fuchsia-700 text-white px-1.5 py-0.5 text-[9px]">PREMIUM</span>
+              </span>
+              <span className="block text-[10px] text-slate-600 mt-0.5">
+                Fitur gamifikasi premium di Classic: kumpulkan energi dari jawaban benar, serang
+                lawan, atau pasang perisai. Tidak mengubah nilai akademik.
+              </span>
+            </span>
+          </label>
+        )}
+
+        <div className="bg-[#F2EFEB] border-2 border-[#1a1a1a] p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <div className="text-[10px] font-bold text-slate-500 uppercase">MODE TERPILIH</div>
+            <div className="text-sm font-black text-[#1a1a1a]">
+              {selectedModeDef.name} · {selectedModeDef.bestFor}
+            </div>
+            <p className="text-[10px] text-slate-600 mt-0.5">{selectedModeDef.description}</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleStartQuiz()}
+            className="shrink-0 px-4 py-2.5 text-xs font-black bg-[#2e59e6] hover:bg-blue-700 text-white border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            {selectedMode === 'paper' ? (
+              <>
+                <Printer className="h-3.5 w-3.5" /> BUKA LEMBAR KERTAS
+              </>
+            ) : (
+              <>
+                <Play className="h-3.5 w-3.5" /> MULAI {selectedModeDef.shortName.toUpperCase()}
+              </>
+            )}
+          </button>
+        </div>
+
+        <div className="text-[10px] text-slate-500 flex items-start gap-1.5">
+          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+          <span>
+            Mode live: Classic, Team, Test, Mastery Peak, Instructor-Paced, Paper. Mode tugas:
+            Practice, Accuracy, Testing. Power-Up dan Strike &amp; Shield adalah fitur gamifikasi
+            premium; implementasi di sini berjalan lokal tanpa akun Wayground.
+          </span>
+        </div>
+      </div>
+
       {/* Active Quizzes List for Selected Class */}
       <div className="space-y-3 font-mono-code">
         <div className="flex items-center justify-between">
           <h2 className="text-sm font-bold uppercase text-[#1a1a1a]">
-            02. DAFTAR KUIS AKTIF UNTUK {selectedClass.toUpperCase()} ({availableQuizzesForClass.length})
+            03. DAFTAR KUIS AKTIF UNTUK {selectedClass.toUpperCase()} ({availableQuizzesForClass.length})
           </h2>
         </div>
 
@@ -1305,6 +2551,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                     s.className === selectedClass &&
                     Number(s.attendanceNo) === Number(currentStudent.attendanceNo)
                 );
+              const hasFinalAttempt = Boolean(alreadyDone) && selectedMode !== 'practice';
 
               return (
                 <div
@@ -1337,20 +2584,26 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                         handleStartQuiz(quiz);
                       }}
                       className={`w-full py-2.5 px-4 text-xs font-black border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] cursor-pointer flex items-center justify-center gap-1.5 ${
-                        alreadyDone
+                        hasFinalAttempt
                           ? 'bg-emerald-100 text-emerald-950 hover:bg-emerald-200'
                           : quiz.isRemedialQuiz
                           ? 'bg-amber-400 hover:bg-amber-300 text-[#1a1a1a]'
                           : 'bg-[#2e59e6] hover:bg-blue-700 text-white'
                       }`}
                     >
-                      <Play className="h-3.5 w-3.5" />
+                      {selectedMode === 'paper' ? (
+                        <Printer className="h-3.5 w-3.5" />
+                      ) : (
+                        <Play className="h-3.5 w-3.5" />
+                      )}
                       <span>
-                        {alreadyDone
-                          ? `LIHAT HASIL SAYA (NILAI: ${alreadyDone.finalScore})`
+                        {hasFinalAttempt
+                          ? `LIHAT HASIL SAYA (NILAI: ${alreadyDone?.finalScore ?? 0})`
+                          : selectedMode === 'paper'
+                          ? 'BUKA LEMBAR KERTAS'
                           : quiz.isRemedialQuiz
-                          ? 'KERJAKAN KUIS REMEDIAL'
-                          : 'KERJAKAN KUIS SEKARANG'}
+                          ? `KERJAKAN REMEDIAL • ${selectedModeDef.shortName.toUpperCase()}`
+                          : `KERJAKAN • ${selectedModeDef.shortName.toUpperCase()}`}
                       </span>
                     </button>
                   </div>
