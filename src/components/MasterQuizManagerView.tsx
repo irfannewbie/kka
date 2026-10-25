@@ -3,7 +3,6 @@ import {
   Plus,
   Trash2,
   Edit3,
-  Play,
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
@@ -52,7 +51,6 @@ interface MasterQuizManagerViewProps {
   spreadsheetUrl: string;
   token: string | null;
   onLogin: () => void;
-  onNavigateToStudentQuiz: (pin?: string) => void;
   onShowAlert?: (title: string, message: string) => void;
 }
 
@@ -60,7 +58,6 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
   spreadsheetId,
   token,
   onLogin,
-  onNavigateToStudentQuiz,
   onShowAlert,
 }) => {
   const [quizzes, setQuizzes] = useState<InteractiveQuiz[]>([]);
@@ -500,15 +497,6 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
           <div className="flex flex-wrap items-center gap-2 shrink-0 font-mono-code">
             <button
               type="button"
-              onClick={() => onNavigateToStudentQuiz(selectedQuiz?.tokenPin)}
-              className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer"
-            >
-              <Play className="h-3.5 w-3.5" />
-              <span>BUKA PORTAL KUIS SISWA (/kuis)</span>
-            </button>
-
-            <button
-              type="button"
               onClick={handleCreateNewQuiz}
               className="flex items-center gap-1.5 px-3.5 py-2 text-xs font-bold bg-[#2e59e6] hover:bg-blue-700 text-white border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all cursor-pointer"
             >
@@ -694,15 +682,6 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
                   >
                     <Trophy className="h-3.5 w-3.5" />
                     <span>ARENA</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onNavigateToStudentQuiz(quiz.tokenPin)}
-                    className="inline-flex items-center justify-center gap-1 px-2.5 py-2 text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white border border-[#1a1a1a] cursor-pointer"
-                    title="Uji coba kerjakan sebagai siswa"
-                  >
-                    <Play className="h-3.5 w-3.5" />
                   </button>
 
                   <button

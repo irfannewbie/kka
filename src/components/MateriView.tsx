@@ -1,11 +1,8 @@
-import React, { useState, useRef } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 import {
   FileSpreadsheet,
   BookOpen,
   Code2,
-  Cpu,
-  Globe,
   Binary,
   Layers,
   Sparkles,
@@ -15,43 +12,26 @@ import {
   ShieldCheck,
   Bot,
   BrainCircuit,
-  Calculator,
   Compass,
-  Lightbulb,
-  ExternalLink,
-  HelpCircle,
-  FileText,
   Play,
-  Flame,
-  Maximize2,
-  Minimize2,
-  RotateCw,
-  Gamepad2,
   Puzzle,
   Scale,
   ShieldAlert,
   FolderTree,
-  Share2,
   AlertTriangle,
 } from 'lucide-react';
-import { ExcelLabStudentWorkspace } from './excel/ExcelLabStudentWorkspace';
-import { ExcelFormulaGuideView } from './excel/ExcelFormulaGuideView';
 import { Kelas7Semester1View } from './materi/Kelas7Semester1View';
 import { Kelas8KkaSemester1View } from './materi/Kelas8KkaSemester1View';
 
 interface MateriViewProps {
-  onNavigateHome: () => void;
-  onNavigateCek?: () => void;
-  onNavigateKelas7?: () => void;
-  onNavigateKuis?: () => void;
+  /**
+   * Membuka Ruang Praktik (`/praktek`).
+   * `tool` memilih alat (excel/studio/doc/presentation), `view` membuka sub-tab tertentu.
+   */
+  onNavigatePraktek?: (tool?: string, view?: string) => void;
 }
 
-export const MateriView: React.FC<MateriViewProps> = ({
-  onNavigateHome,
-  onNavigateCek,
-  onNavigateKelas7,
-  onNavigateKuis,
-}) => {
+export const MateriView: React.FC<MateriViewProps> = ({ onNavigatePraktek }) => {
   // Read grade from URL parameter if present (?grade=7 or ?grade=8)
   const [selectedGrade, setSelectedGrade] = useState<'7' | '8'>(() => {
     if (typeof window !== 'undefined') {
@@ -62,17 +42,16 @@ export const MateriView: React.FC<MateriViewProps> = ({
     return '7';
   });
 
-  // Subtab for Kelas 7: 'materi7' (Semester 1 Bab 1-3), 'excel' (Lab Praktik), 'guide' (Panduan Rumus)
-  const [kelas7SubTab, setKelas7SubTab] = useState<'materi7' | 'excel' | 'guide'>(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const tab = params.get('tab');
-      if (tab === 'excel' || tab === 'lab') return 'excel';
-      if (tab === 'guide' || tab === 'rumus') return 'guide';
-      if (tab === 'materi' || tab === 'modul' || tab === 'teori') return 'materi7';
+  // Tautan lama (?tab=excel|lab|guide|rumus) diarahkan ke halaman /praktek.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get('tab');
+    if (tab === 'excel' || tab === 'lab' || tab === 'guide' || tab === 'rumus') {
+      const view = tab === 'guide' || tab === 'rumus' ? '&view=guide' : '';
+      window.location.replace(`/praktek?tool=excel${view}`);
     }
-    return 'materi7';
-  });
+  }, []);
 
   // Selected Bab for Kelas 8 (Bab 1, Bab 2, Bab 3, Bab 4, or semua)
   const [kelas8Bab, setKelas8Bab] = useState<'semua' | 'bab1' | 'bab2' | 'bab3' | 'bab4'>('semua');
@@ -80,15 +59,8 @@ export const MateriView: React.FC<MateriViewProps> = ({
   // Mata pelajaran Kelas 8: 'kka' (Koding & Kecerdasan Artifisial — Semester 1, default) atau 'informatika' (4 bab + studio)
   const [kelas8Mapel, setKelas8Mapel] = useState<'kka' | 'informatika'>('kka');
 
-  // Interactive Coding Engine Selector for Bab 3 Algoritma Pemrograman
-  const [activeCodingTool, setActiveCodingTool] = useState<'blockly-code' | 'blockly-games' | 'scratch'>('blockly-code');
-  const [isIframeFullscreen, setIsIframeFullscreen] = useState<boolean>(false);
-  const [iframeKey, setIframeKey] = useState<number>(0);
-
   // Binary converter mini tool state for Bab 2 Berpikir Komputasional
   const [binInput, setBinInput] = useState<string>('42');
-
-  const studioContainerRef = useRef<HTMLDivElement>(null);
 
   // Handle grade change and update URL parameter
   const handleSwitchGrade = (grade: '7' | '8') => {
@@ -99,73 +71,6 @@ export const MateriView: React.FC<MateriViewProps> = ({
       window.history.replaceState({}, '', url.pathname + url.search);
     }
   };
-
-  // Toggle fullscreen mode for the interactive iframe studio
-  const handleToggleFullscreen = () => {
-    if (!studioContainerRef.current) return;
-    if (!document.fullscreenElement) {
-      studioContainerRef.current.requestFullscreen?.().then(() => {
-        setIsIframeFullscreen(true);
-      }).catch(() => {
-        setIsIframeFullscreen(!isIframeFullscreen);
-      });
-    } else {
-      document.exitFullscreen?.().then(() => {
-        setIsIframeFullscreen(false);
-      }).catch(() => {
-        setIsIframeFullscreen(false);
-      });
-    }
-  };
-
-  // Coding Tools Configurations
-  const CODING_TOOLS: Record<
-    'blockly-code' | 'blockly-games' | 'scratch',
-    {
-      title: string;
-      subtitle: string;
-      url: string;
-      /** URL opsional untuk tombol "Buka Tab Baru" bila berbeda dari sumber iframe. */
-      openUrl?: string;
-      badge: string;
-      description: string;
-      icon: LucideIcon;
-      externalUrl?: string;
-    }
-  > = {
-    'blockly-code': {
-      title: 'Google Blockly Code Workspace',
-      subtitle: 'Visual Block Coding → Export ke JavaScript, Python, Dart, PHP & XML',
-      url: 'https://blockly-demo.appspot.com/static/demos/code/index.html',
-      badge: 'RESMI GOOGLE',
-      description: 'Susun balok logika visual (Logic, Loops, Math, Text, Variables, Functions) dan amati langsung bagaimana blok diterjemahkan ke kode bahasa pemrograman profesional secara real-time.',
-      icon: Code2,
-    },
-    'blockly-games': {
-      title: 'Blockly Games (Labirin & Puzzle Logika)',
-      subtitle: 'Game Edukasi Algoritma Pemrograman Interaktif',
-      url: 'https://blockly.games/',
-      badge: 'GAME EDUKASI',
-      description: 'Selesaikan tantangan labirin terprogram: kendalikan karakter dengan sekuensial langkah, percabangan jalan (if-else), dan perulangan (while) hingga garis akhir.',
-      icon: Gamepad2,
-    },
-    'scratch': {
-      title: 'Scratch 3.0 Studio (PenguinMod Editor)',
-      subtitle: 'Pemrograman Blok Visual Animasi & Game Siswa',
-      // TurboWarp menolak dimuat di dalam iframe ("Invalid TurboWarp Embed"),
-      // jadi editor di halaman ini memakai PenguinMod (mod Scratch 3.0 yang kompatibel).
-      url: 'https://studio.penguinmod.com/editor.html',
-      // TurboWarp tetap tersedia sebagai editor penuh, dibuka di tab baru.
-      openUrl: 'https://turbowarp.org/editor',
-      badge: 'SCRATCH 3.0',
-      description:
-        'Workspace Scratch 3.0 yang langsung bisa dipakai di dalam halaman tanpa akun login (PenguinMod). Karena TurboWarp dan Scratch MIT tidak mengizinkan editor mereka disematkan di iframe, gunakan tombol "Buka Tab Baru" untuk membuka TurboWarp dengan performa maksimal.',
-      externalUrl: 'https://scratch.mit.edu/create',
-      icon: Puzzle,
-    },
-  };
-
-  const currentTool = CODING_TOOLS[activeCodingTool];
 
   // Helper for Decimal to Binary / Hex converter in Bab 2
   const decimalNumber = parseInt(binInput, 10);
@@ -195,8 +100,24 @@ export const MateriView: React.FC<MateriViewProps> = ({
               <span>Materi Pembelajaran Informatika</span>
             </h1>
             <p className="font-sans text-xs sm:text-sm text-slate-600 mt-1 max-w-3xl leading-relaxed">
-              Pusat materi pembelajaran resmi mata pelajaran Informatika serta Koding dan Kecerdasan Artifisial (KKA). Dilengkapi <strong>Laboratorium Excel</strong> untuk Kelas 7, <strong>Studio Praktik Algoritma Pemrograman (Blockly & Scratch)</strong>, serta <strong>Materi KKA Semester 1</strong> (Bab Algoritma, Pemrograman, dan Pengenalan Perangkat KA Sederhana) untuk Kelas 8.
+              Pusat materi pembelajaran resmi Informatika serta Koding dan Kecerdasan Artifisial
+              (KKA) untuk Kelas 7 &amp; Kelas 8. Materi KKA Semester 1 tersedia lengkap, dan seluruh
+              <strong> alat praktik</strong> — Laboratorium Excel, Studio Koding (Blockly &amp;
+              Scratch), Dokumen, dan Presentasi — kini dipusatkan di
+              halaman{' '}
+              <strong>Ruang Praktik</strong>.
             </p>
+            {onNavigatePraktek && (
+              <button
+                type="button"
+                onClick={() => onNavigatePraktek()}
+                className="mt-2.5 min-h-[40px] px-3 py-2 bg-[#107c41] hover:bg-emerald-700 text-white font-mono-code text-[11px] font-bold border border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>RUANG PRAKTIK: EXCEL • KODING • DOKUMEN • PRESENTASI</span>
+                <ChevronRight className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
 
@@ -223,8 +144,8 @@ export const MateriView: React.FC<MateriViewProps> = ({
                     : 'bg-emerald-100 text-emerald-800 border-emerald-300'
                 }`}
               >
-                <span className="sm:hidden">LAB EXCEL</span>
-                <span className="hidden sm:inline">LAB EXCEL & ANALISIS DATA</span>
+                <span className="sm:hidden">ANALISIS DATA</span>
+                <span className="hidden sm:inline">ANALISIS DATA + PRAKTIK</span>
               </span>
             </button>
 
@@ -262,108 +183,14 @@ export const MateriView: React.FC<MateriViewProps> = ({
       </div>
 
       {/* ========================================================= */}
-      {/* SECTION A: KELAS 7 CONTENT (SEMESTER 1 BAB 1-3 & LAB)      */}
+      {/* SECTION A: KELAS 7 CONTENT (SEMESTER 1 BAB 1-3)            */}
+      {/* Praktik Excel & panduan rumus kini di halaman /praktek     */}
       {/* ========================================================= */}
       {selectedGrade === '7' && (
-        <div className="space-y-4">
-          {/* Sub-tab Navigation for Kelas 7 */}
-          <div className="bg-white border-2 border-[#1a1a1a] p-2 flex flex-wrap items-center justify-between gap-2 shadow-[2px_2px_0px_#1a1a1a]">
-            <div className="flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5 w-full sm:w-auto">
-              <button
-                type="button"
-                onClick={() => setKelas7SubTab('materi7')}
-                className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center justify-between sm:justify-start gap-2 ${
-                  kelas7SubTab === 'materi7'
-                    ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]'
-                    : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Layers className="h-3.5 w-3.5 shrink-0" />
-                  <span>MATERI SEMESTER 1 (BAB 1 - 3)</span>
-                </div>
-                <span className="text-[9px] px-1.5 py-0.5 bg-amber-400 text-amber-950 font-black shrink-0">
-                  UTAMA
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setKelas7SubTab('excel')}
-                className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
-                  kelas7SubTab === 'excel'
-                    ? 'bg-[#107c41] text-white border-[#107c41] shadow-[2px_2px_0px_#1a1a1a]'
-                    : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
-                }`}
-              >
-                <FileSpreadsheet className="h-3.5 w-3.5 shrink-0" />
-                <span>LABORATORIUM EXCEL (PRAKTIK BAB 2)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setKelas7SubTab('guide')}
-                className={`w-full sm:w-auto px-3.5 py-2 font-mono-code text-xs font-bold border transition-all cursor-pointer flex items-center gap-2 ${
-                  kelas7SubTab === 'guide'
-                    ? 'bg-[#2e59e6] text-white border-[#2e59e6] shadow-[2px_2px_0px_#1a1a1a]'
-                    : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
-                }`}
-              >
-                <Calculator className="h-3.5 w-3.5 shrink-0" />
-                <span>PANDUAN RUMUS SPREADSHEET</span>
-              </button>
-            </div>
-
-            <div className="font-mono-code text-[11px] text-slate-500 px-2 hidden md:block">
-              Kurikulum Merdeka • Semester 1
-            </div>
-          </div>
-
-          {/* Sub-tab 1: Kelas 7 Semester 1 Full Kurikulum Merdeka (Bab 1, 2, 3) */}
-          {kelas7SubTab === 'materi7' && (
-            <Kelas7Semester1View
-              onOpenExcelLab={() => setKelas7SubTab('excel')}
-              onOpenFormulaGuide={() => setKelas7SubTab('guide')}
-              onOpenQuiz={onNavigateKuis}
-            />
-          )}
-
-          {/* Sub-tab 2: Interactive Excel Lab Workspace */}
-          {kelas7SubTab === 'excel' && (
-            <div className="space-y-4">
-              <ExcelLabStudentWorkspace
-                onNavigateHome={onNavigateHome}
-                onNavigateCek={onNavigateCek}
-                onNavigateKelas7={onNavigateKelas7}
-              />
-            </div>
-          )}
-
-          {/* Sub-tab 3: Complete Formula Guide */}
-          {kelas7SubTab === 'guide' && (
-            <div className="space-y-4">
-              <div className="bg-white border-2 border-[#1a1a1a] p-4 shadow-[4px_4px_0px_#1a1a1a] flex items-center justify-between">
-                <div>
-                  <h2 className="font-mono-code text-base font-bold text-[#1a1a1a]">
-                    Referensi Lengkap Sintaks Rumus Spreadsheet
-                  </h2>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    Panduan praktis pengolahan data dengan contoh rumus, input data, dan hasil perhitungan.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setKelas7SubTab('excel')}
-                  className="px-3 py-1.5 bg-[#107c41] text-white font-mono-code text-xs font-bold hover:bg-[#0c5c30] transition-all flex items-center gap-1.5 shadow-[2px_2px_0px_#1a1a1a]"
-                >
-                  <Play className="h-3 w-3" />
-                  <span>Coba di Laboratorium Excel &rarr;</span>
-                </button>
-              </div>
-              <ExcelFormulaGuideView onTryFormulaInPlayground={() => setKelas7SubTab('excel')} />
-            </div>
-          )}
-        </div>
+        <Kelas7Semester1View
+          onOpenExcelLab={() => onNavigatePraktek?.('excel')}
+          onOpenFormulaGuide={() => onNavigatePraktek?.('excel', 'guide')}
+        />
       )}
 
       {/* ========================================================= */}
@@ -407,11 +234,7 @@ export const MateriView: React.FC<MateriViewProps> = ({
           {/* Mapel 1: Koding & Kecerdasan Artifisial — Semester 1 (Bab 1-3) */}
           {kelas8Mapel === 'kka' && (
             <Kelas8KkaSemester1View
-              onOpenStudio={() => {
-                setKelas8Mapel('informatika');
-                setKelas8Bab('bab3');
-              }}
-              onOpenQuiz={onNavigateKuis}
+              onOpenStudio={() => onNavigatePraktek?.('studio')}
             />
           )}
 
@@ -485,235 +308,79 @@ export const MateriView: React.FC<MateriViewProps> = ({
                 <span>Bab 4: Hak-Hak Digital</span>
               </button>
             </div>
-
-            <div className="flex items-center gap-2">
-              {onNavigateKuis && (
-                <button
-                  type="button"
-                  onClick={onNavigateKuis}
-                  className="px-3 py-1 bg-emerald-700 hover:bg-emerald-800 text-white font-mono-code text-xs font-bold transition-all flex items-center gap-1.5 shadow-[2px_2px_0px_#1a1a1a]"
-                >
-                  <Sparkles className="h-3 w-3" />
-                  <span>Kuis Ujian Kelas 8</span>
-                </button>
-              )}
-            </div>
           </div>
 
           {/* =================================================================== */}
-          {/* BAB 3: ALGORITMA DAN PEMROGRAMAN - INTERACTIVE CODING STUDIO        */}
-          {/* ========================================================= */}
+          {/* BAB 3: ALGORITMA DAN PEMROGRAMAN — PRAKTIK DI /PRAKTEK              */}
+          {/* =================================================================== */}
           {(kelas8Bab === 'semua' || kelas8Bab === 'bab3') && (
-            <div className="space-y-4 pt-2">
-              <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-4 sm:p-5">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b-2 border-[#1a1a1a]">
-                  <div>
-                    <div className="flex items-center gap-2 font-mono-code text-[10px] font-bold uppercase mb-1">
-                      <span className="px-2 py-0.5 bg-[#2e59e6] text-white">BAB 3 • AP</span>
-                      <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-400">
-                        STUDIO PRAKTIK KODING INTERAKTIF
-                      </span>
-                    </div>
-                    <h2 className="font-mono-code text-lg sm:text-2xl font-black text-[#1a1a1a]">
-                      Algoritma dan Pemrograman (AP)
-                    </h2>
-                    <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-3xl leading-relaxed">
-                      Eksplorasi logika koding blok visual, pemecahan masalah algoritma, percabangan (if-else), perulangan (loops), dan konversi kode langsung ke Python & JavaScript melalui 3 studio interaktif:
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap items-center gap-2 font-mono-code text-xs shrink-0 self-start md:self-center">
-                    <span className="text-[11px] font-bold text-emerald-700 flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
-                      <span>Simulasi Live</span>
+            <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-4 sm:p-5">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pb-3 border-b-2 border-[#1a1a1a]">
+                <div>
+                  <div className="flex flex-wrap items-center gap-1.5 font-mono-code text-[10px] font-bold uppercase mb-1">
+                    <span className="px-2 py-0.5 bg-[#2e59e6] text-white">BAB 3 • AP</span>
+                    <span className="px-2 py-0.5 bg-amber-100 text-amber-900 border border-amber-400">
+                      PRAKTIK DIPINDAH KE /PRAKTEK
                     </span>
                   </div>
+                  <h2 className="font-mono-code text-lg sm:text-2xl font-black text-[#1a1a1a]">
+                    Algoritma dan Pemrograman (AP)
+                  </h2>
+                  <p className="text-xs sm:text-sm text-slate-600 mt-1 max-w-3xl leading-relaxed">
+                    Studio praktik koding (Google Blockly, Blockly Games, dan Scratch 3.0/PenguinMod)
+                    kini punya halaman khusus bersama Laboratorium Excel, Dokumen,
+                    dan Presentasi di <strong>Ruang Praktik</strong>.
+                  </p>
                 </div>
+                <Puzzle className="hidden md:block h-8 w-8 text-[#2e59e6] shrink-0" />
+              </div>
 
-                {/* Studio Platform Switcher Tabs */}
-                <div className="pt-3.5 flex flex-wrap items-center justify-between gap-2.5">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setActiveCodingTool('blockly-code')}
-                      className={`px-3.5 py-2 font-mono-code text-xs font-bold border-2 transition-all cursor-pointer flex items-center gap-2 ${
-                        activeCodingTool === 'blockly-code'
-                          ? 'bg-[#2e59e6] text-white border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a]'
-                          : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
-                      }`}
-                    >
-                      <Code2 className="h-4 w-4" />
-                      <span>1. GOOGLE BLOCKLY CODE</span>
-                      <span className="text-[9px] px-1 bg-amber-400 text-amber-950 font-black">
-                        BLOK &rarr; PYTHON
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveCodingTool('blockly-games')}
-                      className={`px-3.5 py-2 font-mono-code text-xs font-bold border-2 transition-all cursor-pointer flex items-center gap-2 ${
-                        activeCodingTool === 'blockly-games'
-                          ? 'bg-purple-700 text-white border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a]'
-                          : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
-                      }`}
-                    >
-                      <Gamepad2 className="h-4 w-4" />
-                      <span>2. BLOCKLY GAMES</span>
-                      <span className="text-[9px] px-1 bg-purple-200 text-purple-900 font-bold">
-                        GAME LABIRIN
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setActiveCodingTool('scratch')}
-                      className={`px-3.5 py-2 font-mono-code text-xs font-bold border-2 transition-all cursor-pointer flex items-center gap-2 ${
-                        activeCodingTool === 'scratch'
-                          ? 'bg-amber-600 text-white border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a]'
-                          : 'bg-[#F2EFEB] hover:bg-white text-slate-700 border-slate-300'
-                      }`}
-                    >
-                      <Puzzle className="h-4 w-4" />
-                      <span>3. SCRATCH 3.0 STUDIO</span>
-                      <span className="text-[9px] px-1 bg-amber-200 text-amber-950 font-bold">
-                        ANIMASI & GAME
-                      </span>
-                    </button>
-                  </div>
-
-                  {/* Actions for current tool */}
-                  <div className="flex items-center gap-2 font-mono-code text-xs">
-                    <button
-                      type="button"
-                      onClick={() => setIframeKey((prev) => prev + 1)}
-                      className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-[#1a1a1a] text-slate-700 transition-all cursor-pointer flex items-center gap-1 shadow-[1px_1px_0px_#1a1a1a]"
-                      title="Muat ulang workspace"
-                    >
-                      <RotateCw className="h-3 w-3" />
-                      <span className="hidden sm:inline">Refresh</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={handleToggleFullscreen}
-                      className="px-2.5 py-1.5 bg-white hover:bg-slate-100 border border-[#1a1a1a] text-slate-700 transition-all cursor-pointer flex items-center gap-1 shadow-[1px_1px_0px_#1a1a1a]"
-                      title="Toggle mode layar penuh"
-                    >
-                      {isIframeFullscreen ? (
-                        <>
-                          <Minimize2 className="h-3 w-3" />
-                          <span className="hidden sm:inline">Kecilkan</span>
-                        </>
-                      ) : (
-                        <>
-                          <Maximize2 className="h-3 w-3" />
-                          <span className="hidden sm:inline">Layar Penuh</span>
-                        </>
-                      )}
-                    </button>
-
-                    <a
-                      href={currentTool.openUrl ?? currentTool.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-3 py-1.5 bg-[#1a1a1a] hover:bg-[#2e59e6] text-white font-bold border border-[#1a1a1a] transition-all flex items-center gap-1.5 shadow-[2px_2px_0px_#1a1a1a]"
-                      title="Buka di tab baru peramban untuk area kerja maksimal"
-                    >
-                      <span>Buka Tab Baru</span>
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                  </div>
+              <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-2 font-mono-code text-xs">
+                <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a]">
+                  <div className="font-bold text-[#2e59e6] mb-1">1. GOOGLE BLOCKLY</div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Blok &rarr; Python/JavaScript, latihan logika sekuensial, percabangan, dan
+                    perulangan.
+                  </p>
                 </div>
-
-                {/* Info Bar for Active Tool */}
-                <div className="mt-3 p-3 bg-[#FAF8F5] border border-[#1a1a1a] flex flex-col sm:flex-row sm:items-center justify-between gap-2 font-mono-code text-xs">
-                  <div>
-                    <span className="font-bold text-[#1a1a1a]">{currentTool.title}:</span>{' '}
-                    <span className="text-slate-600">{currentTool.description}</span>
-                  </div>
-                  {activeCodingTool === 'scratch' && currentTool.externalUrl && (
-                    <a
-                      href={currentTool.externalUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-amber-800 font-bold hover:underline shrink-0 flex items-center gap-1"
-                    >
-                      <span>Buka Scratch Resmi (MIT) &rarr;</span>
-                    </a>
-                  )}
+                <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a]">
+                  <div className="font-bold text-purple-700 mb-1">2. BLOCKLY GAMES</div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Game labirin &amp; puzzle logika untuk memantapkan konsep algoritma.
+                  </p>
                 </div>
+                <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a]">
+                  <div className="font-bold text-amber-700 mb-1">3. SCRATCH 3.0</div>
+                  <p className="text-[11px] text-slate-600 leading-relaxed">
+                    Editor Scratch/PenguinMod untuk membuat animasi dan game karya siswa.
+                  </p>
+                </div>
+              </div>
 
-                {/* THE INTERACTIVE IFRAME WORKSPACE CONTAINER */}
-                <div
-                  ref={studioContainerRef}
-                  className={`mt-3 bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] overflow-hidden transition-all relative ${
-                    isIframeFullscreen ? 'fixed inset-0 z-50 p-2 bg-[#F2EFEB] flex flex-col h-screen w-screen' : ''
-                  }`}
+              <div className="mt-4 flex flex-col sm:flex-row gap-2">
+                <button
+                  type="button"
+                  onClick={() => onNavigatePraktek?.('studio')}
+                  className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-[#2e59e6] hover:bg-blue-700 text-white font-mono-code text-xs font-bold border border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  {isIframeFullscreen && (
-                    <div className="p-2 bg-[#1a1a1a] text-white flex items-center justify-between font-mono-code text-xs mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
-                        <span className="font-bold">{currentTool.title} (Mode Layar Penuh)</span>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleToggleFullscreen}
-                        className="px-2.5 py-1 bg-white text-[#1a1a1a] font-bold border border-white hover:bg-slate-200"
-                      >
-                        Kembali ke Halaman Normal ✕
-                      </button>
-                    </div>
-                  )}
+                  <Play className="h-3.5 w-3.5" />
+                  <span>BUKA STUDIO KODING DI /PRAKTEK &rarr;</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onNavigatePraktek?.()}
+                  className="w-full sm:w-auto min-h-[44px] px-4 py-2.5 bg-[#FAF8F5] hover:bg-slate-200 text-[#1a1a1a] font-mono-code text-xs font-bold border border-[#1a1a1a] transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-amber-600" />
+                  <span>SEMUA ALAT PRAKTIK (EXCEL • KODING • DOKUMEN • PRESENTASI)</span>
+                </button>
+              </div>
 
-                  <iframe
-                    key={`${activeCodingTool}-${iframeKey}`}
-                    src={currentTool.url}
-                    title={currentTool.title}
-                    className="w-full h-[600px] sm:h-[720px] lg:h-[800px] border-none bg-white"
-                    allow="camera; microphone; accelerometer; gyroscope; fullscreen"
-                    loading="lazy"
-                  />
-                </div>
-
-                {/* Pedagogical Guidance & Practical Mission Cards for Students */}
-                <div className="mt-4 pt-4 border-t-2 border-[#1a1a1a]">
-                  <h4 className="font-mono-code text-xs font-bold text-[#1a1a1a] uppercase tracking-wider mb-2.5 flex items-center gap-1.5">
-                    <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                    <span>LEMBAR TANTANGAN PRAKTIKUM ALGORITMA PEMROGRAMAN KELAS 8:</span>
-                  </h4>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 font-mono-code text-xs">
-                    <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]">
-                      <div className="font-bold text-[#2e59e6] mb-1">MISI 1: SEKUENSIAL</div>
-                      <div className="text-[11px] text-slate-700 leading-relaxed">
-                        Susun balok gerak langkah demi langkah untuk mengarahkan karakter dari titik awal ke tujuan tanpa rintangan.
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]">
-                      <div className="font-bold text-purple-700 mb-1">MISI 2: PERCABANGAN</div>
-                      <div className="text-[11px] text-slate-700 leading-relaxed">
-                        Gunakan balok <span className="text-[#1a1a1a] font-bold">if-else</span> untuk mendeteksi rintangan: jika ada belokan ke kanan, maka belok kanan.
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]">
-                      <div className="font-bold text-amber-700 mb-1">MISI 3: PERULANGAN (LOOP)</div>
-                      <div className="text-[11px] text-slate-700 leading-relaxed">
-                        Gunakan perulangan <span className="text-[#1a1a1a] font-bold">repeat while</span> agar program berjalan efisien tanpa menulis instruksi berulang kali.
-                      </div>
-                    </div>
-
-                    <div className="p-3 bg-[#FAF8F5] border border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a]">
-                      <div className="font-bold text-emerald-700 mb-1">MISI 4: VARIABEL & SKOR</div>
-                      <div className="text-[11px] text-slate-700 leading-relaxed">
-                        Buat variabel <span className="text-[#1a1a1a] font-bold">skor</span> yang bertambah +1 setiap kali karakter berhasil mengumpulkan objek target.
-                      </div>
-                    </div>
-                  </div>
-                </div>
+              <div className="mt-4 p-3 bg-emerald-50 border border-emerald-300 font-mono-code text-[11px] text-emerald-950 leading-relaxed">
+                <strong>Catatan:</strong> materi teori Bab 1&ndash;Bab 4 (Analisis Data, Berpikir
+                Komputasional, Algoritma Pemrograman, dan Hak-Hak Digital) tetap lengkap di halaman
+                ini. Hanya <em>alat praktik</em>-nya yang dipindahkan agar mudah diakses dari menu
+                Ruang Praktik.
               </div>
             </div>
           )}

@@ -11,7 +11,7 @@ import { TabId } from '../types';
 export type { TabId };
 
 /** Tab yang ditampilkan tanpa sidebar master (halaman publik / portal siswa). */
-export const PUBLIC_TABS: TabId[] = ['showcase', 'cek', 'kelas7', 'pengganti', 'kuis', 'excel', 'materi'];
+export const PUBLIC_TABS: TabId[] = ['showcase', 'cek', 'kelas7', 'pengganti', 'kuis', 'excel', 'materi', 'praktek'];
 
 export function isPublicTab(tab: TabId): boolean {
   return PUBLIC_TABS.includes(tab);
@@ -35,6 +35,7 @@ export const TAB_PATHS: Record<TabId, string> = {
   excel: '/',
   master_excel: '/master/excel',
   materi: '/',
+  praktek: '/praktek',
 };
 
 /**
@@ -80,6 +81,8 @@ export const PATH_ALIASES: Array<{ path: string; tab: TabId }> = [
   { path: '/substitute', tab: 'substitute_tasks' },
   { path: '/master/spreadsheet', tab: 'spreadsheet' },
   { path: '/spreadsheet', tab: 'spreadsheet' },
+  { path: '/praktek', tab: 'praktek' },
+  { path: '/praktik', tab: 'praktek' },
 ];
 
 /** Tentukan tab aktif dari sebuah pathname URL. */

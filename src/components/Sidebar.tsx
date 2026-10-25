@@ -2,7 +2,6 @@ import React from 'react';
 import {
   LayoutDashboard,
   Users,
-  Award,
   PlusCircle,
   LogOut,
   X,
@@ -197,20 +196,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <span>TUGAS PENGGANTI</span>
             </span>
             <span className="text-[10px] text-amber-300 font-mono-code">/pengganti</span>
-          </button>
-
-          <button
-            onClick={() => {
-              onNavigate('kuis', '/kuis');
-              onCloseMobile();
-            }}
-            className="w-full flex items-center justify-between px-3 py-2 text-xs font-mono-code font-bold bg-purple-500/20 hover:bg-purple-400 hover:text-[#1a1a1a] text-purple-200 border border-purple-400/30 transition-all cursor-pointer"
-          >
-            <span className="flex items-center gap-1.5">
-              <Award className="h-3 w-3 text-purple-300" />
-              <span>PORTAL KUIS SISWA</span>
-            </span>
-            <span className="text-[10px] text-purple-200 font-mono-code">/kuis</span>
           </button>
         </div>
 

@@ -43,6 +43,9 @@ function spaRoutesPlugin(): Plugin {
         'tugas-pengganti',
         'pengganti-kka2',
         'kka2',
+        // Ruang Praktik (Lab Excel, Studio Koding, Dokumen, Presentasi)
+        'praktek',
+        'praktik',
         // Arsip Karya Siswa (showcase lama; materi kini menjadi beranda "/")
         'arsip-karya',
         'showcase',

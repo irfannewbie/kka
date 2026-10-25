@@ -51,6 +51,7 @@ import { ExcelLabStudentWorkspace } from './components/excel/ExcelLabStudentWork
 import { ExcelLabMasterView } from './components/excel/ExcelLabMasterView';
 import { Kelas7HubView } from './components/Kelas7HubView';
 import { MateriView } from './components/MateriView';
+import { PraktekView } from './components/praktek/PraktekView';
 import {
   Bell,
   X,
@@ -86,11 +87,6 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const activeTab: TabId = getTabFromPath(location.pathname);
-  const [quizLaunchParams, setQuizLaunchParams] = useState<{
-    pin?: string;
-    className?: string;
-    attendanceNo?: number;
-  }>({});
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
@@ -103,6 +99,15 @@ export default function App() {
       navigate(resolvedPath);
     }
     return effectiveTab;
+  };
+
+  /** Buka Ruang Praktik (/praktek) dengan alat & sub-tab tertentu. */
+  const handleOpenPraktek = (tool?: string, view?: string) => {
+    const params = new URLSearchParams();
+    if (tool) params.set('tool', tool);
+    if (view) params.set('view', view);
+    const query = params.toString();
+    handleNavigate('praktek', `/praktek${query ? `?${query}` : ''}`);
   };
 
   // Auth & Google Sheets State - Default logged in as irfandwi.hs@gmail.com / irfannewbie7@gmail.com
@@ -804,13 +809,29 @@ export default function App() {
                 path="/"
                 element={
                   <MateriView
-                    onNavigateHome={() => handleNavigate('showcase', '/arsip-karya')}
-                    onNavigateCek={() => handleNavigate('cek', '/cek')}
-                    onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
-                    onNavigateKuis={() => handleNavigate('kuis', '/kuis')}
+                    onNavigatePraktek={handleOpenPraktek}
                   />
                 }
               />
+
+              {/* Ruang Praktik: Lab Excel, Studio Koding, Word & PowerPoint */}
+              {['/praktek', '/praktik'].map((p) => (
+                <Route
+                  key={p}
+                  path={p}
+                  element={
+                    <PraktekView
+                      key={location.search}
+                      initialTool={new URLSearchParams(location.search).get('tool')}
+                      initialView={new URLSearchParams(location.search).get('view')}
+                      onNavigateMateri={() => handleNavigate('materi', '/')}
+                      onNavigateHome={() => handleNavigate('showcase', '/arsip-karya')}
+                      onNavigateCek={() => handleNavigate('cek', '/cek')}
+                      onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
+                    />
+                  }
+                />
+              ))}
 
               {/* Arsip Karya Siswa (hasil tugas KKA Kelas 8) */}
               {['/arsip-karya', '/showcase'].map((p) => (
@@ -841,7 +862,7 @@ export default function App() {
                       onNavigateHome={() => handleNavigate('showcase', '/arsip-karya')}
                       onNavigatePengganti={() => handleNavigate('pengganti', '/pengganti')}
                       onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
-                      onNavigateExcel={() => handleNavigate('materi', '/')}
+                      onNavigateExcel={() => handleNavigate('praktek', '/praktek?tool=excel')}
                     />
                   }
                 />
@@ -871,9 +892,6 @@ export default function App() {
                   path={p}
                   element={
                     <StudentQuizView
-                      initialPin={quizLaunchParams.pin}
-                      initialClassName={quizLaunchParams.className}
-                      initialAttendanceNo={quizLaunchParams.attendanceNo}
                       onNavigateHome={() => handleNavigate('showcase', '/arsip-karya')}
                       onNavigateCek={(gl) =>
                         handleNavigate(gl === '7' ? 'kelas7' : 'cek', gl === '7' ? '/kelas7' : '/cek')
@@ -1011,10 +1029,6 @@ export default function App() {
                     spreadsheetUrl={spreadsheetUrl}
                     token={token}
                     onLogin={handleGoogleLogin}
-                    onNavigateToStudentQuiz={(pin) => {
-                      setQuizLaunchParams({ pin });
-                      handleNavigate('kuis', '/kuis');
-                    }}
                     onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
                   />
                 }
@@ -1027,10 +1041,6 @@ export default function App() {
                     spreadsheetUrl={spreadsheetUrl}
                     token={token}
                     onLogin={handleGoogleLogin}
-                    onNavigateToStudentQuiz={(pin) => {
-                      setQuizLaunchParams({ pin });
-                      handleNavigate('kuis', '/kuis');
-                    }}
                     onShowAlert={(title, message) => triggerNewTaskAlert(title, message)}
                   />
                 }
@@ -1092,10 +1102,7 @@ export default function App() {
                 path="*"
                 element={
                   <MateriView
-                    onNavigateHome={() => handleNavigate('showcase', '/arsip-karya')}
-                    onNavigateCek={() => handleNavigate('cek', '/cek')}
-                    onNavigateKelas7={() => handleNavigate('kelas7', '/kelas7')}
-                    onNavigateKuis={() => handleNavigate('kuis', '/kuis')}
+                    onNavigatePraktek={handleOpenPraktek}
                   />
                 }
               />

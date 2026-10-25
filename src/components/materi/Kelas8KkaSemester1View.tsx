@@ -19,7 +19,6 @@ import { MATERI_KELAS_8_SEMESTER_1, BabKelas8KKA } from '../../data/materiKelas8
 
 interface Kelas8KkaSemester1ViewProps {
   onOpenStudio?: () => void;
-  onOpenQuiz?: () => void;
 }
 
 const STORAGE_REFLEKSI_KEY = 'materi_k8kka_refleksi_progress_v1';
@@ -33,7 +32,6 @@ const BAB_ICONS: Record<string, React.ReactNode> = {
 
 export const Kelas8KkaSemester1View: React.FC<Kelas8KkaSemester1ViewProps> = ({
   onOpenStudio,
-  onOpenQuiz,
 }) => {
   // Selected Bab filter ('semua' | 'kka-bab1' | 'kka-bab2' | 'kka-bab3')
   const [activeBabFilter, setActiveBabFilter] = useState<string>('semua');
@@ -200,16 +198,6 @@ export const Kelas8KkaSemester1View: React.FC<Kelas8KkaSemester1ViewProps> = ({
               <Puzzle className="h-3.5 w-3.5" />
               <span>Studio Koding (Blockly &amp; Scratch) &rarr;</span>
             </button>
-            {onOpenQuiz && (
-              <button
-                type="button"
-                onClick={onOpenQuiz}
-                className="px-3 py-1 bg-[#FAF8F5] hover:bg-slate-200 text-[#1a1a1a] font-mono-code text-xs font-bold transition-all border border-[#1a1a1a] flex items-center gap-1.5 cursor-pointer"
-              >
-                <BookOpen className="h-3.5 w-3.5 text-amber-600" />
-                <span>Buka Kuis &rarr;</span>
-              </button>
-            )}
           </div>
 
           {/* Search within modules */}

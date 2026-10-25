@@ -27,7 +27,8 @@ export type TabId =
   | 'master_quiz'
   | 'excel'
   | 'master_excel'
-  | 'materi';
+  | 'materi'
+  | 'praktek';
 
 export type TaskType = 'individu' | 'kelompok';
 

@@ -26,7 +26,6 @@ import { MATERI_KELAS_7_SEMESTER_1, BabKelas7, MateriPokokItem } from '../../dat
 interface Kelas7Semester1ViewProps {
   onOpenExcelLab?: () => void;
   onOpenFormulaGuide?: () => void;
-  onOpenQuiz?: () => void;
 }
 
 const STORAGE_REFLEKSI_KEY = 'materi_k7_refleksi_progress_v1';
@@ -34,7 +33,6 @@ const STORAGE_REFLEKSI_KEY = 'materi_k7_refleksi_progress_v1';
 export const Kelas7Semester1View: React.FC<Kelas7Semester1ViewProps> = ({
   onOpenExcelLab,
   onOpenFormulaGuide,
-  onOpenQuiz,
 }) => {
   // Selected Bab filter ('semua' | 'bab1' | 'bab2' | 'bab3')
   const [activeBabFilter, setActiveBabFilter] = useState<'semua' | 'bab1' | 'bab2' | 'bab3'>('semua');
@@ -192,16 +190,6 @@ export const Kelas7Semester1View: React.FC<Kelas7Semester1ViewProps> = ({
               <Calculator className="h-3.5 w-3.5" />
               <span>Panduan Rumus Spreadsheet &rarr;</span>
             </button>
-            {onOpenQuiz && (
-              <button
-                type="button"
-                onClick={onOpenQuiz}
-                className="px-3 py-1 bg-[#FAF8F5] hover:bg-slate-200 text-[#1a1a1a] font-mono-code text-xs font-bold transition-all border border-[#1a1a1a] flex items-center gap-1.5 cursor-pointer"
-              >
-                <BookOpen className="h-3.5 w-3.5 text-amber-600" />
-                <span>Kuis Informatika &rarr;</span>
-              </button>
-            )}
           </div>
 
           {/* Search within modules */}

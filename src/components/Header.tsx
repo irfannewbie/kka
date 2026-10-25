@@ -8,6 +8,7 @@ import {
   Clock,
   Zap,
   BookOpen,
+  FlaskConical,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { ADMIN_EMAILS, SessionTimerInfo, formatDurationMMSS } from '../services/firebaseAuth';
@@ -66,7 +67,8 @@ export const Header: React.FC<HeaderProps> = ({
     activeTab !== 'pengganti' &&
     activeTab !== 'kuis' &&
     activeTab !== 'excel' &&
-    activeTab !== 'materi';
+    activeTab !== 'materi' &&
+    activeTab !== 'praktek';
   const isCekMode = activeTab === 'cek';
   const isKelas7Mode = activeTab === 'kelas7';
   const isPenggantiMode = activeTab === 'pengganti';
@@ -74,6 +76,7 @@ export const Header: React.FC<HeaderProps> = ({
   const isExcelMode = activeTab === 'excel';
   const isMasterExcelMode = activeTab === 'master_excel';
   const isMateriMode = activeTab === 'materi';
+  const isPraktekMode = activeTab === 'praktek';
 
   return (
     <header
@@ -98,7 +101,7 @@ export const Header: React.FC<HeaderProps> = ({
           className="font-mono-code text-xs sm:text-sm font-bold tracking-wider text-[#1a1a1a] cursor-pointer hover:text-[#2e59e6] transition-colors flex items-center gap-1.5 sm:gap-2 shrink-0"
         >
           <span>[ SISWAHUB v2.0 ]</span>
-          {!isMasterMode && !isCekMode && !isKelas7Mode && !isPenggantiMode && !isKuisMode && !isExcelMode && !isMasterExcelMode && !isMateriMode && (
+          {!isMasterMode && !isCekMode && !isKelas7Mode && !isPenggantiMode && !isKuisMode && !isExcelMode && !isMasterExcelMode && !isMateriMode && !isPraktekMode && (
             <span className="hidden sm:inline-block text-[11px] font-normal text-slate-500 font-mono-code border-l border-[#1a1a1a] pl-2">
               ARSIP KARYA SISWA
             </span>
@@ -106,6 +109,11 @@ export const Header: React.FC<HeaderProps> = ({
           {isMateriMode && (
             <span className="hidden sm:inline-block text-[11px] font-bold text-[#2e59e6] font-mono-code border-l border-[#1a1a1a] pl-2">
               MATERI PEMBELAJARAN (KELAS 7 & 8)
+            </span>
+          )}
+          {isPraktekMode && (
+            <span className="hidden lg:inline-block text-[11px] font-bold text-[#107c41] font-mono-code border-l border-[#1a1a1a] pl-2">
+              RUANG PRAKTIK: 4 ALAT LOKAL
             </span>
           )}
           {isCekMode && (
@@ -197,6 +205,17 @@ export const Header: React.FC<HeaderProps> = ({
             </button>
           </>
         )}
+
+        {/* Ruang Praktik quick link (selalu tampil) */}
+        <button
+          type="button"
+          onClick={() => onNavigate('praktek', '/praktek')}
+          className="p-1.5 md:px-2 md:py-1 bg-[#107c41] hover:bg-emerald-700 text-white border border-[#1a1a1a] transition-colors flex items-center gap-1 shadow-[1px_1px_0px_#1a1a1a] cursor-pointer"
+          title="Ruang Praktik: Lab Excel, Studio Koding, Dokumen & Presentasi"
+        >
+          <FlaskConical className="h-3.5 w-3.5" />
+          <span className="hidden md:inline font-mono-code text-[10px] font-bold">PRAKTEK</span>
+        </button>
 
         {/* Manual Sync Button */}
         <button

@@ -46,11 +46,15 @@ import { ExcelStudentTasksView } from './ExcelStudentTasksView';
 import { ExcelTaskGuidePanel } from './ExcelTaskGuidePanel';
 import { playNotificationChime } from '../../services/sound';
 
+type ExcelLabSubTab = 'home' | 'guide' | 'practice' | 'tasks' | 'history';
+
 interface ExcelLabStudentWorkspaceProps {
   onNavigateHome: () => void;
   onNavigateCek?: () => void;
   onNavigateKelas7?: () => void;
   initialTaskToOpen?: ExcelTask | null;
+  /** Sub-tab yang dibuka pertama kali (mis. `guide` dari tautan /praktek?tool=excel&view=guide). */
+  initialSubTab?: ExcelLabSubTab;
 }
 
 export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> = ({
@@ -58,10 +62,11 @@ export const ExcelLabStudentWorkspace: React.FC<ExcelLabStudentWorkspaceProps> =
   onNavigateCek,
   onNavigateKelas7,
   initialTaskToOpen,
+  initialSubTab = 'home',
 }) => {
   // Navigation sub-tabs
-  type TabType = 'home' | 'guide' | 'practice' | 'tasks' | 'history';
-  const [activeSubTab, setActiveSubTab] = useState<TabType>('home');
+  type TabType = ExcelLabSubTab;
+  const [activeSubTab, setActiveSubTab] = useState<TabType>(initialSubTab);
 
   // Tasks & submissions state
   const [tasks, setTasks] = useState<ExcelTask[]>(() => loadLocalExcelTasks());
