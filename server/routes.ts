@@ -20,6 +20,7 @@ import {
   missingFields,
   requireAdminToken,
 } from './security';
+import { syncQuizSubmissionToGoogleSheet } from './googleSheets';
 
 interface StoredCalculatorDatasetBody {
   modeAData?: Record<string, MasterModeARecord>;
@@ -197,7 +198,7 @@ export function registerApiRoutes(app: Express): void {
   });
 
   // 7. POST submit pengerjaan kuis siswa & sinkron otomatis ke database Kalkulator Akademik
-  app.post('/api/quizzes/submit', submitLimiter, (req: Request, res: Response) => {
+  app.post('/api/quizzes/submit', submitLimiter, async (req: Request, res: Response) => {
     const raw = (req.body || {}).submission as Record<string, unknown> | undefined;
     const missing = missingFields(raw, ['quizId', 'className', 'attendanceNo', 'studentName']);
     const finalScore = raw ? asFiniteNumber(raw.finalScore) : null;
@@ -291,6 +292,29 @@ export function registerApiRoutes(app: Express): void {
       writeMasterDb(masterDb);
       } catch (err) {
         console.warn('Auto-sync quiz submission to masterDb warning:', err);
+      }
+    }
+
+    // Auto-sync ke Google Spreadsheet (Service Account) jika dikonfigurasi.
+    if (raw.mode !== 'practice') {
+      try {
+        await syncQuizSubmissionToGoogleSheet({
+          quizId: submission.quizId,
+          quizTitle: submission.quizTitle,
+          className: submission.className,
+          subject: submission.subject,
+          assessment: submission.assessment,
+          attendanceNo: Number(submission.attendanceNo),
+          studentName: submission.studentName,
+          calcBenarPG: submission.calcBenarPG as number | null | undefined,
+          calcBenarMJ: submission.calcBenarMJ as number | null | undefined,
+          calcSkorUraian: submission.calcSkorUraian as number | null | undefined,
+          isRemedial: submission.isRemedial,
+          remedialScore: (submission as any).remedialScore ?? null,
+          finalScore,
+        });
+      } catch (err) {
+        console.warn('Auto-sync to Google Sheet failed:', err);
       }
     }
 

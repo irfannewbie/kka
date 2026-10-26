@@ -33,7 +33,7 @@ import {
 } from '../services/quizStore';
 import {
   POWER_UP_DEFINITIONS,
-  QUIZ_MODE_GROUPS,
+  QUIZ_MODES,
   QUIZ_TEAMS,
   QuizModeId,
   calculateAccuracy,
@@ -43,6 +43,10 @@ import {
   type PowerUpId,
 } from '../services/quizModes';
 import { PaperQuizSheet } from './quiz/PaperQuizSheet';
+import { DuckHuntPG } from './quiz/game/DuckHuntPG';
+import { MatchingConnect } from './quiz/game/MatchingConnect';
+import { ParsonsTrain } from './quiz/game/ParsonsTrain';
+import { CodeWhackAMole } from './quiz/game/CodeWhackAMole';
 import {
   ALL_CLASSES,
   GRADE_7_CLASSES,
@@ -60,7 +64,7 @@ interface StudentQuizViewProps {
   onNavigateCek: (gradeLevel: '7' | '8') => void;
 }
 
-interface ShuffledOptionItem {
+export interface ShuffledOptionItem {
   originalIndex: number;
   text: string;
 }
@@ -165,8 +169,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
 
   const submitLockRef = useRef<boolean>(false);
 
-  // Mode sesi & fitur gamifikasi
-  const [selectedMode, setSelectedMode] = useState<QuizModeId>('classic');
+  // Mode sesi & fitur gamifikasi (mode ditetapkan guru lewat /master)
   const [activeMode, setActiveMode] = useState<QuizModeId>('classic');
   const [strikeShieldEnabled, setStrikeShieldEnabled] = useState<boolean>(false);
   const [paperQuiz, setPaperQuiz] = useState<InteractiveQuiz | null>(null);
@@ -285,7 +288,6 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
   }, [activeQuiz, currentStudent, selectedClass, masteryQuestionIds]);
 
   const currentMode = getQuizMode(activeMode);
-  const selectedModeDef = getQuizMode(selectedMode);
   const myTeam = useMemo(
     () => getTeamForAttendance(Number(currentStudent?.attendanceNo ?? 1)),
     [currentStudent]
@@ -385,8 +387,12 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
       return;
     }
 
+    // Mode ditetapkan guru di halaman /master. Siswa tidak memilih mode.
+    const teacherMode: QuizModeId = (foundQuiz.liveMode as QuizModeId) || 'classic';
+    setStrikeShieldEnabled(teacherMode === 'classic');
+
     // Mode kertas langsung membuka lembar cetak, tidak membuat attempt digital.
-    if (selectedMode === 'paper') {
+    if (teacherMode === 'paper') {
       setActiveQuiz(foundQuiz);
       setPaperQuiz(foundQuiz);
       setCompletedSubmission(null);
@@ -403,9 +409,9 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         Number(s.attendanceNo) === Number(currentStudent.attendanceNo)
     );
 
-    if (existingAttempt && selectedMode !== 'practice') {
+    if (existingAttempt && teacherMode !== 'practice') {
       setActiveQuiz(foundQuiz);
-      setActiveMode(existingAttempt.mode || selectedMode);
+      setActiveMode(existingAttempt.mode || teacherMode);
       setCompletedSubmission(existingAttempt);
       setIsExamRunning(false);
       return;
@@ -428,7 +434,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     });
 
     submitLockRef.current = false;
-    setActiveMode(selectedMode);
+    setActiveMode(teacherMode);
     setPgAnswers({});
     setMatchingAnswers({});
     setParsonsAnswers(initParsons);
@@ -453,9 +459,9 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     setMasteryFirstPassCorrect(0);
     setMasteryFirstPassTotal(0);
     setTestingReviewOpen(false);
-    setQuestionRemainingSeconds(getQuizMode(selectedMode).autoAdvanceSeconds || 30);
+    setQuestionRemainingSeconds(getQuizMode(teacherMode).autoAdvanceSeconds || 30);
     setRemainingSeconds(
-      getQuizMode(selectedMode).usesOverallTimer
+      getQuizMode(teacherMode).usesOverallTimer
         ? (foundQuiz.durationMinutes || 20) * 60
         : 0
     );
@@ -1302,6 +1308,14 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                 <span className="text-[10px] text-amber-300 font-bold uppercase tracking-wider">
                   {currentMode.formalAssessment ? 'UJIAN FORMAL' : 'KUIS INTERAKTIF'} · {currentMode.name.toUpperCase()} · PIN: {activeQuiz.tokenPin}
                 </span>
+                <span className="px-2 py-0.5 text-[9px] font-black bg-emerald-600 text-white">
+                  MODE DARI GURU
+                </span>
+                {activeQuiz.useArcadeMode && (
+                  <span className="px-2 py-0.5 text-[9px] font-black bg-fuchsia-600 text-white">
+                    ARCADE
+                  </span>
+                )}
                 {activeMode === 'team' && (
                   <span className={`px-2 py-0.5 text-[10px] font-black ${myTeam.badgeClass}`}>
                     {myTeam.mascot} {myTeam.name.toUpperCase()}
@@ -1582,52 +1596,102 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
 
           {/* 1. INTERACTION FOR PG & CODE OUTPUT */}
           {(currentQuestion.type === 'pg' || currentQuestion.type === 'code_output') && (
-            <div className="grid grid-cols-1 gap-3 pt-2">
-              {visibleOptions.map((item, dispIdx) => {
-                const letter = ['A', 'B', 'C', 'D'][dispIdx] || String(dispIdx + 1);
-                const isSelected = pgAnswers[currentQuestion.id] === item.originalIndex;
-                return (
-                  <button
-                    key={item.originalIndex}
-                    type="button"
-                    onClick={() =>
+            <>
+              {activeQuiz.useArcadeMode && currentQuestion.type === 'pg' ? (
+                <div className="pt-2">
+                  <DuckHuntPG
+                    question={currentQuestion}
+                    displayOptions={visibleOptions}
+                    onAnswer={(originalIndex) =>
                       setPgAnswers((prev) => ({
                         ...prev,
-                        [currentQuestion.id]: item.originalIndex,
+                        [currentQuestion.id]: originalIndex,
                       }))
                     }
-                    className={`w-full text-left p-4 border-2 transition-all flex items-center gap-3.5 cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#2e59e6] text-white border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a]'
-                        : 'bg-[#F2EFEB]/60 hover:bg-[#F2EFEB] text-[#1a1a1a] border-[#1a1a1a]'
-                    }`}
-                  >
-                    <span
-                      className={`w-8 h-8 flex items-center justify-center font-mono-code font-black text-xs border-2 shrink-0 ${
-                        isSelected
-                          ? 'bg-amber-400 text-[#1a1a1a] border-[#1a1a1a]'
-                          : 'bg-white text-[#1a1a1a] border-[#1a1a1a]'
-                      }`}
-                    >
-                      {letter}
-                    </span>
-                    <span className="text-sm font-semibold leading-snug">{item.text}</span>
-                  </button>
-                );
-              })}
-            </div>
+                    currentAnswer={pgAnswers[currentQuestion.id]}
+                    isAnswered={pgAnswers[currentQuestion.id] !== undefined}
+                  />
+                </div>
+              ) : activeQuiz.useArcadeMode && currentQuestion.type === 'code_output' ? (
+                <div className="pt-2">
+                  <CodeWhackAMole
+                    question={currentQuestion}
+                    displayOptions={visibleOptions}
+                    onAnswer={(originalIndex) =>
+                      setPgAnswers((prev) => ({
+                        ...prev,
+                        [currentQuestion.id]: originalIndex,
+                      }))
+                    }
+                    currentAnswer={pgAnswers[currentQuestion.id]}
+                    isAnswered={pgAnswers[currentQuestion.id] !== undefined}
+                  />
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 pt-2">
+                  {visibleOptions.map((item, dispIdx) => {
+                    const letter = ['A', 'B', 'C', 'D'][dispIdx] || String(dispIdx + 1);
+                    const isSelected = pgAnswers[currentQuestion.id] === item.originalIndex;
+                    return (
+                      <button
+                        key={item.originalIndex}
+                        type="button"
+                        onClick={() =>
+                          setPgAnswers((prev) => ({
+                            ...prev,
+                            [currentQuestion.id]: item.originalIndex,
+                          }))
+                        }
+                        className={`w-full text-left p-4 border-2 transition-all flex items-center gap-3.5 cursor-pointer ${
+                          isSelected
+                            ? 'bg-[#2e59e6] text-white border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a]'
+                            : 'bg-[#F2EFEB]/60 hover:bg-[#F2EFEB] text-[#1a1a1a] border-[#1a1a1a]'
+                        }`}
+                      >
+                        <span
+                          className={`w-8 h-8 flex items-center justify-center font-mono-code font-black text-xs border-2 shrink-0 ${
+                            isSelected
+                              ? 'bg-amber-400 text-[#1a1a1a] border-[#1a1a1a]'
+                              : 'bg-white text-[#1a1a1a] border-[#1a1a1a]'
+                          }`}
+                        >
+                          {letter}
+                        </span>
+                        <span className="text-sm font-semibold leading-snug">{item.text}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </>
           )}
 
           {/* 2. INTERACTION FOR MATCHING (PASANGKAN KARTU KIRI & KANAN) */}
           {currentQuestion.type === 'matching' && (
-            <div className="space-y-4 pt-2">
-              <div className="p-3 bg-blue-50 border border-[#1a1a1a] text-xs font-mono-code text-slate-700">
-                <strong>Cara Menjodohkan:</strong> Klik salah satu kartu di kolom{' '}
-                <strong>KIRI</strong>, lalu klik pasangan yang tepat di kolom{' '}
-                <strong>KANAN</strong> (atau pilih langsung melalui menu dropdown pada tiap baris).
-              </div>
+            <>
+              {activeQuiz.useArcadeMode ? (
+                <div className="pt-2">
+                  <MatchingConnect
+                    question={currentQuestion}
+                    onAnswer={(answerMap) =>
+                      setMatchingAnswers((prev) => ({
+                        ...prev,
+                        [currentQuestion.id]: answerMap,
+                      }))
+                    }
+                    currentAnswer={matchingAnswers[currentQuestion.id] || {}}
+                    isAnswered={isQuestionAnswered(currentQuestion)}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-4 pt-2">
+                  <div className="p-3 bg-blue-50 border border-[#1a1a1a] text-xs font-mono-code text-slate-700">
+                    <strong>Cara Menjodohkan:</strong> Klik salah satu kartu di kolom{' '}
+                    <strong>KIRI</strong>, lalu klik pasangan yang tepat di kolom{' '}
+                    <strong>KANAN</strong> (atau pilih langsung melalui menu dropdown pada tiap baris).
+                  </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Left Column Items */}
                 <div className="space-y-2.5">
                   <div className="font-mono-code text-xs font-bold uppercase text-[#1a1a1a]">
@@ -1735,72 +1799,92 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                 </div>
               </div>
             </div>
+              )}
+            </>
           )}
 
           {/* 3. INTERACTION FOR PARSONS PUZZLE (SUSUN BLOK ALGORITMA) */}
           {currentQuestion.type === 'parsons' && (
-            <div className="space-y-3 pt-2">
-              <div className="p-3 bg-amber-50 border border-[#1a1a1a] text-xs font-mono-code text-amber-950">
-                Gunakan tombol <strong>[↑ NAIKKAN]</strong> dan <strong>[↓ TURUNKAN]</strong> untuk menyusun blok algoritma di bawah ini agar berurutan dengan benar dari langkah pertama hingga terakhir!
-              </div>
+            <>
+              {activeQuiz.useArcadeMode ? (
+                <div className="pt-2">
+                  <ParsonsTrain
+                    question={currentQuestion}
+                    onAnswer={(blocks) =>
+                      setParsonsAnswers((prev) => ({
+                        ...prev,
+                        [currentQuestion.id]: blocks,
+                      }))
+                    }
+                    currentAnswer={parsonsAnswers[currentQuestion.id]}
+                    isAnswered={isQuestionAnswered(currentQuestion)}
+                  />
+                </div>
+              ) : (
+                <div className="space-y-3 pt-2">
+                  <div className="p-3 bg-amber-50 border border-[#1a1a1a] text-xs font-mono-code text-amber-950">
+                    Gunakan tombol <strong>[↑ NAIKKAN]</strong> dan <strong>[↓ TURUNKAN]</strong> untuk menyusun blok algoritma di bawah ini agar berurutan dengan benar dari langkah pertama hingga terakhir!
+                  </div>
 
-              <div className="space-y-2">
-                {(parsonsAnswers[currentQuestion.id] || currentQuestion.parsonsBlocks || []).map(
-                  (blockText, bIdx, arr) => (
-                    <div
-                      key={bIdx}
-                      className="bg-[#F2EFEB] border-2 border-[#1a1a1a] p-3 flex items-center justify-between gap-3 shadow-[2px_2px_0px_#1a1a1a]"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        <span className="px-2.5 py-1 bg-[#1a1a1a] text-amber-300 font-mono-code text-xs font-bold shrink-0">
-                          URUTAN #{bIdx + 1}
-                        </span>
-                        <span className="font-mono-code text-xs sm:text-sm font-bold text-[#1a1a1a]">
-                          {blockText}
-                        </span>
-                      </div>
+                  <div className="space-y-2">
+                    {(parsonsAnswers[currentQuestion.id] || currentQuestion.parsonsBlocks || []).map(
+                      (blockText, bIdx, arr) => (
+                        <div
+                          key={bIdx}
+                          className="bg-[#F2EFEB] border-2 border-[#1a1a1a] p-3 flex items-center justify-between gap-3 shadow-[2px_2px_0px_#1a1a1a]"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="px-2.5 py-1 bg-[#1a1a1a] text-amber-300 font-mono-code text-xs font-bold shrink-0">
+                              URUTAN #{bIdx + 1}
+                            </span>
+                            <span className="font-mono-code text-xs sm:text-sm font-bold text-[#1a1a1a]">
+                              {blockText}
+                            </span>
+                          </div>
 
-                      <div className="flex items-center gap-1.5 shrink-0 font-mono-code">
-                        <button
-                          type="button"
-                          disabled={bIdx === 0}
-                          onClick={() => {
-                            const copy = [...arr];
-                            const temp = copy[bIdx - 1];
-                            copy[bIdx - 1] = copy[bIdx];
-                            copy[bIdx] = temp;
-                            setParsonsAnswers((prev) => ({
-                              ...prev,
-                              [currentQuestion.id]: copy,
-                            }));
-                          }}
-                          className="px-2.5 py-1.5 bg-white hover:bg-[#2e59e6] hover:text-white text-[#1a1a1a] border border-[#1a1a1a] text-xs font-bold disabled:opacity-40 cursor-pointer flex items-center gap-1"
-                        >
-                          <ArrowUp className="h-3.5 w-3.5" /> NAIK
-                        </button>
-                        <button
-                          type="button"
-                          disabled={bIdx === arr.length - 1}
-                          onClick={() => {
-                            const copy = [...arr];
-                            const temp = copy[bIdx + 1];
-                            copy[bIdx + 1] = copy[bIdx];
-                            copy[bIdx] = temp;
-                            setParsonsAnswers((prev) => ({
-                              ...prev,
-                              [currentQuestion.id]: copy,
-                            }));
-                          }}
-                          className="px-2.5 py-1.5 bg-white hover:bg-[#2e59e6] hover:text-white text-[#1a1a1a] border border-[#1a1a1a] text-xs font-bold disabled:opacity-40 cursor-pointer flex items-center gap-1"
-                        >
-                          <ArrowDown className="h-3.5 w-3.5" /> TURUN
-                        </button>
-                      </div>
-                    </div>
-                  )
-                )}
-              </div>
-            </div>
+                          <div className="flex items-center gap-1.5 shrink-0 font-mono-code">
+                            <button
+                              type="button"
+                              disabled={bIdx === 0}
+                              onClick={() => {
+                                const copy = [...arr];
+                                const temp = copy[bIdx - 1];
+                                copy[bIdx - 1] = copy[bIdx];
+                                copy[bIdx] = temp;
+                                setParsonsAnswers((prev) => ({
+                                  ...prev,
+                                  [currentQuestion.id]: copy,
+                                }));
+                              }}
+                              className="px-2.5 py-1.5 bg-white hover:bg-[#2e59e6] hover:text-white text-[#1a1a1a] border border-[#1a1a1a] text-xs font-bold disabled:opacity-40 cursor-pointer flex items-center gap-1"
+                            >
+                              <ArrowUp className="h-3.5 w-3.5" /> NAIK
+                            </button>
+                            <button
+                              type="button"
+                              disabled={bIdx === arr.length - 1}
+                              onClick={() => {
+                                const copy = [...arr];
+                                const temp = copy[bIdx + 1];
+                                copy[bIdx + 1] = copy[bIdx];
+                                copy[bIdx] = temp;
+                                setParsonsAnswers((prev) => ({
+                                  ...prev,
+                                  [currentQuestion.id]: copy,
+                                }));
+                              }}
+                              className="px-2.5 py-1.5 bg-white hover:bg-[#2e59e6] hover:text-white text-[#1a1a1a] border border-[#1a1a1a] text-xs font-bold disabled:opacity-40 cursor-pointer flex items-center gap-1"
+                            >
+                              <ArrowDown className="h-3.5 w-3.5" /> TURUN
+                            </button>
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* 4. INTERACTION FOR ESSAY / URAIAN SINGKAT */}
@@ -2345,15 +2429,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
               onClick={() => handleStartQuiz()}
               className="w-full py-2.5 px-3 bg-[#2e59e6] hover:bg-blue-700 text-white font-black text-[10px] border-2 border-[#1a1a1a] shadow-[3px_3px_0px_#1a1a1a] cursor-pointer flex items-center justify-center gap-1.5"
             >
-              {selectedMode === 'paper' ? (
-                <>
-                  <Printer className="h-3.5 w-3.5" /> KERTAS
-                </>
-              ) : (
-                <>
-                  <Play className="h-3.5 w-3.5" /> {selectedModeDef.shortName.toUpperCase()}
-                </>
-              )}
+              <Play className="h-3.5 w-3.5" /> GABUNG &amp; MULAI KUIS
             </button>
           </div>
         </div>
@@ -2365,160 +2441,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         )}
       </div>
 
-      {/* Mode Selector */}
-      <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-5 sm:p-6 font-mono-code space-y-4">
-        <div className="flex flex-wrap items-end justify-between gap-2 border-b-2 border-[#1a1a1a] pb-2.5">
-          <div>
-            <h2 className="text-sm font-bold uppercase text-[#1a1a1a]">
-              02. PILIH MODE KUIS (9 MODE)
-            </h2>
-            <p className="text-[11px] text-slate-600 mt-1">
-              6 mode live + 3 mode tugas. Mode dipilih sebelum kuis dimulai.
-            </p>
-          </div>
-          <div className="text-[10px] font-bold text-slate-500">
-            REFERENSI: MODE SESI WAYGROUND 2026
-          </div>
-        </div>
 
-        {QUIZ_MODE_GROUPS.map((group) => (
-          <div key={group.id} className="space-y-2">
-            <div className="flex flex-wrap items-baseline justify-between gap-1">
-              <h3 className="text-[11px] font-black text-[#2e59e6] uppercase tracking-wider">
-                {group.label}
-              </h3>
-              <span className="text-[10px] text-slate-500">{group.description}</span>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5">
-              {group.modes.map((mode) => {
-                const Icon = MODE_ICONS[mode.icon];
-                const isSelected = selectedMode === mode.id;
-                const isPremiumFeature = mode.id === 'classic';
-                return (
-                  <button
-                    key={mode.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedMode(mode.id);
-                      if (mode.id !== 'classic') setStrikeShieldEnabled(false);
-                    }}
-                    className={`text-left p-3 border-2 transition-all cursor-pointer ${
-                      isSelected
-                        ? 'bg-[#1a1a1a] text-white border-[#1a1a1a] shadow-[4px_4px_0px_#2e59e6]'
-                        : 'bg-white text-[#1a1a1a] border-[#1a1a1a] hover:bg-[#F2EFEB]'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span
-                          className={`w-8 h-8 flex items-center justify-center border-2 shrink-0 ${
-                            isSelected
-                              ? 'bg-amber-400 text-[#1a1a1a] border-white'
-                              : 'bg-[#F2EFEB] text-[#1a1a1a] border-[#1a1a1a]'
-                          }`}
-                        >
-                          <Icon className="h-4 w-4" />
-                        </span>
-                        <div className="min-w-0">
-                          <div className="text-xs font-black uppercase truncate">{mode.name}</div>
-                          <div
-                            className={`text-[9px] font-bold uppercase ${
-                              isSelected ? 'text-amber-300' : 'text-[#2e59e6]'
-                            }`}
-                          >
-                            {mode.category === 'live'
-                              ? 'LIVE'
-                              : mode.category === 'device-free'
-                              ? 'TANPA HP'
-                              : 'TUGAS'}
-                            {isPremiumFeature ? ' · PREMIUM FEATURE' : ''}
-                          </div>
-                        </div>
-                      </div>
-                      {isSelected && <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />}
-                    </div>
-                    <p
-                      className={`text-[10px] mt-2 leading-snug ${
-                        isSelected ? 'text-slate-300' : 'text-slate-600'
-                      }`}
-                    >
-                      {mode.tagline}
-                    </p>
-                    <div className="flex flex-wrap gap-1 mt-2">
-                      {mode.features.slice(0, 3).map((feature) => (
-                        <span
-                          key={feature}
-                          className={`px-1.5 py-0.5 text-[9px] font-bold border ${
-                            isSelected
-                              ? 'border-white/30 text-slate-200'
-                              : 'border-[#1a1a1a]/20 text-slate-600'
-                          }`}
-                        >
-                          {feature}
-                        </span>
-                      ))}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        ))}
-
-        {selectedMode === 'classic' && (
-          <label className="flex items-start gap-2.5 p-3 bg-fuchsia-50 border-2 border-[#1a1a1a] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={strikeShieldEnabled}
-              onChange={(e) => setStrikeShieldEnabled(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-fuchsia-700"
-            />
-            <span>
-              <span className="block text-xs font-black text-fuchsia-900 uppercase">
-                Aktifkan Strike &amp; Shield <span className="bg-fuchsia-700 text-white px-1.5 py-0.5 text-[9px]">PREMIUM</span>
-              </span>
-              <span className="block text-[10px] text-slate-600 mt-0.5">
-                Fitur gamifikasi premium di Classic: kumpulkan energi dari jawaban benar, serang
-                lawan, atau pasang perisai. Tidak mengubah nilai akademik.
-              </span>
-            </span>
-          </label>
-        )}
-
-        <div className="bg-[#F2EFEB] border-2 border-[#1a1a1a] p-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div>
-            <div className="text-[10px] font-bold text-slate-500 uppercase">MODE TERPILIH</div>
-            <div className="text-sm font-black text-[#1a1a1a]">
-              {selectedModeDef.name} · {selectedModeDef.bestFor}
-            </div>
-            <p className="text-[10px] text-slate-600 mt-0.5">{selectedModeDef.description}</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => handleStartQuiz()}
-            className="shrink-0 px-4 py-2.5 text-xs font-black bg-[#2e59e6] hover:bg-blue-700 text-white border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] cursor-pointer flex items-center justify-center gap-1.5"
-          >
-            {selectedMode === 'paper' ? (
-              <>
-                <Printer className="h-3.5 w-3.5" /> BUKA LEMBAR KERTAS
-              </>
-            ) : (
-              <>
-                <Play className="h-3.5 w-3.5" /> MULAI {selectedModeDef.shortName.toUpperCase()}
-              </>
-            )}
-          </button>
-        </div>
-
-        <div className="text-[10px] text-slate-500 flex items-start gap-1.5">
-          <Info className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-          <span>
-            Mode live: Classic, Team, Test, Mastery Peak, Instructor-Paced, Paper. Mode tugas:
-            Practice, Accuracy, Testing. Power-Up dan Strike &amp; Shield adalah fitur gamifikasi
-            premium; implementasi di sini berjalan lokal tanpa akun Wayground.
-          </span>
-        </div>
-      </div>
 
       {/* Active Quizzes List for Selected Class */}
       <div className="space-y-3 font-mono-code">
@@ -2551,7 +2474,8 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                     s.className === selectedClass &&
                     Number(s.attendanceNo) === Number(currentStudent.attendanceNo)
                 );
-              const hasFinalAttempt = Boolean(alreadyDone) && selectedMode !== 'practice';
+              const quizModeDef = getQuizMode((quiz.liveMode as QuizModeId) || 'classic');
+              const hasFinalAttempt = Boolean(alreadyDone) && quizModeDef.id !== 'practice';
 
               return (
                 <div
@@ -2568,7 +2492,23 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                       </span>
                     </div>
 
-                    <h3 className="font-sans font-bold text-base text-[#1a1a1a] mt-3">
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                      <span className="px-2 py-0.5 bg-[#2e59e6] text-white text-[10px] font-black uppercase">
+                        MODE: {quizModeDef.name}
+                      </span>
+                      {quiz.useArcadeMode && (
+                        <span className="px-2 py-0.5 bg-fuchsia-600 text-white text-[10px] font-black uppercase">
+                          ARCADE GAME
+                        </span>
+                      )}
+                      {quiz.isRemedialQuiz && (
+                        <span className="px-2 py-0.5 bg-amber-300 text-[#1a1a1a] text-[10px] font-black uppercase">
+                          REMEDIAL
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="font-sans font-bold text-base text-[#1a1a1a] mt-2">
                       {quiz.title}
                     </h3>
                     <p className="font-sans text-xs text-slate-600 mt-1 leading-relaxed">
@@ -2591,7 +2531,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                           : 'bg-[#2e59e6] hover:bg-blue-700 text-white'
                       }`}
                     >
-                      {selectedMode === 'paper' ? (
+                      {quizModeDef.id === 'paper' ? (
                         <Printer className="h-3.5 w-3.5" />
                       ) : (
                         <Play className="h-3.5 w-3.5" />
@@ -2599,11 +2539,11 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                       <span>
                         {hasFinalAttempt
                           ? `LIHAT HASIL SAYA (NILAI: ${alreadyDone?.finalScore ?? 0})`
-                          : selectedMode === 'paper'
+                          : quizModeDef.id === 'paper'
                           ? 'BUKA LEMBAR KERTAS'
                           : quiz.isRemedialQuiz
-                          ? `KERJAKAN REMEDIAL • ${selectedModeDef.shortName.toUpperCase()}`
-                          : `KERJAKAN • ${selectedModeDef.shortName.toUpperCase()}`}
+                          ? `KERJAKAN REMEDIAL • ${quizModeDef.shortName.toUpperCase()}`
+                          : `GABUNG & KERJAKAN • ${quizModeDef.shortName.toUpperCase()}`}
                       </span>
                     </button>
                   </div>

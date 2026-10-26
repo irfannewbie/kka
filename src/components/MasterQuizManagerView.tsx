@@ -35,6 +35,7 @@ import {
   applySubmissionToCalculatorMaster,
   submitQuizAttemptToServer,
 } from '../services/quizStore';
+import { QUIZ_MODES, type QuizModeId } from '../services/quizModes';
 import {
   GRADE_7_CLASSES,
   GRADE_8_CLASSES,
@@ -69,6 +70,10 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
   const [activeSubTab, setActiveSubTab] = useState<
     'packages' | 'editor' | 'arena' | 'submissions'
   >('packages');
+
+  // Live mode config per quiz
+  const [liveModeDraft, setLiveModeDraft] = useState<QuizModeId>('classic');
+  const [arcadeDraft, setArcadeDraft] = useState<boolean>(false);
 
   // Selected quiz for Editing / Live Arena / Filtering Submissions
   const [selectedQuizId, setSelectedQuizId] = useState<string>('quiz-kka-kelas8-main');
@@ -108,6 +113,13 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
     () => quizzes.find((q) => q.id === selectedQuizId) || quizzes[0] || null,
     [quizzes, selectedQuizId]
   );
+
+  useEffect(() => {
+    if (selectedQuiz) {
+      setLiveModeDraft((selectedQuiz.liveMode as QuizModeId) || 'classic');
+      setArcadeDraft(!!selectedQuiz.useArcadeMode);
+    }
+  }, [selectedQuizId, selectedQuiz]);
 
   // Create a brand new quiz package
   const handleCreateNewQuiz = async () => {
@@ -192,6 +204,31 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
       `Status kuis "${quiz.title}" (PIN: ${quiz.tokenPin}) kini ${
         next.isActive ? 'AKTIF dan dapat dikerjakan siswa' : 'NONAKTIF'
       }.`
+    );
+  };
+
+  // Simpan konfigurasi mode live + arcade mode untuk kuis terpilih.
+  const handleSaveLiveConfig = async (modeId: QuizModeId, arcade: boolean) => {
+    if (!selectedQuiz) return;
+    const next: InteractiveQuiz = {
+      ...selectedQuiz,
+      liveMode: modeId,
+      useArcadeMode: arcade,
+      updatedAt: new Date().toLocaleString('id-ID', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    };
+    const list = await saveQuizToServer(next);
+    setQuizzes(list);
+    onShowAlert?.(
+      'Mode Live Disimpan',
+      `Kuis "${selectedQuiz.title}" akan dijalankan dengan mode ${
+        QUIZ_MODES.find((m) => m.id === modeId)?.name || modeId
+      }${arcade ? ' + Mode Arcade' : ''}. Siswa tidak perlu memilih mode lagi.`
     );
   };
 
@@ -1351,6 +1388,67 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
                     </span>
                   </button>
                 </div>
+              </div>
+            </div>
+
+            {/* MODE LIVE & ARCADE CONFIG — ditetapkan guru, siswa hanya join */}
+            <div className="mt-4 pt-4 border-t border-white/20 grid grid-cols-1 lg:grid-cols-12 gap-4">
+              <div className="lg:col-span-8">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-amber-300 mb-1.5">
+                  MODE SESI (DITETAPKAN GURU · SISWA LANGSUNG MENGERJAKAN)
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {QUIZ_MODES.map((mode) => {
+                    const active = (selectedQuiz.liveMode || 'classic') === mode.id;
+                    return (
+                      <button
+                        key={mode.id}
+                        type="button"
+                        onClick={() => {
+                          setLiveModeDraft(mode.id);
+                          void handleSaveLiveConfig(mode.id, arcadeDraft);
+                        }}
+                        className={`text-left p-2.5 border-2 transition-all cursor-pointer ${
+                          active
+                            ? 'bg-amber-400 text-[#1a1a1a] border-amber-300'
+                            : 'bg-white/5 text-slate-200 border-white/25 hover:bg-white/15'
+                        }`}
+                      >
+                        <div className="text-[11px] font-black uppercase flex items-center gap-1">
+                          {active && <Check className="h-3 w-3" />} {mode.name}
+                        </div>
+                        <div className={`text-[9px] leading-tight mt-0.5 ${active ? 'text-[#1a1a1a]/70' : 'text-slate-400'}`}>
+                          {mode.category === 'homework' ? 'TUGAS' : mode.category === 'device-free' ? 'TANPA HP' : 'LIVE'}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div className="lg:col-span-4 flex flex-col justify-center gap-2">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-amber-300">
+                  MODE ARCADE GAME
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setArcadeDraft(!arcadeDraft);
+                    void handleSaveLiveConfig(liveModeDraft, !arcadeDraft);
+                  }}
+                  className={`p-3 border-2 text-left transition-all cursor-pointer ${
+                    selectedQuiz.useArcadeMode
+                      ? 'bg-fuchsia-600 text-white border-fuchsia-300'
+                      : 'bg-white/5 text-slate-200 border-white/25 hover:bg-white/15'
+                  }`}
+                >
+                  <div className="text-[11px] font-black uppercase">
+                    {selectedQuiz.useArcadeMode ? 'ARCADE AKTIF ✓' : 'ARCADE NONAKTIF'}
+                  </div>
+                  <div className="text-[9px] leading-tight mt-1 opacity-80">
+                    PG: Duck Hunt · Output Kode: Whack-a-Mole · Menjodohkan: Pipe Connect · Algoritma: Train Sorting
+                  </div>
+                </button>
               </div>
             </div>
           </div>

@@ -59,6 +59,10 @@ export interface InteractiveQuiz {
   questions: QuizQuestion[];
   createdAt: string;
   updatedAt: string;
+  /** Mode live yang ditetapkan guru (hanya untuk sesi live). */
+  liveMode?: QuizModeId;
+  /** Aktifkan mode arcade/game untuk soal interaktif. */
+  useArcadeMode?: boolean;
 }
 
 export interface QuizAttemptSubmission {
