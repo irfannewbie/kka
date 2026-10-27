@@ -4,6 +4,7 @@ import {
 } from './calculatorMasterStore';
 import { adminFetch } from '../config/adminToken';
 import type { QuizModeId } from './quizModes';
+import { saveSubmissionToFirestore } from './quizFirestore';
 
 export type QuizQuestionType =
   | 'pg'
@@ -687,7 +688,14 @@ export function applySubmissionToCalculatorMaster(sub: QuizAttemptSubmission): v
 export async function submitQuizAttemptToServer(
   submission: QuizAttemptSubmission
 ): Promise<{ success: boolean; submissions: QuizAttemptSubmission[] }> {
-  // 1. Update local submissions
+  // 1. Simpan ke Firestore (pending, belum kirim ke Google Sheets)
+  try {
+    await saveSubmissionToFirestore(submission);
+  } catch (fsErr) {
+    console.warn('Gagal simpan ke Firestore:', fsErr);
+  }
+
+  // 2. Update local submissions
   const current = loadLocalQuizSubmissions();
   const filtered = current.filter(
     (s) =>

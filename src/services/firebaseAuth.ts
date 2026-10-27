@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getFirestore } from 'firebase/firestore';
 import {
   getAuth,
   initializeAuth,
@@ -13,10 +14,14 @@ import {
   onAuthStateChanged,
   User,
   signOut,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+
+export const db = getFirestore(app);
 
 // In iframe, sandboxed, or tab-switch environments, IndexedDB can report "Database is closing/hidden".
 // We initialize Firebase Auth with multi-tier persistence fallbacks.
@@ -52,13 +57,38 @@ provider.setCustomParameters({
 export const ADMIN_EMAILS: string[] = [
   'irfannewbie7@gmail.com',
   'irfandwi.hs@gmail.com',
+  'admin@ifkka.com',
 ];
 
 export const ADMIN_EMAIL = 'irfannewbie7@gmail.com';
 
 export const isAuthorizedAdmin = (email?: string | null): boolean => {
   if (!email) return false;
-  return ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === email.toLowerCase());
+  const normalized = email.trim().toLowerCase();
+  return ADMIN_EMAILS.some((adminEmail) => adminEmail.toLowerCase() === normalized);
+};
+
+export const isAllowedAdminEmail = (email?: string | null): boolean => isAuthorizedAdmin(email);
+
+export const signInWithCustomEmail = async (email: string, password: string): Promise<User> => {
+  const normalized = email.trim().toLowerCase();
+  if (!isAuthorizedAdmin(normalized)) {
+    throw new Error('Email tidak diizinkan untuk login sebagai admin.');
+  }
+  try {
+    const cred = await signInWithEmailAndPassword(auth, normalized, password);
+    return cred.user;
+  } catch (err: any) {
+    if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, normalized, password);
+        return cred.user;
+      } catch (e2) {
+        throw e2;
+      }
+    }
+    throw err;
+  }
 };
 
 export const ADMIN_PROFILES: Record<string, User> = {
@@ -99,6 +129,25 @@ export const ADMIN_PROFILES: Record<string, User> = {
     toJSON: () => ({}),
     phoneNumber: null,
     providerId: 'google.com',
+  },
+  'admin@ifkka.com': {
+    uid: 'admin-ifkka',
+    email: 'admin@ifkka.com',
+    displayName: 'Admin IFKKA',
+    photoURL: 'https://api.dicebear.com/7.x/bottts/svg?seed=admin-ifkka',
+    emailVerified: true,
+    isAnonymous: false,
+    metadata: {} as any,
+    providerData: [],
+    refreshToken: '',
+    tenantId: null,
+    delete: async () => {},
+    getIdToken: async () => 'active-admin-token',
+    getIdTokenResult: async () => ({} as any),
+    reload: async () => {},
+    toJSON: () => ({}),
+    phoneNumber: null,
+    providerId: 'password',
   },
 };
 

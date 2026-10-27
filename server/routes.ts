@@ -295,8 +295,10 @@ export function registerApiRoutes(app: Express): void {
       }
     }
 
-    // Auto-sync ke Google Spreadsheet (Service Account) jika dikonfigurasi.
-    if (raw.mode !== 'practice') {
+    // Auto-sync ke Google Spreadsheet (Service Account) hanya jika diminta (syncToSheet true).
+    // Sesuai permintaan: setelah kuis selesai, baru bisa dimasukkan ke Google Spreadsheet.
+    const shouldSyncSheet = (req.body as any)?.syncToSheet === true;
+    if (shouldSyncSheet && raw.mode !== 'practice') {
       try {
         await syncQuizSubmissionToGoogleSheet({
           quizId: submission.quizId,
@@ -319,6 +321,45 @@ export function registerApiRoutes(app: Express): void {
     }
 
     res.json({ success: true, submissions: qdb.submissions });
+  });
+
+  // 8b. POST kirim nilai kuis yang sudah selesai ke Google Spreadsheet (manual oleh guru)
+  app.post('/api/quizzes/sync-to-sheet', requireAdminToken, async (req: Request, res: Response) => {
+    const { submissions } = (req.body || {}) as { submissions?: any[] };
+    if (!Array.isArray(submissions) || submissions.length === 0) {
+      res.status(400).json({ success: false, message: 'Tidak ada data nilai kuis untuk dikirim.' });
+      return;
+    }
+    let successCount = 0;
+    let failCount = 0;
+    for (const sub of submissions) {
+      if (sub?.mode === 'practice') continue;
+      try {
+        const r = await syncQuizSubmissionToGoogleSheet({
+          quizId: sub.quizId,
+          quizTitle: sub.quizTitle,
+          className: sub.className,
+          subject: sub.subject,
+          assessment: sub.assessment,
+          attendanceNo: Number(sub.attendanceNo),
+          studentName: sub.studentName,
+          calcBenarPG: sub.calcBenarPG,
+          calcBenarMJ: sub.calcBenarMJ,
+          calcSkorUraian: sub.calcSkorUraian,
+          isRemedial: sub.isRemedial,
+          remedialScore: sub.remedialScore ?? null,
+          finalScore: sub.finalScore,
+        });
+        if (r.success) successCount += 1;
+        else failCount += 1;
+      } catch {
+        failCount += 1;
+      }
+    }
+    res.json({
+      success: failCount === 0,
+      message: `Berhasil mengirim ${successCount} nilai ke Google Spreadsheet Rincian_Kalkulator${failCount > 0 ? `, ${failCount} gagal` : ''}.`,
+    });
   });
 
   // 8. POST reset percobaan kuis siswa (agar siswa bisa mengerjakan ulang)

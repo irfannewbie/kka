@@ -113,10 +113,11 @@ export default function App() {
   // Auth & Google Sheets State - Default logged in as irfandwi.hs@gmail.com / irfannewbie7@gmail.com
   const [user, setUser] = useState<User | null>(() => {
     const savedEmail = localStorage.getItem(STORAGE_KEYS.ACTIVE_ADMIN);
-    if (savedEmail && ADMIN_PROFILES[savedEmail]) {
-      return ADMIN_PROFILES[savedEmail];
+    if (savedEmail) {
+      const found = Object.keys(ADMIN_PROFILES).find((k) => k.toLowerCase() === savedEmail.toLowerCase());
+      if (found) return ADMIN_PROFILES[found];
     }
-    return ADMIN_PROFILES['irfandwi.hs@gmail.com'] || DEFAULT_ADMIN_USER;
+    return ADMIN_PROFILES['irfandwi.hs@gmail.com'] || ADMIN_PROFILES['irfannewbie7@gmail.com'] || DEFAULT_ADMIN_USER;
   });
   const [token, setToken] = useState<string | null>(() => getSavedAccessToken());
   const [sessionInfo, setSessionInfo] = useState<SessionTimerInfo>(() =>
@@ -132,16 +133,26 @@ export default function App() {
   const [spreadsheetId] = useState<string>(DEFAULT_SPREADSHEET_ID);
   const [spreadsheetUrl] = useState<string>(DEFAULT_SPREADSHEET_URL);
 
-  // Switch between authorized admin profiles
+  // Switch between authorized admin profiles / login dengan email custom
   const handleSwitchAdminProfile = (email: string) => {
-    const profile = ADMIN_PROFILES[email] || {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return;
+    const allowed = [
+      ...ADMIN_EMAILS.map((e) => e.toLowerCase()),
+    ];
+    if (!allowed.includes(normalized)) {
+      triggerNewTaskAlert('Akses Ditolak', `Email ${email} tidak diizinkan untuk login sebagai admin.`);
+      return;
+    }
+    const profile = ADMIN_PROFILES[email] || ADMIN_PROFILES[Object.keys(ADMIN_PROFILES).find((k) => k.toLowerCase() === normalized) || ''] || {
       ...DEFAULT_ADMIN_USER,
-      email: email,
-      displayName: email.split('@')[0],
+      email: Object.keys(ADMIN_PROFILES).find((k) => k.toLowerCase() === normalized) || email,
+      displayName: (Object.keys(ADMIN_PROFILES).find((k) => k.toLowerCase() === normalized) || email).split('@')[0],
     };
-    setUser(profile);
-    localStorage.setItem(STORAGE_KEYS.ACTIVE_ADMIN, email);
-    triggerNewTaskAlert('Profil Admin Aktif', `Akun admin beralih ke: ${email}`);
+    const finalEmail = Object.keys(ADMIN_PROFILES).find((k) => k.toLowerCase() === normalized) || email;
+    setUser(ADMIN_PROFILES[finalEmail] || { ...profile, email: finalEmail });
+    localStorage.setItem(STORAGE_KEYS.ACTIVE_ADMIN, finalEmail);
+    triggerNewTaskAlert('Profil Admin Aktif', `Akun admin beralih ke: ${finalEmail}`);
   };
 
   // Sound preference

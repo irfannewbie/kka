@@ -35,6 +35,7 @@ import {
   applySubmissionToCalculatorMaster,
   submitQuizAttemptToServer,
 } from '../services/quizStore';
+import { fetchQuizzesFromFirestore, fetchSubmissionsFromFirestore } from '../services/quizFirestore';
 import { QUIZ_MODES, type QuizModeId } from '../services/quizModes';
 import {
   GRADE_7_CLASSES,
@@ -90,12 +91,36 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
   const loadData = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const data = await fetchQuizzesAndSubmissionsFromServer();
-      setQuizzes(data.quizzes);
-      setSubmissions(data.submissions);
-      if (data.quizzes.length > 0 && !data.quizzes.some((q) => q.id === selectedQuizId)) {
-        setSelectedQuizId(data.quizzes[0].id);
+      const [serverRes, fbQuizzesRes, fbSubsRes] = await Promise.allSettled([
+        fetchQuizzesAndSubmissionsFromServer(),
+        fetchQuizzesFromFirestore(),
+        fetchSubmissionsFromFirestore(),
+      ]);
+      let allQuizzes: InteractiveQuiz[] = [];
+      let allSubs: QuizAttemptSubmission[] = [];
+      if (serverRes.status === 'fulfilled') {
+        allQuizzes = serverRes.value.quizzes || [];
+        allSubs = serverRes.value.submissions || [];
       }
+      if (fbQuizzesRes.status === 'fulfilled' && fbQuizzesRes.value.length > 0) {
+        const map = new Map<string, InteractiveQuiz>();
+        allQuizzes.forEach((q) => map.set(q.id, q));
+        fbQuizzesRes.value.forEach((q) => map.set(q.id, q));
+        allQuizzes = Array.from(map.values());
+      }
+      if (fbSubsRes.status === 'fulfilled' && fbSubsRes.value.length > 0) {
+        const map = new Map<string, QuizAttemptSubmission>();
+        allSubs.forEach((s: any) => map.set(`${s.quizId}_${s.className}_${s.attendanceNo}`, s));
+        fbSubsRes.value.forEach((s: any) => map.set(`${s.quizId}_${s.className}_${s.attendanceNo}`, s));
+        allSubs = Array.from(map.values());
+      }
+      setQuizzes(allQuizzes);
+      setSubmissions(allSubs);
+      if (allQuizzes.length > 0 && !allQuizzes.some((q) => q.id === selectedQuizId)) {
+        setSelectedQuizId(allQuizzes[0].id);
+      }
+    } catch (e) {
+      console.error(e);
     } finally {
       if (!silent) setIsLoading(false);
     }
@@ -412,23 +437,31 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
     );
   };
 
-  // Sync all submissions to Calculator Master & Google Sheet 'Rincian_Kalkulator'
+  // Kirim nilai kuis yang sudah selesai ke Google Spreadsheet (hanya atas permintaan guru)
   const handleSyncQuizResultsToSheet = async () => {
-    // First apply all submissions to local + server calculator store
+    // Pastikan sudah masuk ke Kalkulator Akademik
     submissions.forEach((sub) => {
       applySubmissionToCalculatorMaster(sub);
     });
 
-    if (!token) {
-      onShowAlert?.(
-        'Tersimpan di Kalkulator Akademik Server',
-        `Seluruh nilai kuis (${submissions.length} siswa) telah masuk ke Kalkulator Akademik & halaman /cek. Klik LOGIN GOOGLE jika ingin sekaligus menulis ke Google Spreadsheet '${CALCULATOR_BREAKDOWN_SHEET_NAME}'.`
-      );
-      return;
-    }
-
     setIsSyncingSheet(true);
     try {
+      if (!token) {
+        // Coba sync via server/service account jika tersedia
+        const res = await fetch('/api/quizzes/sync-to-sheet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ submissions }),
+        });
+        const json = await res.json();
+        playNotificationChime();
+        onShowAlert?.(
+          json.success ? 'Kirim ke Google Sheet Berhasil' : 'Info',
+          json.message || 'Nilai kuis dikirim ke Google Spreadsheet (Rincian_Kalkulator).'
+        );
+        return;
+      }
+
       const res = await syncCalculatorBreakdownToSheet(token, spreadsheetId);
       if (res.success) {
         playNotificationChime();
@@ -436,6 +469,8 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
       } else {
         onShowAlert?.('Info Sinkronisasi', res.message);
       }
+    } catch (e) {
+      onShowAlert?.('Gagal', 'Terjadi kesalahan saat mengirim nilai kuis ke Google Spreadsheet.');
     } finally {
       setIsSyncingSheet(false);
     }
