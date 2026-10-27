@@ -13,6 +13,7 @@ import {
   getTokenExpiryTime,
   saveAccessToken,
   SessionTimerInfo,
+  signInWithCustomEmail,
 } from './services/firebaseAuth';
 import {
   DEFAULT_SPREADSHEET_ID,
@@ -134,24 +135,33 @@ export default function App() {
   const [spreadsheetUrl] = useState<string>(DEFAULT_SPREADSHEET_URL);
 
   // Switch between authorized admin profiles / login dengan email custom
-  const handleSwitchAdminProfile = (email: string) => {
+  const handleSwitchAdminProfile = async (email: string) => {
     const normalized = email.trim().toLowerCase();
     if (!normalized) return;
-    const allowed = [
-      ...ADMIN_EMAILS.map((e) => e.toLowerCase()),
-    ];
+    const allowed = ADMIN_EMAILS.map((e) => e.toLowerCase());
     if (!allowed.includes(normalized)) {
       triggerNewTaskAlert('Akses Ditolak', `Email ${email} tidak diizinkan untuk login sebagai admin.`);
       return;
     }
-    const profile = ADMIN_PROFILES[email] || ADMIN_PROFILES[Object.keys(ADMIN_PROFILES).find((k) => k.toLowerCase() === normalized) || ''] || {
-      ...DEFAULT_ADMIN_USER,
-      email: Object.keys(ADMIN_PROFILES).find((k) => k.toLowerCase() === normalized) || email,
-      displayName: (Object.keys(ADMIN_PROFILES).find((k) => k.toLowerCase() === normalized) || email).split('@')[0],
-    };
     const finalEmail = Object.keys(ADMIN_PROFILES).find((k) => k.toLowerCase() === normalized) || email;
-    setUser(ADMIN_PROFILES[finalEmail] || { ...profile, email: finalEmail });
+    const profile = ADMIN_PROFILES[finalEmail] || {
+      ...DEFAULT_ADMIN_USER,
+      email: finalEmail,
+      displayName: finalEmail.split('@')[0],
+    } as User;
+    setUser(profile);
     localStorage.setItem(STORAGE_KEYS.ACTIVE_ADMIN, finalEmail);
+    // Coba login ke Firebase Auth dengan email/password jika belum login
+    try {
+      if (finalEmail === 'admin@ifkka.com') {
+        const pass = prompt('Masukkan password untuk admin@ifkka.com:') || '';
+        if (pass) {
+          await signInWithCustomEmail(finalEmail, pass);
+        }
+      }
+    } catch (err) {
+      console.warn('Firebase auth custom login gagal:', err);
+    }
     triggerNewTaskAlert('Profil Admin Aktif', `Akun admin beralih ke: ${finalEmail}`);
   };
 
