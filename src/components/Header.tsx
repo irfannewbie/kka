@@ -9,6 +9,7 @@ import {
   Zap,
   BookOpen,
   FlaskConical,
+  Lock,
 } from 'lucide-react';
 import { User } from 'firebase/auth';
 import { ADMIN_EMAILS, SessionTimerInfo, formatDurationMMSS } from '../services/firebaseAuth';
@@ -23,6 +24,7 @@ interface HeaderProps {
   onLogin: () => void;
   onLogout: () => void;
   onSwitchAdminProfile?: (email: string) => void;
+  onOpenAdminLogin?: () => void;
   isLoggingIn: boolean;
   isSyncing: boolean;
   onManualSync: () => void;
@@ -46,6 +48,7 @@ export const Header: React.FC<HeaderProps> = ({
   onLogin,
   onLogout,
   onSwitchAdminProfile,
+  onOpenAdminLogin,
   isLoggingIn,
   isSyncing,
   onManualSync,
@@ -289,6 +292,19 @@ export const Header: React.FC<HeaderProps> = ({
                 ))}
               </select>
             </div>
+
+            {/* Login admin dengan email + password (pengaman tambahan) */}
+            {onOpenAdminLogin && (
+              <button
+                type="button"
+                onClick={onOpenAdminLogin}
+                className="font-mono-code text-[11px] sm:text-xs font-bold text-[#1a1a1a] bg-amber-300 hover:bg-amber-200 px-2.5 py-1 border border-[#1a1a1a] transition-colors cursor-pointer flex items-center gap-1.5"
+                title="Login admin memakai email & password (mis. admin@ifkka.com)"
+              >
+                <Lock className="h-3 w-3" />
+                <span className="hidden sm:inline">LOGIN EMAIL</span>
+              </button>
+            )}
 
             {/* Google OAuth Connect / Logout Button */}
             {token ? (

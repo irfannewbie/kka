@@ -15,7 +15,6 @@ import {
   User,
   signOut,
   signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
 } from 'firebase/auth';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -70,25 +69,17 @@ export const isAuthorizedAdmin = (email?: string | null): boolean => {
 
 export const isAllowedAdminEmail = (email?: string | null): boolean => isAuthorizedAdmin(email);
 
+/**
+ * Login admin memakai email + password Firebase.
+ * Akun dibuat lewat Firebase Console / Admin SDK, bukan otomatis dari klien.
+ */
 export const signInWithCustomEmail = async (email: string, password: string): Promise<User> => {
   const normalized = email.trim().toLowerCase();
   if (!isAuthorizedAdmin(normalized)) {
     throw new Error('Email tidak diizinkan untuk login sebagai admin.');
   }
-  try {
-    const cred = await signInWithEmailAndPassword(auth, normalized, password);
-    return cred.user;
-  } catch (err: any) {
-    if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
-      try {
-        const cred = await createUserWithEmailAndPassword(auth, normalized, password);
-        return cred.user;
-      } catch (e2) {
-        throw e2;
-      }
-    }
-    throw err;
-  }
+  const cred = await signInWithEmailAndPassword(auth, normalized, password);
+  return cred.user;
 };
 
 export const ADMIN_PROFILES: Record<string, User> = {

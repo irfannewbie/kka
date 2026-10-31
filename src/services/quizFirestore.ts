@@ -2,14 +2,11 @@ import {
   collection,
   doc,
   getDocs,
-  getDoc,
   setDoc,
-  updateDoc,
   deleteDoc,
   query,
   where,
   serverTimestamp,
-  writeBatch,
 } from 'firebase/firestore';
 import { db } from './firebaseAuth';
 import type { InteractiveQuiz, QuizAttemptSubmission } from './quizStore';

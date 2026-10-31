@@ -46,6 +46,7 @@ import { TaskSubmissionModal } from './components/TaskSubmissionModal';
 import { NotificationDrawer } from './components/NotificationDrawer';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { SessionCountdownPanel } from './components/SessionCountdownPanel';
+import { AdminLoginModal } from './components/AdminLoginModal';
 import { StudentQuizView } from './components/StudentQuizView';
 import { MasterQuizManagerView } from './components/MasterQuizManagerView';
 import { ExcelLabStudentWorkspace } from './components/excel/ExcelLabStudentWorkspace';
@@ -89,6 +90,7 @@ export default function App() {
   const navigate = useNavigate();
   const activeTab: TabId = getTabFromPath(location.pathname);
   const [isSubmitModalOpen, setIsSubmitModalOpen] = useState<boolean>(false);
+  const [isAdminLoginOpen, setIsAdminLoginOpen] = useState<boolean>(false);
   const [isNotifDrawerOpen, setIsNotifDrawerOpen] = useState<boolean>(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
@@ -134,8 +136,8 @@ export default function App() {
   const [spreadsheetId] = useState<string>(DEFAULT_SPREADSHEET_ID);
   const [spreadsheetUrl] = useState<string>(DEFAULT_SPREADSHEET_URL);
 
-  // Switch between authorized admin profiles / login dengan email custom
-  const handleSwitchAdminProfile = async (email: string) => {
+  // Switch antara profil admin yang sudah terotorisasi (tanpa perlu password).
+  const handleSwitchAdminProfile = (email: string) => {
     const normalized = email.trim().toLowerCase();
     if (!normalized) return;
     const allowed = ADMIN_EMAILS.map((e) => e.toLowerCase());
@@ -144,25 +146,21 @@ export default function App() {
       return;
     }
     const finalEmail = Object.keys(ADMIN_PROFILES).find((k) => k.toLowerCase() === normalized) || email;
-    const profile = ADMIN_PROFILES[finalEmail] || {
+    const profile = ADMIN_PROFILES[finalEmail] || ({
       ...DEFAULT_ADMIN_USER,
       email: finalEmail,
       displayName: finalEmail.split('@')[0],
-    } as User;
+    } as User);
     setUser(profile);
     localStorage.setItem(STORAGE_KEYS.ACTIVE_ADMIN, finalEmail);
-    // Coba login ke Firebase Auth dengan email/password jika belum login
-    try {
-      if (finalEmail === 'admin@ifkka.com') {
-        const pass = prompt('Masukkan password untuk admin@ifkka.com:') || '';
-        if (pass) {
-          await signInWithCustomEmail(finalEmail, pass);
-        }
-      }
-    } catch (err) {
-      console.warn('Firebase auth custom login gagal:', err);
-    }
     triggerNewTaskAlert('Profil Admin Aktif', `Akun admin beralih ke: ${finalEmail}`);
+  };
+
+  // Login aman dengan email + password Firebase (mis. admin@ifkka.com).
+  const handleAdminEmailLogin = (email: string) => {
+    handleSwitchAdminProfile(email);
+    setSessionInfo(getSessionTimerInfo(token));
+    triggerNewTaskAlert('Login Admin Berhasil', `Selamat datang, ${email}.`);
   };
 
   // Sound preference
@@ -760,6 +758,7 @@ export default function App() {
           onLogin={handleGoogleLogin}
           onLogout={handleGoogleLogout}
           onSwitchAdminProfile={handleSwitchAdminProfile}
+          onOpenAdminLogin={() => setIsAdminLoginOpen(true)}
           isLoggingIn={isLoggingIn}
           isSyncing={isSyncing}
           onManualSync={handleManualSync}
@@ -1164,6 +1163,13 @@ export default function App() {
         message={confirmConfig.message}
         onConfirm={confirmConfig.onConfirm}
         onCancel={() => setConfirmConfig((prev) => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Login admin dengan email + password */}
+      <AdminLoginModal
+        isOpen={isAdminLoginOpen}
+        onClose={() => setIsAdminLoginOpen(false)}
+        onSuccess={handleAdminEmailLogin}
       />
     </div>
   );

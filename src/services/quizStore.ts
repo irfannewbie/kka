@@ -4,7 +4,12 @@ import {
 } from './calculatorMasterStore';
 import { adminFetch } from '../config/adminToken';
 import type { QuizModeId } from './quizModes';
-import { saveSubmissionToFirestore } from './quizFirestore';
+import {
+  saveQuizToFirestore,
+  deleteQuizFromFirestore,
+  deleteSubmissionFromFirestore,
+  saveSubmissionToFirestore,
+} from './quizFirestore';
 
 export type QuizQuestionType =
   | 'pg'
@@ -590,6 +595,13 @@ export async function saveQuizToServer(quiz: InteractiveQuiz): Promise<Interacti
       : [quiz, ...current];
   saveLocalQuizzes(updated);
 
+  // Sumber utama data kuis: Firestore.
+  try {
+    await saveQuizToFirestore(quiz);
+  } catch (fsErr) {
+    console.warn('Gagal simpan kuis ke Firestore:', fsErr);
+  }
+
   try {
     const res = await adminFetch('/api/quizzes/save', {
       method: 'POST',
@@ -611,6 +623,12 @@ export async function saveQuizToServer(quiz: InteractiveQuiz): Promise<Interacti
 export async function deleteQuizFromServer(quizId: string): Promise<InteractiveQuiz[]> {
   const current = loadLocalQuizzes().filter((q) => q.id !== quizId);
   saveLocalQuizzes(current);
+
+  try {
+    await deleteQuizFromFirestore(quizId);
+  } catch (fsErr) {
+    console.warn('Gagal hapus kuis dari Firestore:', fsErr);
+  }
 
   try {
     const res = await adminFetch(`/api/quizzes/${encodeURIComponent(quizId)}`, {
@@ -749,6 +767,12 @@ export async function resetStudentQuizAttemptOnServer(
       )
   );
   saveLocalQuizSubmissions(current);
+
+  try {
+    await deleteSubmissionFromFirestore(quizId, className, Number(attendanceNo));
+  } catch (fsErr) {
+    console.warn('Gagal hapus nilai dari Firestore:', fsErr);
+  }
 
   try {
     const res = await adminFetch('/api/quizzes/reset-attempt', {

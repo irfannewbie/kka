@@ -1,0 +1,45 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Daftar email admin yang boleh mengubah data kuis.
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in [
+          'irfannewbie7@gmail.com',
+          'irfandwi.hs@gmail.com',
+          'admin@ifkka.com'
+        ];
+    }
+
+    // Data kuis: semua orang boleh membaca (siswa perlu melihat daftar kuis),
+    // tetapi hanya admin yang boleh membuat / mengubah / menghapus.
+    match /quizzes/{quizId} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Nilai kuis: siswa mengirim jawaban tanpa login (create),
+    // membaca & mengubah data nilai hanya boleh admin.
+    match /quiz_submissions/{submissionId} {
+      allow create: if true;
+      allow read: if isAdmin();
+      allow update: if isAdmin()
+        || (
+          // Penilaian ulang (mis. mode Practice) diizinkan selama identitas
+          // dokumen tidak diubah menjadi milik siswa lain.
+          request.resource.data.quizId == resource.data.quizId
+          && request.resource.data.className == resource.data.className
+          && request.resource.data.attendanceNo == resource.data.attendanceNo
+        );
+      allow delete: if isAdmin();
+    }
+
+    // Selain koleksi di atas: tolak semua.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

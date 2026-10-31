@@ -7055,5 +7055,26 @@
       "14": 43
     },
     "updatedAt": "17.56.48"
+  },
+  "KELAS_8A_INFORMATIKA_ASAS_GASAL": {
+    "modeAData": {
+      "1": {
+        "benarPG": 25,
+        "benarMJ": 0,
+        "skorUraian": 0,
+        "remedialScore": null,
+        "isManual": true
+      },
+      "2": {
+        "benarPG": 25,
+        "benarMJ": 0,
+        "skorUraian": 0,
+        "remedialScore": null,
+        "isManual": true
+      }
+    },
+    "modeBData": {},
+    "standarData": {},
+    "updatedAt": "21.31.27"
   }
 }
