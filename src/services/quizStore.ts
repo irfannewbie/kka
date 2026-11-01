@@ -4,12 +4,9 @@ import {
 } from './calculatorMasterStore';
 import { adminFetch } from '../config/adminToken';
 import type { QuizModeId } from './quizModes';
-import {
-  saveQuizToFirestore,
-  deleteQuizFromFirestore,
-  deleteSubmissionFromFirestore,
-  saveSubmissionToFirestore,
-} from './quizFirestore';
+// Catatan: modul Firestore hanya diimpor secara dinamis di dalam fungsi async
+// agar SDK Firebase (khusus browser) tidak ikut ter-load saat server Node
+// mengimpor quizStore (mis. server/db.ts).
 
 export type QuizQuestionType =
   | 'pg'
@@ -595,8 +592,9 @@ export async function saveQuizToServer(quiz: InteractiveQuiz): Promise<Interacti
       : [quiz, ...current];
   saveLocalQuizzes(updated);
 
-  // Sumber utama data kuis: Firestore.
+  // Sumber utama data kuis: Firestore (hanya di browser).
   try {
+    const { saveQuizToFirestore } = await import('./quizFirestore');
     await saveQuizToFirestore(quiz);
   } catch (fsErr) {
     console.warn('Gagal simpan kuis ke Firestore:', fsErr);
@@ -625,6 +623,7 @@ export async function deleteQuizFromServer(quizId: string): Promise<InteractiveQ
   saveLocalQuizzes(current);
 
   try {
+    const { deleteQuizFromFirestore } = await import('./quizFirestore');
     await deleteQuizFromFirestore(quizId);
   } catch (fsErr) {
     console.warn('Gagal hapus kuis dari Firestore:', fsErr);
@@ -708,6 +707,7 @@ export async function submitQuizAttemptToServer(
 ): Promise<{ success: boolean; submissions: QuizAttemptSubmission[] }> {
   // 1. Simpan ke Firestore (pending, belum kirim ke Google Sheets)
   try {
+    const { saveSubmissionToFirestore } = await import('./quizFirestore');
     await saveSubmissionToFirestore(submission);
   } catch (fsErr) {
     console.warn('Gagal simpan ke Firestore:', fsErr);
@@ -769,6 +769,7 @@ export async function resetStudentQuizAttemptOnServer(
   saveLocalQuizSubmissions(current);
 
   try {
+    const { deleteSubmissionFromFirestore } = await import('./quizFirestore');
     await deleteSubmissionFromFirestore(quizId, className, Number(attendanceNo));
   } catch (fsErr) {
     console.warn('Gagal hapus nilai dari Firestore:', fsErr);
