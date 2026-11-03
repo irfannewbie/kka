@@ -36,7 +36,16 @@ import {
   submitQuizAttemptToServer,
 } from '../services/quizStore';
 import { fetchQuizzesFromFirestore, fetchSubmissionsFromFirestore } from '../services/quizFirestore';
-import { QUIZ_MODES, type QuizModeId } from '../services/quizModes';
+import {
+  DEFAULT_QUIZ_SETTINGS,
+  QUIZ_MODES,
+  getQuizMode,
+  getQuizSettings,
+  normalizeModeId,
+  recommendMode,
+  type QuizModeId,
+  type QuizSettings,
+} from '../services/quizModes';
 import {
   GRADE_7_CLASSES,
   GRADE_8_CLASSES,
@@ -73,8 +82,8 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
   >('packages');
 
   // Live mode config per quiz
-  const [liveModeDraft, setLiveModeDraft] = useState<QuizModeId>('classic');
-  const [arcadeDraft, setArcadeDraft] = useState<boolean>(false);
+  const [modeDraft, setModeDraft] = useState<QuizModeId>('kelas');
+  const [settingsDraft, setSettingsDraft] = useState<QuizSettings>(DEFAULT_QUIZ_SETTINGS);
 
   // Selected quiz for Editing / Live Arena / Filtering Submissions
   const [selectedQuizId, setSelectedQuizId] = useState<string>('quiz-kka-kelas8-main');
@@ -141,8 +150,8 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
 
   useEffect(() => {
     if (selectedQuiz) {
-      setLiveModeDraft((selectedQuiz.liveMode as QuizModeId) || 'classic');
-      setArcadeDraft(!!selectedQuiz.useArcadeMode);
+      setModeDraft(normalizeModeId(selectedQuiz.liveMode));
+      setSettingsDraft(getQuizSettings(selectedQuiz));
     }
   }, [selectedQuizId, selectedQuiz]);
 
@@ -178,6 +187,8 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
       kktp: 75,
       createdAt: nowStr,
       updatedAt: nowStr,
+      liveMode: 'kelas',
+      settings: getQuizSettings({ liveMode: 'kelas' }),
       questions: [
         {
           id: `q-${Date.now()}-1`,
@@ -232,13 +243,19 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
     );
   };
 
-  // Simpan konfigurasi mode live + arcade mode untuk kuis terpilih.
-  const handleSaveLiveConfig = async (modeId: QuizModeId, arcade: boolean) => {
+  // Simpan konfigurasi mode + pengaturan kuis untuk kuis terpilih.
+  const handleSaveLiveConfig = async (
+    modeId: QuizModeId,
+    settings: QuizSettings,
+    notify = true
+  ) => {
     if (!selectedQuiz) return;
     const next: InteractiveQuiz = {
       ...selectedQuiz,
       liveMode: modeId,
-      useArcadeMode: arcade,
+      settings,
+      // Dipertahankan agar build/deploy lama tetap membaca arcade dengan benar.
+      useArcadeMode: settings.arcade,
       updatedAt: new Date().toLocaleString('id-ID', {
         day: '2-digit',
         month: '2-digit',
@@ -249,12 +266,38 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
     };
     const list = await saveQuizToServer(next);
     setQuizzes(list);
+    const modeName = getQuizMode(modeId).name;
+    const extras: string[] = [];
+    if (settings.team) extras.push('Mode Tim');
+    if (settings.autoAdvance) extras.push(`Auto-lanjut ${settings.autoAdvanceSeconds} dtk`);
+    if (settings.reviewBeforeSubmit) extras.push('Tinjau jawaban');
+    if (settings.accuracyTarget) extras.push(`Target akurasi ${settings.accuracyTarget}%`);
+    if (settings.arcade) extras.push('Arcade');
+    if (!notify) return;
     onShowAlert?.(
-      'Mode Live Disimpan',
-      `Kuis "${selectedQuiz.title}" akan dijalankan dengan mode ${
-        QUIZ_MODES.find((m) => m.id === modeId)?.name || modeId
-      }${arcade ? ' + Mode Arcade' : ''}. Siswa tidak perlu memilih mode lagi.`
+      'Konfigurasi Kuis Disimpan',
+      `Kuis "${selectedQuiz.title}" akan dijalankan dengan mode ${modeName}${
+        extras.length ? ` (${extras.join(' · ')})` : ''
+      }. Siswa tidak perlu memilih mode lagi.`
     );
+  };
+
+  // Ganti mode: pengaturan yang tidak relevan otomatis mengikuti default mode baru.
+  const handleChangeMode = (modeId: QuizModeId) => {
+    const merged = getQuizSettings({ liveMode: modeId, settings: settingsDraft });
+    setModeDraft(modeId);
+    setSettingsDraft(merged);
+    void handleSaveLiveConfig(modeId, merged);
+  };
+
+  // Ubah satu saklar pengaturan lalu simpan.
+  const handleToggleSetting = (patch: Partial<QuizSettings>) => {
+    const merged = getQuizSettings({
+      liveMode: modeDraft,
+      settings: { ...settingsDraft, ...patch },
+    });
+    setSettingsDraft(merged);
+    void handleSaveLiveConfig(modeDraft, merged, false);
   };
 
   const handleDeleteQuiz = async (quiz: InteractiveQuiz) => {
@@ -1426,23 +1469,38 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
               </div>
             </div>
 
-            {/* MODE LIVE & ARCADE CONFIG — ditetapkan guru, siswa hanya join */}
+            {/* MODE & PENGATURAN KUIS — ditetapkan guru, siswa hanya join */}
             <div className="mt-4 pt-4 border-t border-white/20 grid grid-cols-1 lg:grid-cols-12 gap-4">
-              <div className="lg:col-span-8">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-amber-300 mb-1.5">
-                  MODE SESI (DITETAPKAN GURU · SISWA LANGSUNG MENGERJAKAN)
+              <div className="lg:col-span-7">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-amber-300">
+                    MODE SESI (DITETAPKAN GURU · SISWA LANGSUNG MENGERJAKAN)
+                  </div>
+                  {recommendMode(selectedQuiz) !== modeDraft && (
+                    <button
+                      type="button"
+                      onClick={() => handleChangeMode(recommendMode(selectedQuiz))}
+                      className="text-[9px] font-bold uppercase px-2 py-0.5 bg-amber-400 text-[#1a1a1a] border border-amber-300 cursor-pointer hover:bg-amber-300"
+                      title="Saran otomatis berdasarkan jenis asesmen dan status remedial"
+                    >
+                      Pakai saran: {getQuizMode(recommendMode(selectedQuiz)).name}
+                    </button>
+                  )}
+                  {recommendMode(selectedQuiz) === modeDraft && (
+                    <span className="text-[9px] font-bold uppercase px-2 py-0.5 bg-emerald-500 text-[#1a1a1a] border border-emerald-300">
+                      ✓ Sesuai saran
+                    </span>
+                  )}
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                   {QUIZ_MODES.map((mode) => {
-                    const active = (selectedQuiz.liveMode || 'classic') === mode.id;
+                    const active = modeDraft === mode.id;
                     return (
                       <button
                         key={mode.id}
                         type="button"
-                        onClick={() => {
-                          setLiveModeDraft(mode.id);
-                          void handleSaveLiveConfig(mode.id, arcadeDraft);
-                        }}
+                        onClick={() => handleChangeMode(mode.id)}
+                        title={`${mode.tagline} — ${mode.bestFor}`}
                         className={`text-left p-2.5 border-2 transition-all cursor-pointer ${
                           active
                             ? 'bg-amber-400 text-[#1a1a1a] border-amber-300'
@@ -1452,36 +1510,150 @@ export const MasterQuizManagerView: React.FC<MasterQuizManagerViewProps> = ({
                         <div className="text-[11px] font-black uppercase flex items-center gap-1">
                           {active && <Check className="h-3 w-3" />} {mode.name}
                         </div>
-                        <div className={`text-[9px] leading-tight mt-0.5 ${active ? 'text-[#1a1a1a]/70' : 'text-slate-400'}`}>
-                          {mode.category === 'homework' ? 'TUGAS' : mode.category === 'device-free' ? 'TANPA HP' : 'LIVE'}
+                        <div
+                          className={`text-[9px] leading-tight mt-0.5 ${
+                            active ? 'text-[#1a1a1a]/70' : 'text-slate-400'
+                          }`}
+                        >
+                          {mode.group === 'mandiri' ? 'MANDIRI' : 'DI KELAS'}
                         </div>
                       </button>
                     );
                   })}
                 </div>
+                <p className="text-[9px] leading-snug text-slate-300 mt-1.5">
+                  {getQuizMode(modeDraft).description}
+                </p>
               </div>
 
-              <div className="lg:col-span-4 flex flex-col justify-center gap-2">
-                <div className="text-[10px] font-bold uppercase tracking-widest text-amber-300">
-                  MODE ARCADE GAME
+              <div className="lg:col-span-5">
+                <div className="text-[10px] font-bold uppercase tracking-widest text-amber-300 mb-1.5">
+                  PENGATURAN KUIS
                 </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSetting({ team: !settingsDraft.team })}
+                    className={`px-2 py-1.5 border-2 text-left text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                      settingsDraft.team
+                        ? 'bg-amber-400 text-[#1a1a1a] border-amber-300'
+                        : 'bg-white/5 text-slate-200 border-white/25 hover:bg-white/15'
+                    }`}
+                  >
+                    {settingsDraft.team ? '✓ ' : ''}Mode Tim
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSetting({ autoAdvance: !settingsDraft.autoAdvance })}
+                    className={`px-2 py-1.5 border-2 text-left text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                      settingsDraft.autoAdvance
+                        ? 'bg-amber-400 text-[#1a1a1a] border-amber-300'
+                        : 'bg-white/5 text-slate-200 border-white/25 hover:bg-white/15'
+                    }`}
+                  >
+                    {settingsDraft.autoAdvance ? '✓ ' : ''}Auto-Lanjut
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleToggleSetting({ reviewBeforeSubmit: !settingsDraft.reviewBeforeSubmit })
+                    }
+                    className={`px-2 py-1.5 border-2 text-left text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                      settingsDraft.reviewBeforeSubmit
+                        ? 'bg-amber-400 text-[#1a1a1a] border-amber-300'
+                        : 'bg-white/5 text-slate-200 border-white/25 hover:bg-white/15'
+                    }`}
+                  >
+                    {settingsDraft.reviewBeforeSubmit ? '✓ ' : ''}Tinjau Jawaban
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleToggleSetting({
+                        accuracyTarget: settingsDraft.accuracyTarget ? null : 80,
+                      })
+                    }
+                    className={`px-2 py-1.5 border-2 text-left text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                      settingsDraft.accuracyTarget
+                        ? 'bg-amber-400 text-[#1a1a1a] border-amber-300'
+                        : 'bg-white/5 text-slate-200 border-white/25 hover:bg-white/15'
+                    }`}
+                    title="Soal yang salah wajib diulang sampai target akurasi tercapai"
+                  >
+                    {settingsDraft.accuracyTarget ? `✓ Target ${settingsDraft.accuracyTarget}%` : 'Target 80%'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleSetting({ powerUps: !settingsDraft.powerUps })}
+                    className={`px-2 py-1.5 border-2 text-left text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                      settingsDraft.powerUps
+                        ? 'bg-amber-400 text-[#1a1a1a] border-amber-300'
+                        : 'bg-white/5 text-slate-200 border-white/25 hover:bg-white/15'
+                    }`}
+                  >
+                    {settingsDraft.powerUps ? '✓ ' : ''}Power-Up
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleToggleSetting({ strikeShield: !settingsDraft.strikeShield })
+                    }
+                    className={`px-2 py-1.5 border-2 text-left text-[10px] font-bold uppercase transition-all cursor-pointer ${
+                      settingsDraft.strikeShield
+                        ? 'bg-amber-400 text-[#1a1a1a] border-amber-300'
+                        : 'bg-white/5 text-slate-200 border-white/25 hover:bg-white/15'
+                    }`}
+                  >
+                    {settingsDraft.strikeShield ? '✓ ' : ''}Strike & Shield
+                  </button>
+                </div>
+
+                {settingsDraft.autoAdvance && (
+                  <label className="mt-1.5 flex items-center gap-2 text-[9px] font-bold uppercase text-slate-200">
+                    Durasi per soal
+                    <select
+                      value={settingsDraft.autoAdvanceSeconds}
+                      onChange={(e) =>
+                        handleToggleSetting({ autoAdvanceSeconds: Number(e.target.value) })
+                      }
+                      className="bg-[#2a2a2a] text-white text-[10px] font-bold px-2 py-1 border border-white/30"
+                    >
+                      {[15, 20, 30, 45, 60].map((sec) => (
+                        <option key={sec} value={sec}>
+                          {sec} detik
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                )}
+
                 <button
                   type="button"
-                  onClick={() => {
-                    setArcadeDraft(!arcadeDraft);
-                    void handleSaveLiveConfig(liveModeDraft, !arcadeDraft);
-                  }}
-                  className={`p-3 border-2 text-left transition-all cursor-pointer ${
-                    selectedQuiz.useArcadeMode
-                      ? 'bg-fuchsia-600 text-white border-fuchsia-300'
-                      : 'bg-white/5 text-slate-200 border-white/25 hover:bg-white/15'
+                  disabled={getQuizMode(modeDraft).arcadeLocked}
+                  onClick={() => handleToggleSetting({ arcade: !settingsDraft.arcade })}
+                  className={`mt-1.5 w-full p-2 border-2 text-left transition-all ${
+                    getQuizMode(modeDraft).arcadeLocked
+                      ? 'bg-white/5 text-slate-500 border-white/10 cursor-not-allowed'
+                      : settingsDraft.arcade
+                        ? 'bg-fuchsia-600 text-white border-fuchsia-300 cursor-pointer'
+                        : 'bg-white/5 text-slate-200 border-white/25 hover:bg-white/15 cursor-pointer'
                   }`}
+                  title={
+                    getQuizMode(modeDraft).arcadeLocked
+                      ? 'Mode arcade otomatis mati pada mode Ujian/Kertas agar nilai asesmen tetap sah'
+                      : 'Aktifkan game arcade per tipe soal'
+                  }
                 >
-                  <div className="text-[11px] font-black uppercase">
-                    {selectedQuiz.useArcadeMode ? 'ARCADE AKTIF ✓' : 'ARCADE NONAKTIF'}
+                  <div className="text-[10px] font-black uppercase">
+                    {getQuizMode(modeDraft).arcadeLocked
+                      ? 'ARCADE TERKUNCI (MODE FORMAL)'
+                      : settingsDraft.arcade
+                        ? 'ARCADE AKTIF ✓'
+                        : 'ARCADE NONAKTIF'}
                   </div>
-                  <div className="text-[9px] leading-tight mt-1 opacity-80">
-                    PG: Duck Hunt · Output Kode: Whack-a-Mole · Menjodohkan: Pipe Connect · Algoritma: Train Sorting
+                  <div className="text-[9px] leading-tight mt-0.5 opacity-80">
+                    PG: Duck Hunt · Output Kode: Terminal Runner · Menjodohkan: Pipe Connect ·
+                    Algoritma: Train Sorting
                   </div>
                 </button>
               </div>

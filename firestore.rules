@@ -1,43 +1,95 @@
 rules_version = '2';
 
+// ============================================================================
+// ATURAN FIRESTORE — APLIKASI KKA (Informatika & Koding)
+// Proyek Firebase: penilaian-c2329
+//
+// Kebutuhan aplikasi:
+// 1. SISWA tidak punya akun. Mereka harus bisa:
+//    - membaca daftar kuis (untuk join dengan PIN), dan
+//    - mengirim nilai kuis ke koleksi `quiz_submissions`.
+// 2. GURU/ADMIN login lewat halaman /master (Google atau email+password).
+//    Hanya admin yang boleh membuat, mengubah, menghapus kuis dan nilai.
+// 3. Koleksi lain ditolak total.
+//
+// Cara memasang:
+// Firebase Console -> Firestore Database -> tab "Rules" -> tempel isi file
+// ini -> Publish. (Konsol default `allow read, write: if false` akan
+// memblokir seluruh aplikasi.)
+// ============================================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Daftar email admin yang boleh mengubah data kuis.
+    // ---------------------------------------------------------------- helpers
+    // Harus sama dengan ADMIN_EMAILS di src/services/firebaseAuth.ts
     function isAdmin() {
       return request.auth != null
-        && request.auth.token.email_verified == true
+        && request.auth.token.email != null
         && request.auth.token.email in [
           'irfannewbie7@gmail.com',
           'irfandwi.hs@gmail.com',
           'admin@ifkka.com'
-        ];
+        ]
+        && request.auth.token.email_verified == true;
     }
 
-    // Data kuis: semua orang boleh membaca (siswa perlu melihat daftar kuis),
-    // tetapi hanya admin yang boleh membuat / mengubah / menghapus.
+    // Bentuk dokumen kuis minimal yang diizinkan masuk.
+    function validQuiz() {
+      let d = request.resource.data;
+      return d.id is string
+        && d.title is string
+        && d.tokenPin is string
+        && d.questions is list;
+    }
+
+    // Bentuk dokumen nilai kuis minimal yang diizinkan masuk.
+    function validSubmission() {
+      let d = request.resource.data;
+      return d.quizId is string
+        && d.className is string
+        && d.attendanceNo is number
+        && d.studentName is string
+        && d.finalScore is number
+        && d.submittedAt is string;
+    }
+
+    // Saat siswa mengirim ulang (mode Latihan / remedial), identitas dokumen
+    // tidak boleh berpindah ke siswa lain.
+    function submissionIdentityUnchanged() {
+      return request.resource.data.quizId == resource.data.quizId
+        && request.resource.data.className == resource.data.className
+        && request.resource.data.attendanceNo == resource.data.attendanceNo
+        && request.resource.data.studentName == resource.data.studentName;
+    }
+
+    // ------------------------------------------------------------------ KUIS
+    // Siswa perlu membaca semua kuis untuk mencocokkan PIN. Admin yang
+    // menulis. Catatan: karena kunci jawaban ikut dikirim ke browser, jangan
+    // menyimpan data rahasia lain di koleksi ini.
     match /quizzes/{quizId} {
-      allow read: if true;
-      allow create, update, delete: if isAdmin();
-    }
-
-    // Nilai kuis: siswa mengirim jawaban tanpa login (create),
-    // membaca & mengubah data nilai hanya boleh admin.
-    match /quiz_submissions/{submissionId} {
-      allow create: if true;
-      allow read: if isAdmin();
-      allow update: if isAdmin()
-        || (
-          // Penilaian ulang (mis. mode Practice) diizinkan selama identitas
-          // dokumen tidak diubah menjadi milik siswa lain.
-          request.resource.data.quizId == resource.data.quizId
-          && request.resource.data.className == resource.data.className
-          && request.resource.data.attendanceNo == resource.data.attendanceNo
-        );
+      allow get, list: if true;
+      allow create: if isAdmin() && validQuiz();
+      allow update: if isAdmin() && validQuiz();
       allow delete: if isAdmin();
     }
 
-    // Selain koleksi di atas: tolak semua.
+    // ------------------------------------------------------------------ NILAI
+    // ID dokumen: `${quizId}_${className}_${attendanceNo}`.
+    // - create : siswa tanpa login mengirim jawaban pertama.
+    // - update : siswa mengirim ulang (mode Latihan) ATAU guru mengoreksi nilai
+    //            uraian / reset attempt.
+    // - read/delete: hanya guru, untuk menjaga privasi nilai siswa.
+    match /quiz_submissions/{submissionId} {
+      allow create: if validSubmission();
+      allow update: if (validSubmission() && submissionIdentityUnchanged())
+        || isAdmin();
+      allow get, list: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // --------------------------------------------------------------- fallback
+    // Koleksi lain (termasuk data internal Firebase) ditolak.
     match /{document=**} {
       allow read, write: if false;
     }

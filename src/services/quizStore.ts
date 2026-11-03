@@ -3,7 +3,7 @@ import {
   saveCalculatorDatasetEverywhere,
 } from './calculatorMasterStore';
 import { adminFetch } from '../config/adminToken';
-import type { QuizModeId } from './quizModes';
+import { isPracticeMode, type AnyQuizModeId, type QuizSettings } from './quizModes';
 // Catatan: modul Firestore hanya diimpor secara dinamis di dalam fungsi async
 // agar SDK Firebase (khusus browser) tidak ikut ter-load saat server Node
 // mengimpor quizStore (mis. server/db.ts).
@@ -62,9 +62,14 @@ export interface InteractiveQuiz {
   questions: QuizQuestion[];
   createdAt: string;
   updatedAt: string;
-  /** Mode live yang ditetapkan guru (hanya untuk sesi live). */
-  liveMode?: QuizModeId;
-  /** Aktifkan mode arcade/game untuk soal interaktif. */
+  /**
+   * Mode yang ditetapkan guru. Bisa berisi id lama (data sebelum konsolidasi
+   * 9 -> 5 mode); selalu baca lewat `normalizeModeId()` / `getQuizSettings()`.
+   */
+  liveMode?: AnyQuizModeId;
+  /** Pengaturan kuis (tim, auto-lanjut, target akurasi, arcade, dll). */
+  settings?: Partial<QuizSettings>;
+  /** Field lama; dipertahankan agar data tersimpan tetap terbaca. */
   useArcadeMode?: boolean;
 }
 
@@ -100,8 +105,8 @@ export interface QuizAttemptSubmission {
   answersDetail: Record<string, any>;
   submittedAt: string;
   syncedToCalculator: boolean;
-  /** Mode sesi yang dipilih siswa (opsional agar data lama tetap kompatibel). */
-  mode?: QuizModeId;
+  /** Mode sesi saat siswa mengerjakan (opsional agar data lama tetap kompatibel). */
+  mode?: AnyQuizModeId;
   teamId?: string;
   teamName?: string;
   masteryGoal?: number;
@@ -728,7 +733,7 @@ export async function submitQuizAttemptToServer(
 
   // 2. Langsung masukkan ke Kalkulator Akademik (Local + Server /api/calculator-master).
   // Mode Practice sengaja tidak masuk nilai akademik.
-  if (submission.mode !== 'practice') {
+  if (!isPracticeMode(submission.mode)) {
     applySubmissionToCalculatorMaster(submission);
   }
 

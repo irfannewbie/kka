@@ -1,13 +1,20 @@
 /**
- * Katalog mode kuis yang mengacu pada mode sesi Wayground (2026):
- * - Live: Classic, Team, Test, Mastery Peak, Instructor-Paced, Paper.
- * - Tugas/asinkron: Practice, Accuracy, Testing.
+ * Katalog mode kuis lokal (reimplementasi gaya Wayground, tanpa koneksi premium).
  *
- * Catatan: mode di sini adalah hasil reimplementasi lokal. Tidak ada koneksi
- * ke server Wayground dan tidak ada data akun premium yang diambil.
+ * Desain 2026: mode = preset niat pedagogis (5 mode inti), sedangkan variasi
+ * seperti tim, auto-lanjut, tinjau jawaban, target akurasi, dan game arcade
+ * disimpan sebagai PENGATURAN (QuizSettings). Dengan begitu guru tidak lagi
+ * dihadapkan pada 9 mode yang tumpang tindih.
  */
 
-export type QuizModeId =
+/** 5 mode inti yang dipakai di UI guru dan siswa. */
+export type QuizModeId = 'latihan' | 'kelas' | 'ujian' | 'remedial' | 'kertas';
+
+/**
+ * Id mode lama (data tersimpan sebelum konsolidasi 9 -> 5).
+ * Hanya dipakai untuk migrasi; jangan dipakai untuk kode baru.
+ */
+export type LegacyQuizModeId =
   | 'classic'
   | 'team'
   | 'test'
@@ -18,165 +25,94 @@ export type QuizModeId =
   | 'accuracy'
   | 'testing';
 
+/** Semua id mode yang mungkin muncul dari data lama maupun baru. */
+export type AnyQuizModeId = QuizModeId | LegacyQuizModeId;
+
 export type QuizModeCategory = 'live' | 'homework' | 'device-free';
+
+/**
+ * Saklar pengaturan per kuis. Semua bersifat opsional saat disimpan agar data
+ * lama tetap valid; gunakan `getQuizSettings()` untuk membaca nilai final.
+ */
+export interface QuizSettings {
+  /** Skor digabung per tim (4 tim otomatis dari nomor absen). */
+  team: boolean;
+  /** Auto-lanjut soal setelah hitung mundur per soal habis. */
+  autoAdvance: boolean;
+  /** Durasi hitung mundur per soal (detik) saat autoAdvance aktif. */
+  autoAdvanceSeconds: number;
+  /** Siswa boleh meninjau seluruh jawaban sebelum mengirim. */
+  reviewBeforeSubmit: boolean;
+  /** Target akurasi (0-100). Non-null berarti soal salah wajib diulang. */
+  accuracyTarget: number | null;
+  /** Power-Up 50:50 / Freeze / Shield. */
+  powerUps: boolean;
+  /** Game arcade per tipe soal. */
+  arcade: boolean;
+  /** Strike & Shield (gamifikasi bonus kecepatan). */
+  strikeShield: boolean;
+}
+
+export const DEFAULT_QUIZ_SETTINGS: QuizSettings = {
+  team: false,
+  autoAdvance: false,
+  autoAdvanceSeconds: 30,
+  reviewBeforeSubmit: false,
+  accuracyTarget: null,
+  powerUps: true,
+  arcade: false,
+  strikeShield: false,
+};
 
 export interface QuizModeDefinition {
   id: QuizModeId;
   name: string;
   shortName: string;
   category: QuizModeCategory;
+  /** Kelompok tampilan di UI guru. */
+  group: 'kelas' | 'mandiri';
   tagline: string;
   description: string;
   bestFor: string;
   features: string[];
-  icon: 'play' | 'users' | 'clipboard' | 'mountain' | 'presentation' | 'printer' | 'book' | 'target' | 'shield';
-  /**
-   * Timer keseluruhan sesi. Mode tugas seperti Practice/Accuracy tidak memakai
-   * hitung mundur keseluruhan agar siswa bisa berpikir tanpa tekanan waktu.
-   */
+  icon:
+    | 'play'
+    | 'users'
+    | 'clipboard'
+    | 'mountain'
+    | 'presentation'
+    | 'printer'
+    | 'book'
+    | 'target'
+    | 'shield';
+  /** Timer keseluruhan sesi. */
   usesOverallTimer: boolean;
   allowsBackNavigation: boolean;
+  /** Default: siswa boleh meninjau sebelum kirim. Bisa ditimpa setting. */
   allowsReviewBeforeSubmit: boolean;
   instantFeedback: boolean;
   showLeaderboard: boolean;
   powerUps: boolean;
   formalAssessment: boolean;
-  /** Target akurasi untuk Mastery Peak / Accuracy Mode. */
-  targetAccuracy?: number;
-  /** Hitung mundur per soal untuk Instructor-Paced. */
-  autoAdvanceSeconds?: number;
+  /** Nilai bawaan mode ini; digabung dengan `quiz.settings`. */
+  defaults: Partial<QuizSettings>;
   /** Mode latihan tidak boleh masuk ke Kalkulator Akademik. */
   practiceOnly?: boolean;
-  premiumNote?: string;
+  /** Game arcade tidak boleh dinyalakan pada mode formal. */
+  arcadeLocked?: boolean;
 }
 
 export const QUIZ_MODES: QuizModeDefinition[] = [
   {
-    id: 'classic',
-    name: 'Classic',
-    shortName: 'Classic',
-    category: 'live',
-    tagline: 'Papan peringkat langsung, kecepatan & streak.',
-    description:
-      'Siswa bergerak sesuai ritme sendiri. Papan peringkat diperbarui dari jawaban dan bonus kecepatan.',
-    bestFor: 'Review cepat, kuis harian, dan kompetisi kelas.',
-    features: ['Papan peringkat', 'Bonus kecepatan', 'Power-Up', 'Strike & Shield'],
-    icon: 'play',
-    usesOverallTimer: true,
-    allowsBackNavigation: true,
-    allowsReviewBeforeSubmit: true,
-    instantFeedback: false,
-    showLeaderboard: true,
-    powerUps: true,
-    formalAssessment: false,
-    premiumNote: 'Strike & Shield adalah fitur gamifikasi premium di Classic.',
-  },
-  {
-    id: 'team',
-    name: 'Team',
-    shortName: 'Team',
-    category: 'live',
-    tagline: 'Skor individu digabung menjadi skor tim.',
-    description:
-      'Setiap siswa tetap menjawab sendiri, tetapi poin masuk ke total tim. Tim dibagi otomatis dari nomor absen.',
-    bestFor: 'Kerja sama, turnamen kelas, dan review kelompok.',
-    features: ['4 tim otomatis', 'Skor kolektif', 'Power-Up', 'Papan tim'],
-    icon: 'users',
-    usesOverallTimer: true,
-    allowsBackNavigation: true,
-    allowsReviewBeforeSubmit: true,
-    instantFeedback: false,
-    showLeaderboard: true,
-    powerUps: true,
-    formalAssessment: false,
-  },
-  {
-    id: 'test',
-    name: 'Test',
-    shortName: 'Test',
-    category: 'live',
-    tagline: 'Ujian formal, tanpa gangguan permainan.',
-    description:
-      'Tampilan minimal, tanpa Power-Up dan tanpa papan peringkat. Nilai akademik menjadi fokus utama.',
-    bestFor: 'Ulangan, asesmen sumatif, dan ujian kelas.',
-    features: ['Tanpa Power-Up', 'Tanpa leaderboard', 'Timer ujian', 'Nilai akademik'],
-    icon: 'clipboard',
-    usesOverallTimer: true,
-    allowsBackNavigation: true,
-    allowsReviewBeforeSubmit: true,
-    instantFeedback: false,
-    showLeaderboard: false,
-    powerUps: false,
-    formalAssessment: true,
-  },
-  {
-    id: 'mastery',
-    name: 'Mastery Peak',
-    shortName: 'Mastery',
-    category: 'live',
-    tagline: 'Naik ke puncak dengan mengulang soal yang salah.',
-    description:
-      'Setelah putaran pertama, siswa melihat puncak gunung dan mengulang soal yang salah sampai target akurasi tercapai.',
-    bestFor: 'Penguasaan materi dan remedial mandiri.',
-    features: ['Target akurasi 80%', 'Putaran ulang', 'Power-Up', 'Progres gunung'],
-    icon: 'mountain',
-    usesOverallTimer: true,
-    allowsBackNavigation: true,
-    allowsReviewBeforeSubmit: false,
-    instantFeedback: false,
-    showLeaderboard: true,
-    powerUps: true,
-    formalAssessment: false,
-    targetAccuracy: 80,
-  },
-  {
-    id: 'instructor',
-    name: 'Instructor-Paced',
-    shortName: 'Guru',
-    category: 'live',
-    tagline: 'Soal berganti otomatis seperti dipandu guru.',
-    description:
-      'Satu soal tampil dalam satu waktu dengan hitung mundur 30 detik. Soal otomatis lanjut dan tidak bisa kembali.',
-    bestFor: 'Pembelajaran terbimbing dan kuis proyektor.',
-    features: ['30 detik per soal', 'Auto-lanjut', 'Tanpa kembali', 'Fokus satu soal'],
-    icon: 'presentation',
-    usesOverallTimer: true,
-    allowsBackNavigation: false,
-    allowsReviewBeforeSubmit: false,
-    instantFeedback: false,
-    showLeaderboard: false,
-    powerUps: false,
-    formalAssessment: false,
-    autoAdvanceSeconds: 30,
-  },
-  {
-    id: 'paper',
-    name: 'Paper',
-    shortName: 'Kertas',
-    category: 'device-free',
-    tagline: 'Lembar soal cetak untuk kelas tanpa perangkat.',
-    description:
-      'Soal disusun menjadi lembar cetak beserta lembar jawaban. Cocok untuk kelas yang tidak memakai HP atau laptop.',
-    bestFor: 'Kelas tanpa perangkat dan asesmen offline.',
-    features: ['Lembar soal cetak', 'Lembar jawaban', 'Tanpa nilai digital', 'Tanpa timer'],
-    icon: 'printer',
-    usesOverallTimer: false,
-    allowsBackNavigation: false,
-    allowsReviewBeforeSubmit: false,
-    instantFeedback: false,
-    showLeaderboard: false,
-    powerUps: false,
-    formalAssessment: true,
-  },
-  {
-    id: 'practice',
-    name: 'Practice',
+    id: 'latihan',
+    name: 'Latihan',
     shortName: 'Latihan',
     category: 'homework',
+    group: 'mandiri',
     tagline: 'Latihan mandiri dengan umpan balik langsung.',
     description:
-      'Tanpa batas waktu keseluruhan. Setelah menjawab, siswa dapat memeriksa jawaban dan mencoba lagi. Nilai tidak masuk Kalkulator Akademik.',
-    bestFor: 'Belajar mandiri dan persiapan sebelum kuis.',
+      'Tanpa batas waktu keseluruhan. Setelah menjawab, siswa langsung melihat benar/salah dan boleh mengulang. Nilai tidak masuk Kalkulator Akademik.',
+    bestFor: 'Belajar mandiri, PR, dan persiapan sebelum kuis.',
     features: ['Umpan balik langsung', 'Tanpa timer', 'Bisa diulang', 'Tidak masuk nilai'],
     icon: 'book',
     usesOverallTimer: false,
@@ -186,39 +122,50 @@ export const QUIZ_MODES: QuizModeDefinition[] = [
     showLeaderboard: false,
     powerUps: false,
     formalAssessment: false,
+    defaults: {
+      arcade: false,
+      powerUps: false,
+      reviewBeforeSubmit: true,
+    },
     practiceOnly: true,
   },
   {
-    id: 'accuracy',
-    name: 'Accuracy',
-    shortName: 'Akurasi',
-    category: 'homework',
-    tagline: 'Kejar target akurasi dengan mengulang kesalahan.',
+    id: 'kelas',
+    name: 'Kuis Kelas',
+    shortName: 'Kelas',
+    category: 'live',
+    group: 'kelas',
+    tagline: 'Papan peringkat langsung, kecepatan & streak.',
     description:
-      'Siswa fokus pada ketepatan, bukan kecepatan. Soal yang salah diulang sampai target akurasi 80% tercapai.',
-    bestFor: 'Perbaikan pemahaman dan latihan mandiri.',
-    features: ['Target 80%', 'Tanpa timer', 'Ulang soal salah', 'Tanpa leaderboard'],
-    icon: 'target',
-    usesOverallTimer: false,
+      'Siswa bergerak sesuai ritme sendiri. Papan peringkat diperbarui dari jawaban dan bonus kecepatan. Cocok untuk review harian dan kompetisi kelas.',
+    bestFor: 'Review cepat, kuis harian, dan ice breaking.',
+    features: ['Papan peringkat', 'Bonus kecepatan', 'Power-Up', 'Strike & Shield'],
+    icon: 'play',
+    usesOverallTimer: true,
     allowsBackNavigation: true,
-    allowsReviewBeforeSubmit: false,
+    allowsReviewBeforeSubmit: true,
     instantFeedback: false,
-    showLeaderboard: false,
-    powerUps: false,
+    showLeaderboard: true,
+    powerUps: true,
     formalAssessment: false,
-    targetAccuracy: 80,
+    defaults: {
+      arcade: false,
+      powerUps: true,
+      strikeShield: true,
+    },
   },
   {
-    id: 'testing',
-    name: 'Testing',
-    shortName: 'Testing',
-    category: 'homework',
-    tagline: 'Ujian asinkron dengan tinjau jawaban sebelum kirim.',
+    id: 'ujian',
+    name: 'Ujian',
+    shortName: 'Ujian',
+    category: 'live',
+    group: 'kelas',
+    tagline: 'Ujian formal, tanpa gangguan permainan.',
     description:
-      'Ujian formal yang dikerjakan mandiri. Siswa dapat meninjau seluruh jawaban sebelum mengirim, tanpa Power-Up dan leaderboard.',
-    bestFor: 'Ujian rumah dan asesmen asinkron.',
-    features: ['Timer ujian', 'Tinjau jawaban', 'Tanpa Power-Up', 'Nilai akademik'],
-    icon: 'shield',
+      'Tampilan minimal, tanpa Power-Up dan tanpa papan peringkat. Nilai akademik menjadi fokus utama. Siswa dapat meninjau jawaban sebelum mengirim.',
+    bestFor: 'ASTS, ASAS, ulangan, dan asesmen sumatif.',
+    features: ['Tanpa Power-Up', 'Tanpa leaderboard', 'Timer ujian', 'Nilai akademik'],
+    icon: 'clipboard',
     usesOverallTimer: true,
     allowsBackNavigation: true,
     allowsReviewBeforeSubmit: true,
@@ -226,28 +173,154 @@ export const QUIZ_MODES: QuizModeDefinition[] = [
     showLeaderboard: false,
     powerUps: false,
     formalAssessment: true,
+    defaults: {
+      arcade: false,
+      powerUps: false,
+      reviewBeforeSubmit: true,
+      strikeShield: false,
+    },
+    arcadeLocked: true,
+  },
+  {
+    id: 'remedial',
+    name: 'Remedial',
+    shortName: 'Remedial',
+    category: 'homework',
+    group: 'mandiri',
+    tagline: 'Naik ke puncak dengan mengulang soal yang salah.',
+    description:
+      'Setelah putaran pertama, siswa melihat capaian lalu mengulang soal yang salah sampai target akurasi tercapai. Nilai remedial tetap dihitung terpisah.',
+    bestFor: 'Penguasaan materi dan perbaikan nilai.',
+    features: ['Target akurasi 80%', 'Ulang soal salah', 'Tahapan puncak', 'Nilai remedial'],
+    icon: 'mountain',
+    usesOverallTimer: false,
+    allowsBackNavigation: true,
+    allowsReviewBeforeSubmit: false,
+    instantFeedback: true,
+    showLeaderboard: false,
+    powerUps: true,
+    formalAssessment: false,
+    defaults: {
+      arcade: false,
+      accuracyTarget: 80,
+      powerUps: true,
+      reviewBeforeSubmit: false,
+    },
+  },
+  {
+    id: 'kertas',
+    name: 'Kertas',
+    shortName: 'Kertas',
+    category: 'device-free',
+    group: 'kelas',
+    tagline: 'Lembar soal cetak untuk kelas tanpa perangkat.',
+    description:
+      'Guru mencetak lembar soal dan lembar jawaban. Tidak ada timer dan tidak ada nilai digital otomatis; penilaian dilakukan manual.',
+    bestFor: 'Kelas tanpa HP/laptop dan ujian cadangan.',
+    features: ['Lembar soal cetak', 'Lembar jawaban', 'Tanpa nilai digital', 'Tanpa timer'],
+    icon: 'printer',
+    usesOverallTimer: false,
+    allowsBackNavigation: false,
+    allowsReviewBeforeSubmit: false,
+    instantFeedback: false,
+    showLeaderboard: false,
+    powerUps: false,
+    formalAssessment: true,
+    defaults: {
+      arcade: false,
+      powerUps: false,
+      reviewBeforeSubmit: false,
+      strikeShield: false,
+    },
+    arcadeLocked: true,
   },
 ];
 
-export const QUIZ_MODE_GROUPS: Array<{
-  id: 'live' | 'homework';
-  label: string;
-  description: string;
-  modes: QuizModeDefinition[];
-}> = [
-  {
-    id: 'live',
-    label: 'MODE LIVE',
-    description: 'Dikerjakan bersama di kelas. Paper termasuk mode tanpa perangkat.',
-    modes: QUIZ_MODES.filter((m) => m.category === 'live' || m.category === 'device-free'),
-  },
-  {
-    id: 'homework',
-    label: 'MODE TUGAS / ASINKRON',
-    description: 'Dikerjakan mandiri, bisa kapan saja.',
-    modes: QUIZ_MODES.filter((m) => m.category === 'homework'),
-  },
-];
+/** Pemetaan mode lama -> mode baru untuk membaca data tersimpan. */
+const LEGACY_MODE_MAP: Record<LegacyQuizModeId, QuizModeId> = {
+  classic: 'kelas',
+  team: 'kelas',
+  test: 'ujian',
+  mastery: 'remedial',
+  instructor: 'kelas',
+  paper: 'kertas',
+  practice: 'latihan',
+  accuracy: 'remedial',
+  testing: 'ujian',
+};
+
+const NEW_MODE_IDS: QuizModeId[] = ['latihan', 'kelas', 'ujian', 'remedial', 'kertas'];
+
+export function isQuizModeId(value: unknown): value is QuizModeId {
+  return typeof value === 'string' && (NEW_MODE_IDS as string[]).includes(value);
+}
+
+/**
+ * Ubah id mode apa pun (termasuk id lama) menjadi salah satu dari 5 mode inti.
+ * Default `kelas` bila kosong/tidak dikenal.
+ */
+export function normalizeModeId(modeId?: AnyQuizModeId | string | null): QuizModeId {
+  if (isQuizModeId(modeId)) return modeId;
+  if (typeof modeId === 'string' && modeId in LEGACY_MODE_MAP) {
+    return LEGACY_MODE_MAP[modeId as LegacyQuizModeId];
+  }
+  return 'kelas';
+}
+
+/** True untuk mode yang nilainya tidak boleh masuk Kalkulator Akademik. */
+export function isPracticeMode(modeId?: AnyQuizModeId | string | null): boolean {
+  return normalizeModeId(modeId) === 'latihan';
+}
+
+/** True untuk mode asesmen formal (arcade selalu dimatikan). */
+export function isFormalMode(modeId?: AnyQuizModeId | string | null): boolean {
+  const id = normalizeModeId(modeId);
+  return id === 'ujian' || id === 'kertas';
+}
+
+export interface QuizSettingsSource {
+  liveMode?: AnyQuizModeId | string | null;
+  settings?: Partial<QuizSettings> | null;
+  /** Field lama (sebelum ada `settings`). */
+  useArcadeMode?: boolean | null;
+}
+
+/**
+ * Hitung pengaturan final sebuah kuis: default global -> default mode ->
+ * pengaturan tersimpan -> migrasi field lama. Arcade dipaksa mati untuk mode
+ * formal agar nilai asesmen tetap sah.
+ */
+export function getQuizSettings(quiz?: QuizSettingsSource | null): QuizSettings {
+  const modeId = normalizeModeId(quiz?.liveMode);
+  const modeDef = getQuizMode(modeId);
+
+  const merged: QuizSettings = {
+    ...DEFAULT_QUIZ_SETTINGS,
+    ...modeDef.defaults,
+    ...(quiz?.settings || {}),
+  };
+
+  // Kompatibilitas data lama.
+  const legacy = quiz?.liveMode as LegacyQuizModeId | undefined;
+  if (legacy === 'team') merged.team = true;
+  if (legacy === 'instructor') merged.autoAdvance = true;
+  if (legacy === 'testing') merged.reviewBeforeSubmit = true;
+  if (legacy === 'accuracy' || legacy === 'mastery') merged.accuracyTarget = 80;
+
+  // Field lama `useArcadeMode` hanya dipakai bila `settings.arcade` belum ada.
+  if (quiz?.settings?.arcade === undefined && typeof quiz?.useArcadeMode === 'boolean') {
+    merged.arcade = quiz.useArcadeMode;
+  }
+
+  // Pengaman: game tidak boleh dipakai pada asesmen formal.
+  if (modeDef.arcadeLocked) merged.arcade = false;
+  merged.accuracyTarget =
+    merged.accuracyTarget === null || merged.accuracyTarget === undefined
+      ? null
+      : Math.max(1, Math.min(100, Math.round(merged.accuracyTarget)));
+
+  return merged;
+}
 
 export interface QuizTeam {
   id: string;
@@ -293,8 +366,9 @@ export const QUIZ_TEAMS: QuizTeam[] = [
   },
 ];
 
-export function getQuizMode(modeId: QuizModeId): QuizModeDefinition {
-  return QUIZ_MODES.find((m) => m.id === modeId) || QUIZ_MODES[0];
+export function getQuizMode(modeId?: AnyQuizModeId | string | null): QuizModeDefinition {
+  const id = normalizeModeId(modeId);
+  return QUIZ_MODES.find((m) => m.id === id) || QUIZ_MODES[1];
 }
 
 export function getTeamForAttendance(attendanceNo: number): QuizTeam {
@@ -360,3 +434,21 @@ export const POWER_UP_DEFINITIONS = [
 ] as const;
 
 export type PowerUpId = (typeof POWER_UP_DEFINITIONS)[number]['id'];
+
+/**
+ * Rekomendasi mode otomatis berdasarkan sifat kuis. Dipakai di UI guru untuk
+ * menyorot pilihan yang paling sesuai.
+ */
+export function recommendMode(quiz?: {
+  isRemedialQuiz?: boolean | null;
+  assessmentType?: string | null;
+  assessment?: string | null;
+  useArcadeMode?: boolean | null;
+} | null): QuizModeId {
+  if (quiz?.isRemedialQuiz) return 'remedial';
+  const type = (quiz?.assessmentType || quiz?.assessment || '').toUpperCase();
+  if (type.includes('ASAS') || type.includes('ASTS') || type.includes('SUMATIF')) {
+    return 'ujian';
+  }
+  return 'kelas';
+}

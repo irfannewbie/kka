@@ -22,6 +22,14 @@ import {
 } from './security';
 import { syncQuizSubmissionToGoogleSheet } from './googleSheets';
 
+/**
+ * Mode latihan (id baru `latihan`, id lama `practice`) tidak boleh mengubah
+ * nilai akademik maupun dikirim ke Google Spreadsheet.
+ */
+function isPracticeModeId(mode: unknown): boolean {
+  return mode === 'latihan' || mode === 'practice';
+}
+
 interface StoredCalculatorDatasetBody {
   modeAData?: Record<string, MasterModeARecord>;
   modeBData?: Record<string, MasterModeBRecord>;
@@ -239,7 +247,7 @@ export function registerApiRoutes(app: Express): void {
 
     // Otomatis simpan juga ke calculator-master-db.json.
     // Mode Practice hanya untuk latihan, jadi tidak boleh mengubah nilai akademik.
-    if (raw.mode !== 'practice') {
+    if (!isPracticeModeId(raw.mode)) {
       try {
         const masterDb = readMasterDb();
       const shortKey = getDatasetShortKey(
@@ -298,7 +306,7 @@ export function registerApiRoutes(app: Express): void {
     // Auto-sync ke Google Spreadsheet (Service Account) hanya jika diminta (syncToSheet true).
     // Sesuai permintaan: setelah kuis selesai, baru bisa dimasukkan ke Google Spreadsheet.
     const shouldSyncSheet = (req.body as any)?.syncToSheet === true;
-    if (shouldSyncSheet && raw.mode !== 'practice') {
+    if (shouldSyncSheet && !isPracticeModeId(raw.mode)) {
       try {
         await syncQuizSubmissionToGoogleSheet({
           quizId: submission.quizId,
@@ -333,7 +341,7 @@ export function registerApiRoutes(app: Express): void {
     let successCount = 0;
     let failCount = 0;
     for (const sub of submissions) {
-      if (sub?.mode === 'practice') continue;
+      if (isPracticeModeId(sub?.mode)) continue;
       try {
         const r = await syncQuizSubmissionToGoogleSheet({
           quizId: sub.quizId,

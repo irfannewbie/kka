@@ -33,20 +33,22 @@ import {
 } from '../services/quizStore';
 import {
   POWER_UP_DEFINITIONS,
-  QUIZ_MODES,
   QUIZ_TEAMS,
   QuizModeId,
   calculateAccuracy,
   getMasteryStage,
   getQuizMode,
+  getQuizSettings,
   getTeamForAttendance,
+  isPracticeMode,
+  normalizeModeId,
   type PowerUpId,
 } from '../services/quizModes';
 import { PaperQuizSheet } from './quiz/PaperQuizSheet';
 import { DuckHuntPG } from './quiz/game/DuckHuntPG';
 import { MatchingConnect } from './quiz/game/MatchingConnect';
 import { ParsonsTrain } from './quiz/game/ParsonsTrain';
-import { CodeWhackAMole } from './quiz/game/CodeWhackAMole';
+import { CodeTerminalRunner } from './quiz/game/CodeTerminalRunner';
 import {
   ALL_CLASSES,
   GRADE_7_CLASSES,
@@ -170,7 +172,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
   const submitLockRef = useRef<boolean>(false);
 
   // Mode sesi & fitur gamifikasi (mode ditetapkan guru lewat /master)
-  const [activeMode, setActiveMode] = useState<QuizModeId>('classic');
+  const [activeMode, setActiveMode] = useState<QuizModeId>('kelas');
   const [strikeShieldEnabled, setStrikeShieldEnabled] = useState<boolean>(false);
   const [paperQuiz, setPaperQuiz] = useState<InteractiveQuiz | null>(null);
   const [questionRemainingSeconds, setQuestionRemainingSeconds] = useState<number>(30);
@@ -288,6 +290,15 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
   }, [activeQuiz, currentStudent, selectedClass, masteryQuestionIds]);
 
   const currentMode = getQuizMode(activeMode);
+  /** Pengaturan final kuis, ditetapkan guru di /master. */
+  const activeSettings = useMemo(() => getQuizSettings(activeQuiz), [activeQuiz]);
+  const teamActive = activeSettings.team;
+  const autoAdvanceActive = activeSettings.autoAdvance;
+  const reviewBeforeSubmit = activeSettings.reviewBeforeSubmit;
+  const accuracyGateActive = activeSettings.accuracyTarget !== null;
+  const practiceActive = isPracticeMode(activeMode);
+  const powerUpsEnabled = currentMode.powerUps && activeSettings.powerUps;
+  const arcadeActive = activeSettings.arcade && !currentMode.arcadeLocked;
   const myTeam = useMemo(
     () => getTeamForAttendance(Number(currentStudent?.attendanceNo ?? 1)),
     [currentStudent]
@@ -387,12 +398,13 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
       return;
     }
 
-    // Mode ditetapkan guru di halaman /master. Siswa tidak memilih mode.
-    const teacherMode: QuizModeId = (foundQuiz.liveMode as QuizModeId) || 'classic';
-    setStrikeShieldEnabled(teacherMode === 'classic');
+    // Mode & pengaturan ditetapkan guru di halaman /master. Siswa tidak memilih.
+    const teacherMode: QuizModeId = normalizeModeId(foundQuiz.liveMode);
+    const teacherSettings = getQuizSettings(foundQuiz);
+    setStrikeShieldEnabled(teacherSettings.strikeShield);
 
     // Mode kertas langsung membuka lembar cetak, tidak membuat attempt digital.
-    if (teacherMode === 'paper') {
+    if (teacherMode === 'kertas') {
       setActiveQuiz(foundQuiz);
       setPaperQuiz(foundQuiz);
       setCompletedSubmission(null);
@@ -401,7 +413,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     }
 
     // Check if student already submitted this quiz.
-    // Practice tetap boleh diulang karena tidak masuk nilai akademik.
+    // Mode latihan tetap boleh diulang karena tidak masuk nilai akademik.
     const existingAttempt = submissions.find(
       (s) =>
         s.quizId === foundQuiz.id &&
@@ -409,9 +421,9 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         Number(s.attendanceNo) === Number(currentStudent.attendanceNo)
     );
 
-    if (existingAttempt && teacherMode !== 'practice') {
+    if (existingAttempt && teacherMode !== 'latihan') {
       setActiveQuiz(foundQuiz);
-      setActiveMode(existingAttempt.mode || teacherMode);
+      setActiveMode(normalizeModeId(existingAttempt.mode || teacherMode));
       setCompletedSubmission(existingAttempt);
       setIsExamRunning(false);
       return;
@@ -459,7 +471,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     setMasteryFirstPassCorrect(0);
     setMasteryFirstPassTotal(0);
     setTestingReviewOpen(false);
-    setQuestionRemainingSeconds(getQuizMode(teacherMode).autoAdvanceSeconds || 30);
+    setQuestionRemainingSeconds(teacherSettings.autoAdvanceSeconds || 30);
     setRemainingSeconds(
       getQuizMode(teacherMode).usesOverallTimer
         ? (foundQuiz.durationMinutes || 20) * 60
@@ -490,20 +502,20 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     return () => clearInterval(timer);
   }, [isExamRunning, activeQuiz, activeMode]);
 
-  // Instructor-Paced: hitung mundur per soal, lalu auto-lanjut.
+  // Auto-lanjut: hitung mundur per soal, lalu lanjut otomatis.
   useEffect(() => {
-    if (!isExamRunning || !activeQuiz || activeMode !== 'instructor') return;
+    if (!isExamRunning || !activeQuiz || !activeSettings.autoAdvance) return;
     const timer = setInterval(() => {
       setQuestionRemainingSeconds((prev) => {
         if (prev <= 1) {
           instructorAdvanceRef.current();
-          return 30;
+          return activeSettings.autoAdvanceSeconds || 30;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [isExamRunning, activeQuiz, activeMode, currentQuestionIdx]);
+  }, [isExamRunning, activeQuiz, activeSettings.autoAdvance, activeSettings.autoAdvanceSeconds, currentQuestionIdx]);
 
   // Anti-Cheat: Detect Tab Switch / Window Blur while exam is running
   useEffect(() => {
@@ -669,7 +681,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         (totalAllowedSec - elapsedSeconds) / Math.max(1, totalAllowedSec)
       );
       const speedBonusPoints =
-        modeDef.formalAssessment || activeMode === 'practice' || activeMode === 'instructor'
+        modeDef.formalAssessment || practiceActive
           ? 0
           : finalScore >= 50
           ? Math.round(speedRatio * 1200) + maxStreak * 250
@@ -723,11 +735,11 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           hour: '2-digit',
           minute: '2-digit',
         }),
-        syncedToCalculator: activeMode !== 'practice',
+        syncedToCalculator: !practiceActive,
         mode: activeMode,
-        teamId: activeMode === 'team' ? myTeam.id : undefined,
-        teamName: activeMode === 'team' ? myTeam.name : undefined,
-        masteryGoal: modeDef.targetAccuracy,
+        teamId: teamActive ? myTeam.id : undefined,
+        teamName: teamActive ? myTeam.name : undefined,
+        masteryGoal: activeSettings.accuracyTarget ?? undefined,
         masteryRounds: meta.masteryRounds,
         accuracyFirstPass: meta.accuracyFirstPass,
         accuracyFinal: meta.accuracyFinal,
@@ -738,8 +750,8 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         shieldCount,
       };
 
-      // Mode Practice tidak masuk server/Kalkulator Akademik.
-      if (activeMode === 'practice') {
+      // Mode latihan tidak masuk server/Kalkulator Akademik.
+      if (practiceActive) {
         setCompletedSubmission(submissionPayload);
         setIsExamRunning(false);
         playNotificationChime();
@@ -763,19 +775,18 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     skipTestingReview = false
   ) => {
     if (isSubmitting || !activeQuiz || !currentStudent) return;
-    const modeDef = getQuizMode(activeMode);
 
-    // Testing Mode: tinjau semua jawaban sebelum mengirim.
-    if (modeDef.id === 'testing' && !skipTestingReview && !testingReviewOpen) {
+    // Mode dengan "tinjau jawaban": tinjau semua jawaban sebelum mengirim.
+    if (reviewBeforeSubmit && !skipTestingReview && !testingReviewOpen) {
       setTestingReviewOpen(true);
       setIsExamRunning(false);
       return;
     }
 
     const round = evaluateCurrentRound();
-    const goal = modeDef.targetAccuracy || 80;
+    const goal = activeSettings.accuracyTarget || 80;
 
-    if ((activeMode === 'mastery' || activeMode === 'accuracy') && masteryRound === 1) {
+    if (accuracyGateActive && masteryRound === 1) {
       const firstPassAccuracy = calculateAccuracy(round.roundCorrect, round.roundTotal);
       if (firstPassAccuracy < goal && round.wrongQuestionIds.length > 0) {
         setMasteryFirstPassCorrect(round.roundCorrect);
@@ -814,7 +825,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
       accuracyFinal,
       masteryRounds: masteryRound,
       masteryGoalAchieved:
-        activeMode === 'mastery' || activeMode === 'accuracy'
+        accuracyGateActive
           ? accuracyFinal >= goal
           : undefined,
       byTimeout,
@@ -827,11 +838,11 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
   useEffect(() => {
     finishRef.current = handleFinishAndSubmit;
     instructorAdvanceRef.current = () => {
-      if (!isExamRunning || activeMode !== 'instructor') return;
+      if (!isExamRunning || !activeSettings.autoAdvance) return;
       if (currentQuestionIdx < preparedQuestions.length - 1) {
         setSelectedLeftPairId(null);
         setCurrentQuestionIdx((prev) => prev + 1);
-        setQuestionRemainingSeconds(30);
+        setQuestionRemainingSeconds(activeSettings.autoAdvanceSeconds || 30);
       } else {
         void handleFinishAndSubmit(false, false);
       }
@@ -943,7 +954,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
   };
 
   const activatePowerUp = (id: PowerUpId) => {
-    if (!currentMode.powerUps || powerUpsUsed.includes(id)) return;
+    if (!powerUpsEnabled || powerUpsUsed.includes(id)) return;
     const q = preparedQuestions[currentQuestionIdx];
     if (id === 'fifty') {
       if (!q || (q.type !== 'pg' && q.type !== 'code_output') || !q.options) return;
@@ -980,7 +991,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
   };
 
   const handleAwardStrikeCharge = (q: QuizQuestion) => {
-    if (!strikeShieldEnabled || activeMode !== 'classic') return;
+    if (!strikeShieldEnabled || activeMode !== 'kelas') return;
     if (awardedQuestionIds.includes(q.id)) return;
     if (evaluateQuestion(q).correct) {
       setAwardedQuestionIds((prev) => [...prev, q.id]);
@@ -994,7 +1005,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
     setSelectedLeftPairId(null);
     if (currentQuestionIdx < preparedQuestions.length - 1) {
       setCurrentQuestionIdx((prev) => prev + 1);
-      if (activeMode === 'instructor') setQuestionRemainingSeconds(30);
+      if (autoAdvanceActive) setQuestionRemainingSeconds(activeSettings.autoAdvanceSeconds || 30);
     } else {
       void handleFinishAndSubmit(false, false);
     }
@@ -1095,7 +1106,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
             {stage.emoji} {stage.label}
           </h2>
           <p className="font-mono-code text-xs text-slate-300 mt-1">
-            {gateMode.id === 'mastery'
+            {activeMode === 'remedial'
               ? 'Naik ke puncak dengan mengulang soal yang belum tepat.'
               : 'Kejar target akurasi sebelum jawaban dikirim.'}
           </p>
@@ -1311,17 +1322,17 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                 <span className="px-2 py-0.5 text-[9px] font-black bg-emerald-600 text-white">
                   MODE DARI GURU
                 </span>
-                {activeQuiz.useArcadeMode && (
+                {arcadeActive && (
                   <span className="px-2 py-0.5 text-[9px] font-black bg-fuchsia-600 text-white">
                     ARCADE
                   </span>
                 )}
-                {activeMode === 'team' && (
+                {teamActive && (
                   <span className={`px-2 py-0.5 text-[10px] font-black ${myTeam.badgeClass}`}>
                     {myTeam.mascot} {myTeam.name.toUpperCase()}
                   </span>
                 )}
-                {strikeShieldEnabled && activeMode === 'classic' && (
+                {strikeShieldEnabled && activeMode === 'kelas' && (
                   <span className="px-2 py-0.5 text-[10px] font-black bg-fuchsia-500 text-white">
                     PREMIUM · STRIKE &amp; SHIELD
                   </span>
@@ -1366,15 +1377,15 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                 </div>
               )}
 
-              {activeMode === 'instructor' && (
+              {autoAdvanceActive && (
                 <div className="px-3 py-1.5 text-xs font-black border-2 border-white bg-[#2e59e6] text-white flex items-center gap-1.5 tabular-nums">
                   <Timer className="h-4 w-4" /> SOAL: {questionRemainingSeconds} dtk
                 </div>
               )}
 
-              {(activeMode === 'mastery' || activeMode === 'accuracy') && (
+              {accuracyGateActive && (
                 <div className="px-3 py-1.5 text-xs font-bold border border-white/40 bg-white/10 text-white flex items-center gap-1.5">
-                  <Target className="h-3.5 w-3.5" /> TARGET {currentMode.targetAccuracy || 80}%
+                  <Target className="h-3.5 w-3.5" /> TARGET {activeSettings.accuracyTarget || 80}%
                 </div>
               )}
 
@@ -1384,17 +1395,17 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                 disabled={isSubmitting}
                 className="px-4 py-2 text-xs font-black bg-emerald-500 hover:bg-emerald-400 text-[#1a1a1a] border-2 border-white cursor-pointer"
               >
-                {isSubmitting ? 'MENGIRIM...' : activeMode === 'testing' ? 'TINJAU & KIRIM' : 'SELESAI & KIRIM'}
+                {isSubmitting ? 'MENGIRIM...' : reviewBeforeSubmit ? 'TINJAU & KIRIM' : 'SELESAI & KIRIM'}
               </button>
             </div>
           </div>
 
           {/* Question Number Navigation Bar */}
           <div className="mt-3 pt-3 border-t border-white/20 flex flex-wrap items-center justify-between gap-2">
-            {activeMode === 'instructor' ? (
+            {autoAdvanceActive ? (
               <div className="font-mono-code text-[11px] text-slate-300 flex items-center gap-2">
                 <Presentation className="h-3.5 w-3.5 text-amber-300" />
-                MODE GURU: soal berganti otomatis setiap 30 detik. Tidak bisa kembali.
+                MODE GURU: soal berganti otomatis setiap {activeSettings.autoAdvanceSeconds} detik. Tidak bisa kembali.
               </div>
             ) : (
               <div className="flex flex-wrap items-center gap-1.5">
@@ -1425,7 +1436,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
             )}
 
             <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300 font-bold">
-              {activeMode === 'mastery' || activeMode === 'accuracy' ? (
+              {accuracyGateActive ? (
                 <span className="px-2 py-1 bg-white/10 border border-white/20">
                   {masteryStage.emoji} {masteryStage.label}
                 </span>
@@ -1436,7 +1447,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
         </div>
 
         {/* Power-Up & fitur premium */}
-        {currentMode.powerUps && (
+        {powerUpsEnabled && (
           <div className="bg-white border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#1a1a1a] p-3 font-mono-code">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div className="text-[10px] font-black uppercase tracking-wider text-slate-600 flex items-center gap-1.5">
@@ -1481,7 +1492,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           </div>
         )}
 
-        {strikeShieldEnabled && activeMode === 'classic' && (
+        {strikeShieldEnabled && activeMode === 'kelas' && (
           <div className="bg-fuchsia-50 border-2 border-[#1a1a1a] shadow-[4px_4px_0px_#a21caf] p-3.5 font-mono-code">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
@@ -1597,7 +1608,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           {/* 1. INTERACTION FOR PG & CODE OUTPUT */}
           {(currentQuestion.type === 'pg' || currentQuestion.type === 'code_output') && (
             <>
-              {activeQuiz.useArcadeMode && currentQuestion.type === 'pg' ? (
+              {arcadeActive && currentQuestion.type === 'pg' ? (
                 <div className="pt-2">
                   <DuckHuntPG
                     question={currentQuestion}
@@ -1612,9 +1623,9 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                     isAnswered={pgAnswers[currentQuestion.id] !== undefined}
                   />
                 </div>
-              ) : activeQuiz.useArcadeMode && currentQuestion.type === 'code_output' ? (
+              ) : arcadeActive && currentQuestion.type === 'code_output' ? (
                 <div className="pt-2">
-                  <CodeWhackAMole
+                  <CodeTerminalRunner
                     question={currentQuestion}
                     displayOptions={visibleOptions}
                     onAnswer={(originalIndex) =>
@@ -1669,7 +1680,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           {/* 2. INTERACTION FOR MATCHING (PASANGKAN KARTU KIRI & KANAN) */}
           {currentQuestion.type === 'matching' && (
             <>
-              {activeQuiz.useArcadeMode ? (
+              {arcadeActive ? (
                 <div className="pt-2">
                   <MatchingConnect
                     question={currentQuestion}
@@ -1806,7 +1817,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           {/* 3. INTERACTION FOR PARSONS PUZZLE (SUSUN BLOK ALGORITMA) */}
           {currentQuestion.type === 'parsons' && (
             <>
-              {activeQuiz.useArcadeMode ? (
+              {arcadeActive ? (
                 <div className="pt-2">
                   <ParsonsTrain
                     question={currentQuestion}
@@ -1817,7 +1828,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                       }))
                     }
                     currentAnswer={parsonsAnswers[currentQuestion.id]}
-                    isAnswered={isQuestionAnswered(currentQuestion)}
+                    isAnswered={false}
                   />
                 </div>
               ) : (
@@ -1909,7 +1920,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           )}
 
           {/* Umpan balik langsung untuk Practice Mode */}
-          {currentFeedback && activeMode === 'practice' && (
+          {currentFeedback && practiceActive && (
             <div
               className={`border-2 border-[#1a1a1a] p-3.5 font-mono-code text-xs ${
                 currentFeedback.correct
@@ -1941,7 +1952,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
             </button>
 
             <div className="flex flex-wrap items-center gap-2">
-              {activeMode === 'practice' && !currentFeedback && (
+              {practiceActive && !currentFeedback && (
                 <button
                   type="button"
                   onClick={handleCheckPractice}
@@ -1952,7 +1963,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                 </button>
               )}
 
-              {activeMode === 'practice' && currentFeedback && (
+              {practiceActive && currentFeedback && (
                 <button
                   type="button"
                   onClick={handleClearCurrentAnswer}
@@ -1968,7 +1979,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                   onClick={handleNextQuestion}
                   className="px-5 py-2.5 text-xs font-bold bg-[#2e59e6] hover:bg-blue-700 text-white border-2 border-[#1a1a1a] shadow-[2px_2px_0px_#1a1a1a] cursor-pointer"
                 >
-                  {activeMode === 'instructor' ? 'LANJUT SEKARANG →' : 'SOAL BERIKUTNYA →'}
+                  {autoAdvanceActive ? 'LANJUT SEKARANG →' : 'SOAL BERIKUTNYA →'}
                 </button>
               ) : (
                 <button
@@ -1979,9 +1990,9 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                 >
                   {isSubmitting
                     ? 'MENGIRIM...'
-                    : activeMode === 'testing'
+                    : reviewBeforeSubmit
                     ? 'TINJAU JAWABAN →'
-                    : activeMode === 'mastery' || activeMode === 'accuracy'
+                    : accuracyGateActive
                     ? 'SELESAIKAN PUTARAN →'
                     : 'KIRIM JAWABAN KUIS SEKARANG'}
                 </button>
@@ -1998,9 +2009,9 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
   // =========================================================================
   if (completedSubmission && activeQuiz) {
     const isGrade7 = completedSubmission.className.includes('7');
-    const completedMode = getQuizMode(completedSubmission.mode || 'classic');
-    const isPracticeResult = completedSubmission.mode === 'practice';
-    const isTeamResult = completedSubmission.mode === 'team';
+    const completedMode = getQuizMode(completedSubmission.mode || 'kelas');
+    const isPracticeResult = isPracticeMode(completedSubmission.mode);
+    const isTeamResult = Boolean(completedSubmission.teamName);
     const isFormalResult = completedMode.formalAssessment;
     const completedAccuracy =
       completedSubmission.accuracyFinal ?? completedSubmission.accuracyFirstPass;
@@ -2105,13 +2116,17 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
           </div>
 
           {/* Statistik khusus mode */}
-          {(completedMode.id === 'mastery' || completedMode.id === 'accuracy') &&
+          {(completedSubmission.accuracyFirstPass !== undefined ||
+            completedSubmission.accuracyFinal !== undefined) &&
             completedAccuracy !== undefined && (
               <div className="bg-blue-50 border-2 border-[#1a1a1a] p-4 font-mono-code">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <div className="text-[10px] font-black uppercase text-blue-800">
-                      {completedMode.id === 'mastery' ? 'MASTERY PEAK' : 'ACCURACY MODE'} ·{' '}
+                      {(completedSubmission.masteryRounds ?? 1) > 1
+                        ? 'REMEDIAL · PUTARAN ULANG'
+                        : 'TARGET AKURASI'}{' '}
+                      ·{' '}
                       {completedSubmission.masteryGoalAchieved ? 'TARGET TERCAPAI' : 'TARGET BELUM TERCAPAI'}
                     </div>
                     <div className="font-black text-2xl text-[#1a1a1a] tabular-nums mt-0.5">
@@ -2121,7 +2136,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                   </div>
                   <div className="text-right text-xs text-slate-600">
                     <div>Awal: {completedSubmission.accuracyFirstPass ?? 0}%</div>
-                    <div>Target: {completedSubmission.masteryGoal ?? completedMode.targetAccuracy ?? 80}%</div>
+                    <div>Target: {completedSubmission.masteryGoal ?? 80}%</div>
                     <div>Putaran: {completedSubmission.masteryRounds ?? 1}</div>
                   </div>
                 </div>
@@ -2474,8 +2489,9 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                     s.className === selectedClass &&
                     Number(s.attendanceNo) === Number(currentStudent.attendanceNo)
                 );
-              const quizModeDef = getQuizMode((quiz.liveMode as QuizModeId) || 'classic');
-              const hasFinalAttempt = Boolean(alreadyDone) && quizModeDef.id !== 'practice';
+              const quizModeDef = getQuizMode(quiz.liveMode);
+              const hasFinalAttempt = Boolean(alreadyDone) && !isPracticeMode(quiz.liveMode);
+              const quizArcadeActive = getQuizSettings(quiz).arcade;
 
               return (
                 <div
@@ -2496,7 +2512,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                       <span className="px-2 py-0.5 bg-[#2e59e6] text-white text-[10px] font-black uppercase">
                         MODE: {quizModeDef.name}
                       </span>
-                      {quiz.useArcadeMode && (
+                      {quizArcadeActive && (
                         <span className="px-2 py-0.5 bg-fuchsia-600 text-white text-[10px] font-black uppercase">
                           ARCADE GAME
                         </span>
@@ -2531,7 +2547,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                           : 'bg-[#2e59e6] hover:bg-blue-700 text-white'
                       }`}
                     >
-                      {quizModeDef.id === 'paper' ? (
+                      {quizModeDef.id === 'kertas' ? (
                         <Printer className="h-3.5 w-3.5" />
                       ) : (
                         <Play className="h-3.5 w-3.5" />
@@ -2539,7 +2555,7 @@ export const StudentQuizView: React.FC<StudentQuizViewProps> = ({
                       <span>
                         {hasFinalAttempt
                           ? `LIHAT HASIL SAYA (NILAI: ${alreadyDone?.finalScore ?? 0})`
-                          : quizModeDef.id === 'paper'
+                          : quizModeDef.id === 'kertas'
                           ? 'BUKA LEMBAR KERTAS'
                           : quiz.isRemedialQuiz
                           ? `KERJAKAN REMEDIAL • ${quizModeDef.shortName.toUpperCase()}`

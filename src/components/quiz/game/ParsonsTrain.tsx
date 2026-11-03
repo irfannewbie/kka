@@ -4,7 +4,11 @@ import type { QuizQuestion } from '../../../services/quizStore';
 
 /**
  * MODE ARCADE — TRAIN SORTING (PARSONS / SUSUN ALGORITMA)
- * Susun gerbong kereta dari langkah pertama ke langkah terakhir.
+ *
+ * Versi vertikal: gerbong ditumpuk ke bawah sehingga nyaman dipakai di HP
+ * tanpa scroll horizontal. Siswa menaik-turunkan gerbong sampai urut dari
+ * langkah pertama sampai terakhir. Urutan tetap bisa diubah sampai dikirim,
+ * karena Parsons tidak punya "satu pilihan" yang bisa dikunci.
  */
 
 interface ParsonsTrainProps {
@@ -74,83 +78,85 @@ export const ParsonsTrain: React.FC<ParsonsTrainProps> = ({
         </span>
       </div>
 
-      <div className="border-4 border-[#1a1a1a] bg-gradient-to-b from-emerald-800 to-emerald-950 p-4 sm:p-5 overflow-x-auto">
-        <div className="min-w-[280px]">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="relative">
-              <div className="bg-red-600 border-2 border-[#1a1a1a] px-4 sm:px-5 py-3 rounded shadow-lg">
-                <div className="text-white font-black text-[10px] sm:text-xs">LOKOMOTIF</div>
-              </div>
-            </div>
-            <div className="flex gap-1">
-              <span className="w-3 h-3 rounded-full bg-[#1a1a1a]" />
-              <span className="w-3 h-3 rounded-full bg-[#1a1a1a]" />
+      <div className="border-4 border-[#1a1a1a] bg-gradient-to-b from-emerald-800 to-emerald-950 p-3 sm:p-4">
+        {/* Lokomotif di paling atas (langkah pertama) */}
+        <div className="flex items-center gap-2 mb-1">
+          <div className="bg-red-600 border-2 border-[#1a1a1a] px-3 sm:px-4 py-2.5 rounded shadow-lg">
+            <div className="text-white font-black text-[10px] sm:text-xs">
+              🚂 LOKOMOTIF · LANGKAH PERTAMA
             </div>
           </div>
+        </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {blocks.map((block, idx) => (
-              <React.Fragment key={idx}>
-                <div className="relative bg-blue-600 border-2 border-[#1a1a1a] px-3 py-3 rounded shadow-[3px_3px_0px_rgba(0,0,0,0.4)] min-w-[200px] max-w-[320px]">
-                  <div className="absolute -top-2 left-3 bg-[#1a1a1a] text-amber-300 px-1.5 py-0.5 text-[9px] font-black rounded">
-                    GERBONG #{idx + 1}
-                  </div>
-                  <div className="mt-2 font-mono-code text-[10px] sm:text-xs font-bold text-white break-words whitespace-pre-wrap">
-                    {block}
-                  </div>
-                  {!isAnswered && (
-                    <div className="absolute -right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1">
-                      <button
-                        type="button"
-                        onClick={() => moveBlock(idx, 'up')}
-                        disabled={idx === 0}
-                        aria-label="Pindahkan ke atas"
-                        className="w-6 h-6 bg-amber-400 border border-[#1a1a1a] rounded-full flex items-center justify-center hover:bg-amber-300 disabled:opacity-25 disabled:cursor-not-allowed"
-                      >
-                        <ArrowUp className="h-3 w-3" />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => moveBlock(idx, 'down')}
-                        disabled={idx === blocks.length - 1}
-                        aria-label="Pindahkan ke bawah"
-                        className="w-6 h-6 bg-amber-400 border border-[#1a1a1a] rounded-full flex items-center justify-center hover:bg-amber-300 disabled:opacity-25 disabled:cursor-not-allowed"
-                      >
-                        <ArrowDown className="h-3 w-3" />
-                      </button>
-                    </div>
-                  )}
+        <div className="flex flex-col">
+          {blocks.map((block, idx) => (
+            <React.Fragment key={`${idx}-${block.slice(0, 12)}`}>
+              {/* Rel penghubung */}
+              <div className="flex items-center gap-2 pl-5 h-4">
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400/70" />
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400/70" />
+                <span className="w-1.5 h-1.5 rounded-full bg-slate-400/70" />
+              </div>
+
+              <div className="relative bg-blue-600 border-2 border-[#1a1a1a] rounded shadow-[3px_3px_0px_rgba(0,0,0,0.4)] p-3 pr-14">
+                <div className="absolute -top-2 left-3 bg-[#1a1a1a] text-amber-300 px-1.5 py-0.5 text-[9px] font-black rounded">
+                  GERBONG #{idx + 1}
                 </div>
-                <div className="flex gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#1a1a1a]" />
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#1a1a1a]" />
+                <div className="mt-1.5 font-mono-code text-[11px] sm:text-xs font-bold text-white break-words whitespace-pre-wrap leading-snug">
+                  {block}
                 </div>
-              </React.Fragment>
-            ))}
+
+                {!isAnswered && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex flex-col gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => moveBlock(idx, 'up')}
+                      disabled={idx === 0}
+                      aria-label={`Naikkan gerbong ${idx + 1}`}
+                      className="w-9 h-9 bg-amber-400 border-2 border-[#1a1a1a] rounded flex items-center justify-center hover:bg-amber-300 active:bg-amber-500 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => moveBlock(idx, 'down')}
+                      disabled={idx === blocks.length - 1}
+                      aria-label={`Turunkan gerbong ${idx + 1}`}
+                      className="w-9 h-9 bg-amber-400 border-2 border-[#1a1a1a] rounded flex items-center justify-center hover:bg-amber-300 active:bg-amber-500 disabled:opacity-25 disabled:cursor-not-allowed cursor-pointer"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
+            </React.Fragment>
+          ))}
+
+          {/* Gerbong terakhir */}
+          <div className="flex items-center gap-2 pl-5 h-4">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400/70" />
+          </div>
+          <div className="bg-slate-700 border-2 border-[#1a1a1a] px-3 py-1.5 rounded text-[9px] font-black text-slate-200 tracking-wider">
+            🏁 LANGKAH TERAKHIR
           </div>
         </div>
       </div>
 
       <div className="bg-amber-50 border-2 border-[#1a1a1a] p-2.5 text-[11px] font-mono-code leading-snug">
-        <strong>Cara main:</strong> gerakkan gerbong dengan tombol panah agar urut dari depan
-        (nomor 1) ke belakang. Urutan dikunci otomatis saat kamu pindahkan gerbong.
+        <strong>Cara main:</strong> naik-turunkan gerbong dengan tombol panah sampai urut dari
+        langkah pertama (atas) ke terakhir (bawah). Urutan boleh diubah sampai kamu menekan
+        tombol kirim jawaban.
       </div>
 
       <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-600">
         <Shuffle className="h-3.5 w-3.5" /> Blok diacak saat mulai supaya puzzle nyata.
       </div>
 
-      {isAnswered && (
-        <div
-          className={`border-2 border-[#1a1a1a] p-3 text-center ${
-            isCorrect ? 'bg-emerald-100' : 'bg-rose-100'
-          }`}
-        >
-          <CheckCircle2
-            className={`h-6 w-6 mx-auto mb-1 ${isCorrect ? 'text-emerald-700' : 'text-rose-700'}`}
-          />
-          <div className={`text-xs font-black ${isCorrect ? 'text-emerald-900' : 'text-rose-900'}`}>
-            {isCorrect ? '✅ KERETA SUDAH TERURUT BENAR' : '❌ URUTAN BELUM TEPAT'}
+      {isAnswered && isCorrect && (
+        <div className="border-2 border-[#1a1a1a] p-3 text-center bg-emerald-100">
+          <CheckCircle2 className="h-6 w-6 mx-auto mb-1 text-emerald-700" />
+          <div className="text-xs font-black text-emerald-900">
+            ✅ KERETA SUDAH TERURUT BENAR
           </div>
         </div>
       )}
